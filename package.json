@@ -1,0 +1,17 @@
+{
+  "name": "prompt-commerce",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently --names \"mcp,admin\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace=packages/mcp-server\" \"npm run dev --workspace=packages/admin\"",
+    "build": "npm run build --workspace=packages/mcp-server && npm run build --workspace=packages/admin",
+    "start": "concurrently --names \"mcp,admin\" --prefix-colors \"cyan,magenta\" \"npm run start --workspace=packages/mcp-server\" \"npm run start --workspace=packages/admin\"",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
