@@ -73,7 +73,7 @@ export function registerPromotionTools(
   // ─── add_promotion ───────────────────────────────────────────────────────
   server.tool(
     'add_promotion',
-    'Create a new promotion or voucher code.',
+    'Create a new promotion or voucher code. By default returns a preview — set confirm=true to save.',
     {
       title: z.string().min(1).describe('Promotion name/title'),
       discount_type: z
@@ -84,8 +84,9 @@ export function registerPromotionTools(
       voucher_code: z.string().optional().describe('Unique voucher code customers can enter'),
       start_date: z.string().optional().describe('ISO date when the promotion starts (YYYY-MM-DD)'),
       end_date: z.string().optional().describe('ISO date when the promotion ends (YYYY-MM-DD)'),
+      confirm: z.boolean().default(false).describe('Set to true to actually save. When false (default), returns a preview for review.'),
     },
-    async ({ title, discount_type, discount_value, product_id, voucher_code, start_date, end_date }) => {
+    async ({ title, discount_type, discount_value, product_id, voucher_code, start_date, end_date, confirm }) => {
       if (voucher_code) {
         const existing = db
           .prepare(`SELECT id FROM promotions WHERE voucher_code = ?`)
@@ -99,6 +100,38 @@ export function registerPromotionTools(
         }
       }
 
+      // Resolve product title for preview if product_id given
+      let productTitle: string | null = null;
+      if (product_id !== undefined) {
+        const prod = db.prepare(`SELECT title FROM products WHERE id = ?`).get(product_id) as { title: string } | undefined;
+        if (!prod) {
+          return {
+            content: [{ type: 'text', text: `Product ID ${product_id} not found.` }],
+            isError: true,
+          };
+        }
+        productTitle = prod.title;
+      }
+
+      // ── Preview mode ──
+      if (!confirm) {
+        const preview = {
+          title,
+          discount: discount_type === 'percentage' ? `${discount_value}% off` : `₱${discount_value} off`,
+          applies_to: productTitle ? `${productTitle} (ID ${product_id})` : 'entire store',
+          voucher_code: voucher_code ?? null,
+          active_from: start_date ?? 'immediately',
+          active_until: end_date ?? 'no expiry',
+        };
+        return {
+          content: [{
+            type: 'text',
+            text: `📋 PREVIEW — no changes saved yet\n\nThis promotion will be created:\n${JSON.stringify(preview, null, 2)}\n\nCall add_promotion again with confirm=true to save it.`,
+          }],
+        };
+      }
+
+      // ── Execute ──
       const result = db
         .prepare(
           `INSERT INTO promotions (title, product_id, voucher_code, discount_type, discount_value, start_date, end_date)
@@ -115,14 +148,10 @@ export function registerPromotionTools(
         );
 
       return {
-        content: [
-          {
-            type: 'text',
-            text: `Promotion "${title}" created with ID ${result.lastInsertRowid}.${
-              voucher_code ? ` Voucher code: ${voucher_code}` : ''
-            }`,
-          },
-        ],
+        content: [{
+          type: 'text',
+          text: `✅ Promotion "${title}" saved with ID ${result.lastInsertRowid}.${voucher_code ? ` Voucher code: ${voucher_code}` : ''}`,
+        }],
       };
     },
   );

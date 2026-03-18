@@ -13,7 +13,7 @@ export function getDb(): Database.Database {
 
   const dbPath =
     process.env.DATABASE_PATH ||
-    path.resolve(__dirname, '../../../../data/catalog.db');
+    path.resolve(__dirname, '../../../data/catalog.db');
 
   // Ensure the directory exists
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });

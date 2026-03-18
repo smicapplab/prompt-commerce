@@ -86,7 +86,7 @@ export function registerReviewTools(
         content: [
           {
             type: 'text',
-            text: `Review submitted (ID: ${result.lastInsertRowid}). Rating: ${'⭐'.repeat(rating)}`,
+            text: `Review submitted (ID: ${result.lastInsertRowid}). Rating: ${rating}/5`,
           },
         ],
       };

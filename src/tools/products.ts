@@ -112,7 +112,7 @@ export function registerProductTools(
   // ─── add_product ─────────────────────────────────────────────────────────
   server.tool(
     'add_product',
-    'Add a new product to the catalog. Use after AI has generated the product content.',
+    'Add a new product to the catalog. By default returns a preview — set confirm=true to save.',
     {
       title: z.string().min(1).describe('Product title'),
       description: z.string().optional().describe('Product description'),
@@ -121,23 +121,38 @@ export function registerProductTools(
       price: z.number().min(0).optional().describe('Price in local currency'),
       tags: z.array(z.string()).optional().describe('Tags for search and filtering'),
       images: z.array(z.string()).optional().describe('Image URLs'),
+      confirm: z.boolean().default(false).describe('Set to true to actually save. When false (default), returns a preview for review.'),
     },
-    async ({ title, description, sku, category, price, tags, images }) => {
-      let categoryId: number | null = null;
+    async ({ title, description, sku, category, price, tags, images, confirm }) => {
+      // ── Preview mode ──
+      if (!confirm) {
+        const preview = {
+          title,
+          sku: sku ?? null,
+          description: description ?? null,
+          category: category ?? null,
+          price: price ?? null,
+          tags: tags ?? [],
+          images: images ?? [],
+          active: true,
+        };
+        return {
+          content: [{
+            type: 'text',
+            text: `📋 PREVIEW — no changes saved yet\n\nThis product will be created:\n${JSON.stringify(preview, null, 2)}\n\nCall add_product again with confirm=true to save it.`,
+          }],
+        };
+      }
 
+      // ── Execute ──
+      let categoryId: number | null = null;
       if (category) {
         const existing = db
           .prepare(`SELECT id FROM categories WHERE name = ?`)
           .get(category) as { id: number } | undefined;
-
-        if (existing) {
-          categoryId = existing.id;
-        } else {
-          const result = db
-            .prepare(`INSERT INTO categories (name) VALUES (?)`)
-            .run(category);
-          categoryId = result.lastInsertRowid as number;
-        }
+        categoryId = existing
+          ? existing.id
+          : (db.prepare(`INSERT INTO categories (name) VALUES (?)`).run(category).lastInsertRowid as number);
       }
 
       const result = db
@@ -157,12 +172,10 @@ export function registerProductTools(
 
       const newId = result.lastInsertRowid as number;
       return {
-        content: [
-          {
-            type: 'text',
-            text: `Product "${title}" added successfully with ID ${newId}.`,
-          },
-        ],
+        content: [{
+          type: 'text',
+          text: `✅ Product "${title}" saved successfully with ID ${newId}.`,
+        }],
       };
     },
   );
@@ -170,7 +183,7 @@ export function registerProductTools(
   // ─── update_product ───────────────────────────────────────────────────────
   server.tool(
     'update_product',
-    'Update one or more fields of an existing product by ID.',
+    'Update one or more fields of an existing product by ID. By default returns a preview — set confirm=true to save.',
     {
       id: z.number().int().describe('ID of the product to update'),
       title: z.string().optional().describe('New title'),
@@ -181,11 +194,12 @@ export function registerProductTools(
       tags: z.array(z.string()).optional().describe('Replacement tag list'),
       images: z.array(z.string()).optional().describe('Replacement image URLs'),
       active: z.boolean().optional().describe('Set to false to delist the product'),
+      confirm: z.boolean().default(false).describe('Set to true to actually save. When false (default), returns a preview for review.'),
     },
-    async ({ id, title, description, sku, category, price, tags, images, active }) => {
+    async ({ id, title, description, sku, category, price, tags, images, active, confirm }) => {
       const existing = db
-        .prepare(`SELECT id FROM products WHERE id = ?`)
-        .get(id) as { id: number } | undefined;
+        .prepare(`SELECT p.*, c.name AS category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?`)
+        .get(id) as (ProductRow & { category_name?: string }) | undefined;
 
       if (!existing) {
         return {
@@ -194,7 +208,29 @@ export function registerProductTools(
         };
       }
 
-      const updates: string[] = ['updated_at = datetime(\'now\')'];
+      // Build a plain-english summary of changes for review
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      if (title !== undefined && title !== existing.title) changes.title = { from: existing.title, to: title };
+      if (description !== undefined && description !== existing.description) changes.description = { from: existing.description, to: description };
+      if (sku !== undefined && sku !== existing.sku) changes.sku = { from: existing.sku, to: sku };
+      if (price !== undefined && price !== existing.price) changes.price = { from: existing.price, to: price };
+      if (tags !== undefined) changes.tags = { from: existing.tags ? JSON.parse(existing.tags) : [], to: tags };
+      if (images !== undefined) changes.images = { from: existing.images ? JSON.parse(existing.images) : [], to: images };
+      if (active !== undefined && active !== Boolean(existing.active)) changes.active = { from: Boolean(existing.active), to: active };
+      if (category !== undefined && category !== existing.category_name) changes.category = { from: existing.category_name ?? null, to: category };
+
+      // ── Preview mode ──
+      if (!confirm) {
+        return {
+          content: [{
+            type: 'text',
+            text: `📋 PREVIEW — no changes saved yet\n\nProduct ID ${id} ("${existing.title}") will be updated:\n${JSON.stringify(changes, null, 2)}\n\nCall update_product again with confirm=true to save.`,
+          }],
+        };
+      }
+
+      // ── Execute ──
+      const updates: string[] = [`updated_at = datetime('now')`];
       const params: (string | number | null)[] = [];
 
       if (title !== undefined) { updates.push('title = ?'); params.push(title); }
@@ -208,9 +244,7 @@ export function registerProductTools(
       if (category !== undefined) {
         let catId: number | null = null;
         if (category) {
-          const cat = db
-            .prepare(`SELECT id FROM categories WHERE name = ?`)
-            .get(category) as { id: number } | undefined;
+          const cat = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(category) as { id: number } | undefined;
           catId = cat
             ? cat.id
             : (db.prepare(`INSERT INTO categories (name) VALUES (?)`).run(category).lastInsertRowid as number);
@@ -223,7 +257,7 @@ export function registerProductTools(
       db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
       return {
-        content: [{ type: 'text', text: `Product ID ${id} updated successfully.` }],
+        content: [{ type: 'text', text: `✅ Product ID ${id} updated successfully.` }],
       };
     },
   );

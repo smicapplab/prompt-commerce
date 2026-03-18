@@ -14,20 +14,29 @@ const db = getDb();
 // (The admin package handles hashing; we just check the table is ready.)
 // The admin NestJS app seeds the first user on its own startup.
 
-// ─── MCP Server ───────────────────────────────────────────────────────────────
-const mcpServer = new McpServer({
-  name: 'prompt-commerce',
-  version: '1.0.0',
-});
-
-registerProductTools(mcpServer, db);
-registerCategoryTools(mcpServer, db);
-registerPromotionTools(mcpServer, db);
-registerReviewTools(mcpServer, db);
-
 // ─── Express HTTP Layer ───────────────────────────────────────────────────────
 const app = express();
-app.use(express.json());
+// Note: do NOT apply express.json() globally — the MCP /messages endpoint
+// needs to read the raw request body itself via handlePostMessage.
+// Apply JSON parsing only to routes that explicitly need it (e.g. health/admin).
+
+// ─── MCP Server factory ───────────────────────────────────────────────────────
+// The MCP SDK only supports one active transport per McpServer instance.
+// Creating a fresh server per SSE connection allows multiple concurrent clients
+// (e.g. the gateway + a developer tool connected at the same time).
+function createMcpServer(): McpServer {
+  const mcpServer = new McpServer({
+    name: 'prompt-commerce',
+    version: '1.0.0',
+  });
+
+  registerProductTools(mcpServer, db);
+  registerCategoryTools(mcpServer, db);
+  registerPromotionTools(mcpServer, db);
+  registerReviewTools(mcpServer, db);
+
+  return mcpServer;
+}
 
 /**
  * Middleware: validate the x-gateway-key header.
@@ -71,6 +80,8 @@ app.get('/sse', validateGatewayKey, async (req, res) => {
     transports.delete(transport.sessionId);
   });
 
+  // Fresh McpServer per connection — avoids "Already connected to a transport"
+  const mcpServer = createMcpServer();
   await mcpServer.connect(transport);
 });
 

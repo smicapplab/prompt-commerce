@@ -140,8 +140,13 @@ cd admin && npm run dev
 From the **workspace root** (the folder containing both `prompt-commerce` and `prompt-commerce-gateway`):
 
 ```bash
+### Run everything with one command
+
+From the `prompt-commerce` directory:
+
+```bash
 # Mac / Linux
-./dev.sh seller
+./dev.sh
 
 # Windows
 dev.bat
@@ -157,7 +162,7 @@ Open `http://localhost:3000` in your browser.
 - Username: `admin`
 - Password: `admin123`
 
-> ⚠️ Change the password immediately via **Settings → Change Password**.
+> Change the password immediately via **Settings → Change Password**.
 
 The admin panel lets you:
 - Add, edit, and hide products (with image upload)
@@ -193,7 +198,7 @@ The gateway lets multiple stores be discovered by a single Claude connection. Af
 1. Open the admin panel at `http://localhost:3000`
 2. Go to **Settings → Gateway Connection**
 3. Follow the on-screen instructions to paste your `gk_...` key
-4. Your store is now live on the network ✅
+4. Your store is now live on the network
 
 ---
 
