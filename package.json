@@ -1,17 +1,24 @@
 {
-  "name": "prompt-commerce",
+  "name": "@prompt-commerce/mcp-server",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "type": "module",
   "scripts": {
-    "dev": "concurrently --names \"mcp,admin\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace=packages/mcp-server\" \"npm run dev --workspace=packages/admin\"",
-    "build": "npm run build --workspace=packages/mcp-server && npm run build --workspace=packages/admin",
-    "start": "concurrently --names \"mcp,admin\" --prefix-colors \"cyan,magenta\" \"npm run start --workspace=packages/mcp-server\" \"npm run start --workspace=packages/admin\"",
-    "lint": "npm run lint --workspaces --if-present"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "better-sqlite3": "^11.9.1",
+    "express": "^4.21.2",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
   }
 }

@@ -2,73 +2,64 @@
 
 > **An open-source MCP server that lets small retailers manage their entire product catalog through AI chat — no dashboards, no coding, no monthly SaaS fees.**
 
-Prompt Commerce is built for independent retailers, sari-sari stores, and social media sellers across Southeast Asia. Instead of learning complex inventory software, merchants simply chat with an AI assistant to add products, update listings, and manage promotions.
+Prompt Commerce is built for independent retailers, sari-sari stores, and social media sellers across Southeast Asia. Instead of learning complex inventory software, merchants simply chat with an AI assistant (like Claude) to add products, update listings, and manage promotions.
 
-**Send a product photo → AI writes the content → listing goes live. That's it.**
-
----
-
-## Why This Exists
-
-Most e-commerce tools are designed for teams with technical resources. Small retailers are left juggling spreadsheets, writing their own product copy, and paying for software they barely understand.
-
-Prompt Commerce flips that model:
-
-- **The LLM is the interface.** No forms. No dashboards. Just describe your product in chat and the AI handles the rest — title, description, tags, SEO, and pricing suggestions.
-- **You own your data.** Everything runs locally on a zero-config SQLite database. No cloud lock-in.
-- **Zero infrastructure costs.** Bring your own LLM API key (Claude, OpenAI, or any compatible provider). No subscriptions required to manage your catalog.
+**Describe your product in chat → AI writes the listing → catalog goes live. That's it.**
 
 ---
 
-## How It Works
+## Architecture
+
+This is the **retailer-side** package. Each store runs their own instance on a cheap VPS or local machine.
 
 ```
-Retailer sends photo + brief description via chat
-                    ↓
-AI generates title, description, tags, price suggestion
-                    ↓
-MCP write tool pushes product to local SQLite catalog
-                    ↓
-Catalog is live and queryable by any AI agent ✅
+┌─────────────────────────────────────────┐
+│          Retailer's Computer / VPS      │
+│                                         │
+│  ┌──────────────┐   ┌────────────────┐  │
+│  │  Admin Panel │   │   MCP Server   │  │
+│  │  :3000       │   │   :3001/sse    │  │
+│  │  (manage     │   │   (AI agents   │  │
+│  │   catalog)   │   │    connect     │  │
+│  └──────┬───────┘   │    here)       │  │
+│         │           └───────┬────────┘  │
+│         └────────┬──────────┘           │
+│                  ▼                      │
+│          SQLite catalog.db              │
+└─────────────────────────────────────────┘
+               │
+               │  x-gateway-key header
+               ▼
+     Prompt Commerce Gateway
+     (optional — for discovery
+      across multiple stores)
 ```
 
-The MCP server exposes your catalog as a set of tools that any MCP-compatible AI (Claude, ChatGPT, custom Telegram bots) can read from and write to — in real time, through natural conversation.
+The MCP server exposes your catalog as tools that any MCP-compatible AI client can call. The admin panel is a local web UI for managing the catalog without needing to type commands.
 
 ---
 
 ## MCP Tools
 
-### Read Tools — for customer queries and AI agents
+### Read Tools — for customers and AI agents
+
 | Tool | Description |
 |---|---|
 | `search_products` | Natural language search by keyword, category, or price range |
-| `get_product` | Fetch full product details by ID or SKU |
-| `list_categories` | Browse product taxonomy |
-| `get_promotions` | List active deals and vouchers |
-| `get_reviews` | Fetch customer reviews for a product |
+| `get_product` | Full product details by ID or SKU |
+| `list_categories` | Browse the store's product taxonomy |
+| `get_promotions` | Active deals and voucher codes |
+| `get_reviews` | Customer reviews for a product |
 
-### Write Tools — for retailer catalog management
+### Write Tools — for retailers managing their catalog
+
 | Tool | Description |
 |---|---|
-| `add_product` | Push AI-generated product content into the catalog |
-| `update_product` | Edit an existing listing via chat |
-| `add_category` | Create a new product category |
-| `add_promotion` | Create a promotion or voucher |
+| `add_product` | Push a new product into the catalog |
+| `update_product` | Edit an existing listing |
+| `add_category` | Create a product category |
+| `add_promotion` | Create a promotion or voucher code |
 | `add_review` | Add a customer review |
-
----
-
-## Tech Stack
-
-Intentionally lean so any retailer can run it on a basic machine or cheap VPS.
-
-| Layer | Technology |
-|---|---|
-| Language | TypeScript / Node.js |
-| MCP Protocol | `@modelcontextprotocol/sdk` (SSE transport) |
-| Database | SQLite via `better-sqlite3` |
-| Admin API | NestJS |
-| Admin UI | Lightweight HTML (no JS framework) |
 
 ---
 
@@ -76,21 +67,30 @@ Intentionally lean so any retailer can run it on a basic machine or cheap VPS.
 
 ```
 prompt-commerce/
-├── packages/
-│   ├── mcp-server/           # Core MCP server
-│   │   └── src/
-│   │       ├── tools/        # All MCP tool definitions
-│   │       ├── db/           # SQLite schema and client
-│   │       ├── types/        # Shared TypeScript types
-│   │       └── index.ts      # MCP server + SSE entry point
-│   └── admin/                # Local admin panel (NestJS)
-│       └── src/
-│           ├── auth/         # Login, JWT, local user management
-│           ├── keys/         # LLM API key + gateway key settings
-│           └── catalog/      # Admin CRUD for products/categories
+├── src/                    # MCP server (port 3001)
+│   ├── db/
+│   │   ├── client.ts       # SQLite connection + WAL setup
+│   │   └── schema.ts       # Table definitions (CREATE IF NOT EXISTS)
+│   ├── tools/
+│   │   ├── products.ts     # search_products, get_product, add_product, update_product
+│   │   ├── categories.ts   # list_categories, add_category
+│   │   ├── promotions.ts   # get_promotions, add_promotion
+│   │   └── reviews.ts      # get_reviews, add_review
+│   ├── types/
+│   │   └── index.ts        # Shared TypeScript types
+│   └── index.ts            # Express + SSE transport + gateway key middleware
+│
+├── admin/                  # Admin panel (port 3000)
+│   ├── src/
+│   │   └── server.ts       # Express API: auth, products, categories, promotions, reviews, settings
+│   └── public/
+│       └── admin.html      # Single-page admin UI
+│
 ├── data/
-│   └── catalog.db            # Auto-generated SQLite DB (git-ignored)
+│   └── catalog.db          # Auto-created SQLite database (git-ignored)
+│
 ├── .env.example
+├── package.json
 └── README.md
 ```
 
@@ -99,7 +99,8 @@ prompt-commerce/
 ## Getting Started
 
 ### Prerequisites
-- Node.js v18 or higher
+
+- Node.js v18+
 - Git
 
 ### Installation
@@ -109,59 +110,133 @@ prompt-commerce/
 git clone https://github.com/smicapplab/prompt-commerce.git
 cd prompt-commerce
 
-# 2. Install dependencies
+# 2. Configure environment
+cp .env.example .env
+# Edit .env — at minimum, review ADMIN_PASSWORD and JWT_SECRET
+
+# 3. Install MCP server dependencies
 npm install
 
-# 3. Configure environment
-cp .env.example .env
-# Edit .env with your LLM API key and preferred ports
-
-# 4. Start both packages
-npm run dev
+# 4. Install admin panel dependencies
+cd admin && npm install && cd ..
 ```
 
-- **Admin UI:** `http://localhost:3000` — manage keys, users, and gateway settings
-- **MCP SSE endpoint:** `http://localhost:3001/sse` — connect your AI agent here
+### Run in development
 
-### First Login
-A default admin account is created on first run:
+Open **two terminals** (or use the workspace launcher — see below):
+
+```bash
+# Terminal 1 — MCP server
+npm run dev
+# → http://localhost:3001/sse
+
+# Terminal 2 — Admin panel
+cd admin && npm run dev
+# → http://localhost:3000
+```
+
+### Run everything with one command
+
+From the **workspace root** (the folder containing both `prompt-commerce` and `prompt-commerce-gateway`):
+
+```bash
+# Mac / Linux
+./dev.sh seller
+
+# Windows
+dev.bat
+```
+
+---
+
+## Admin Panel
+
+Open `http://localhost:3000` in your browser.
+
+**Default credentials** (created on first startup):
 - Username: `admin`
 - Password: `admin123`
 
-> ⚠️ Change this immediately after your first login.
+> ⚠️ Change the password immediately via **Settings → Change Password**.
 
-### Connecting to Claude Desktop
+The admin panel lets you:
+- Add, edit, and hide products (with image upload)
+- Manage categories and subcategories
+- Create promotions and voucher codes
+- View and moderate customer reviews
+- Paste your platform key to connect to the Prompt Commerce Gateway
 
-Add this to your `claude_desktop_config.json`:
+---
+
+## Connecting to Claude Desktop (direct, no gateway)
+
+If you are running this store on its own without the gateway, add this to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "prompt-commerce": {
-      "url": "http://localhost:3001/sse",
-      "headers": {
-        "x-gateway-key": "your-gateway-key-here"
-      }
+    "my-store": {
+      "url": "http://localhost:3001/sse"
     }
   }
 }
 ```
+
+No `x-gateway-key` header is needed when no key has been configured yet (first-run mode). Once you paste a platform key in the admin panel, all connections must include it.
+
+---
+
+## Connecting to the Prompt Commerce Gateway
+
+The gateway lets multiple stores be discovered by a single Claude connection. After registering your store and receiving a platform key from the gateway operator:
+
+1. Open the admin panel at `http://localhost:3000`
+2. Go to **Settings → Gateway Connection**
+3. Follow the on-screen instructions to paste your `gk_...` key
+4. Your store is now live on the network ✅
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_PATH` | `./data/catalog.db` | Path to the SQLite database file |
+| `MCP_PORT` | `3001` | Port for the MCP SSE server |
+| `ADMIN_PORT` | `3000` | Port for the admin panel |
+| `JWT_SECRET` | *(change this!)* | Secret for signing admin session tokens |
+| `JWT_EXPIRES_IN` | `1d` | Admin session token lifetime |
+| `ADMIN_USERNAME` | `admin` | Default admin username (first run only) |
+| `ADMIN_PASSWORD` | `admin123` | Default admin password (first run only) |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | TypeScript / Node.js |
+| MCP Protocol | `@modelcontextprotocol/sdk` (SSE transport) |
+| Database | SQLite via `better-sqlite3` |
+| Admin API | Express |
+| Admin UI | Vanilla HTML/CSS/JS (no build step) |
+| Auth | JWT via `jsonwebtoken` + `bcryptjs` |
 
 ---
 
 ## Roadmap
 
 - [x] Phase 1 — Core MCP server: SQLite schema, SSE transport, read/write tools
-- [ ] Phase 2 — Telegram bot integration for mobile-first catalog management
-- [ ] Phase 3 — Managed gateway: API key issuance, validation, rate limiting
-- [ ] Phase 4 — Business permit validation for retailer onboarding
-- [ ] Phase 5 — Payment gateway MCP (PayMongo / Maya Business)
+- [x] Phase 2 — Local admin panel: product/category/promo management, gateway key settings
+- [ ] Phase 3 — Telegram bot integration for mobile-first catalog management
+- [ ] Phase 4 — Payment gateway MCP (PayMongo / Maya Business)
+- [ ] Phase 5 — Offline-first mobile companion app
 
 ---
 
 ## Contributing
 
-Contributions are very welcome. Whether it's adding a new tool, improving AI prompts, supporting a new messaging platform (Telegram, FB Messenger, Viber), or adding payment gateway support — feel free to open a PR or start a discussion.
+Contributions are very welcome — new MCP tools, messaging platform integrations (Telegram, FB Messenger, Viber), payment gateway support, UI improvements, and bug fixes. Open a PR or start a discussion.
 
 This project is built for small retailers. If you know one who could benefit, that's the best contribution of all.
 
