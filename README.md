@@ -1,8 +1,8 @@
-# 🛒 Tindahan MCP (Retail-MCP)
+#  Prompt Commerce (Retail-MCP)
 
 > **An open-source Model Context Protocol (MCP) server that lets small retailers build and manage their e-commerce catalogs entirely through AI chat—no complex dashboards required.**
 
-Tindahan MCP is designed specifically for independent e-commerce retailers in Southeast Asia and beyond. It bypasses the steep learning curve of traditional inventory management systems by allowing merchants to manage their product databases directly through AI assistants like Claude, ChatGPT, or custom Telegram bots. 
+Prompt Commerce is designed specifically for independent e-commerce retailers in Southeast Asia and beyond. It bypasses the steep learning curve of traditional inventory management systems by allowing merchants to manage their product databases directly through AI assistants like Claude, ChatGPT, or custom Telegram bots. 
 
 Simply send a product photo via chat, and the AI generates the SEO content, suggests pricing, and pushes the listing live to your local database.
 
