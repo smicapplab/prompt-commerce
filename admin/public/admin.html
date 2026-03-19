@@ -1660,24 +1660,35 @@
       document.getElementById('connectModal').style.display = 'none';
     });
 
-    document.getElementById('saveGwKeyBtn').addEventListener('click', async () => {
-      const key = document.getElementById('gatewayKeyInput').value.trim();
-      const baseUrl = document.getElementById('baseUrlInput').value.trim();
-      if (!key && !baseUrl) return showToast('Nothing to save.', 'error');
-
-      const savingMsg = document.getElementById('gwKeySavingMsg');
-      savingMsg.style.display = 'inline';
+    document.getElementById('saveBaseUrlBtn').addEventListener('click', async () => {
+      const url = document.getElementById('baseUrlInput').value.trim();
+      if (!url) return showToast('Please enter a Base URL.', 'error');
       try {
-        const body = {};
-        if (key) body.gateway_key = key;
-        if (baseUrl) body.base_url = baseUrl;
-        await api('PUT', '/api/settings', body);
-        showToast('Gateway settings saved.');
+        await api('PUT', '/api/settings', { base_url: url });
+        showToast('Base URL updated.');
         loadSettings();
       } catch (err) {
         showToast(err.message, 'error');
-      } finally {
-        savingMsg.style.display = 'none';
+      }
+    });
+
+    document.getElementById('saveGwKeyBtn').addEventListener('click', async () => {
+      const key = document.getElementById('gatewayKeyInput').value.trim();
+      if (!key) return showToast('Please paste a platform key first.', 'error');
+
+      const msg = document.getElementById('gwKeySavingMsg');
+      msg.style.display = 'inline';
+
+      try {
+        await api('PUT', '/api/settings', { gateway_key: key });
+        msg.style.display = 'none';
+        document.getElementById('gatewayKeyInput').value = '';
+        showToast('Gateway key saved! Your store is now connected.');
+        loadSettings();
+        loadDashboard();
+      } catch (err) {
+        msg.style.display = 'none';
+        showToast(err.message, 'error');
       }
     });
 
