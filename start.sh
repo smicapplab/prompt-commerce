@@ -29,7 +29,7 @@ echo "✔  Admin panel built"
 # ── Start with PM2 ────────────────────────────────────────────────────────────
 echo "→  Starting services with PM2..."
 cd "$DIR"
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 echo ""
 echo "✔  Services started. Useful commands:"
