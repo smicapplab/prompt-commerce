@@ -9,6 +9,8 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.9.1",
     "express": "^4.21.2",

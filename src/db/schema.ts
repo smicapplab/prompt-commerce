@@ -36,19 +36,33 @@ export function initSchema(db: Database.Database): void {
 
     -- ─── Products ───────────────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS products (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      sku         TEXT    UNIQUE,
-      title       TEXT    NOT NULL,
-      description TEXT,
-      category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
-      price       REAL,
-      tags        TEXT,    -- JSON array, e.g. '["sale","new"]'
-      images      TEXT,    -- JSON array of URLs
-      active      INTEGER NOT NULL DEFAULT 1,
-      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-      updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      sku            TEXT    UNIQUE,
+      title          TEXT    NOT NULL,
+      description    TEXT,
+      category_id    INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      price          REAL,
+      stock_quantity INTEGER NOT NULL DEFAULT 0,
+      tags           TEXT,    -- JSON array, e.g. '["sale","new"]'
+      images         TEXT,    -- JSON array of URLs
+      active         INTEGER NOT NULL DEFAULT 1,
+      created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Ensure stock_quantity exists for existing installations
+    -- This is a simple migration check
+    PRAGMA table_info(products);
+  `);
+
+  // Check if stock_quantity column exists
+  const columns = db.prepare("PRAGMA table_info(products)").all() as any[];
+  const hasStock = columns.some((c) => c.name === 'stock_quantity');
+  if (!hasStock) {
+    db.exec("ALTER TABLE products ADD COLUMN stock_quantity INTEGER NOT NULL DEFAULT 0");
+  }
+
+  db.exec(`
     -- ─── Promotions ─────────────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS promotions (
       id             INTEGER PRIMARY KEY AUTOINCREMENT,

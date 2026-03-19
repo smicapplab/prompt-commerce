@@ -6,6 +6,7 @@ export interface Product {
   category_id: number | null;
   category_name: string | null;
   price: number | null;
+  stock_quantity: number;
   tags: string[] | null;    // stored as JSON text in SQLite
   images: string[] | null;  // stored as JSON text in SQLite
   active: boolean;
@@ -51,6 +52,7 @@ export interface ProductRow {
   category_id: number | null;
   category_name: string | null;
   price: number | null;
+  stock_quantity: number;
   tags: string | null;
   images: string | null;
   active: number;

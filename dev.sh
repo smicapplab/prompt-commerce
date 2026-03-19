@@ -43,6 +43,15 @@ echo "  Prompt Commerce — Seller Launcher"
 echo "  ──────────────────────────────────"
 echo ""
 
+# ── Pre-flight: Clear Ports ───────────────────────────────────────────────────
+echo "Checking for existing processes on ports 3000, 3001..."
+PIDS=$(lsof -ti :3000,3001 || true)
+if [ -n "$PIDS" ]; then
+  echo "Stopping existing processes ($PIDS)..."
+  echo "$PIDS" | xargs kill -9 2>/dev/null || true
+  sleep 1
+fi
+
 if [ ! -f "$DIR/.env" ]; then
   echo -e "${R}[warn] .env not found — copying from .env.example${N}"
   cp "$DIR/.env.example" "$DIR/.env"

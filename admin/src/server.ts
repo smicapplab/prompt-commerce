@@ -6,6 +6,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Database from 'better-sqlite3';
 import multer from 'multer';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.ADMIN_PORT ?? '3000', 10);
@@ -207,18 +209,36 @@ app.post('/api/auth/change-password', requireAuth, async (req: Request, res: Res
 
 // ─── Products routes ──────────────────────────────────────────────────────────
 app.get('/api/products', requireAuth, (req: Request, res: Response): void => {
-  const { q, active } = req.query;
-  let sql = `
+  const { q, active, page, limit } = req.query;
+  const p = parseInt(page as string, 10) || 1;
+  const l = parseInt(limit as string, 10) || 20;
+  const offset = (p - 1) * l;
+
+  let whereSql = ' WHERE 1=1';
+  const params: any[] = [];
+  if (q) {
+    whereSql += ' AND (p.title LIKE ? OR p.sku LIKE ?)';
+    params.push(`%${q}%`, `%${q}%`);
+  }
+  if (active !== undefined && active !== '') {
+    whereSql += ' AND p.active = ?';
+    params.push(active === '1' ? 1 : 0);
+  }
+
+  const countRow = db.prepare(`SELECT COUNT(*) as n FROM products p ${whereSql}`).get(...params) as { n: number };
+  const totalCount = countRow.n;
+
+  const sql = `
     SELECT p.*, c.name as category_name
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
-    WHERE 1=1
+    ${whereSql}
+    ORDER BY p.updated_at DESC
+    LIMIT ? OFFSET ?
   `;
-  const params: unknown[] = [];
-  if (q) { sql += ' AND (p.title LIKE ? OR p.sku LIKE ?)'; params.push(`%${q}%`, `%${q}%`); }
-  if (active !== undefined) { sql += ' AND p.active = ?'; params.push(active === '1' ? 1 : 0); }
-  sql += ' ORDER BY p.updated_at DESC';
-  res.json(db.prepare(sql).all(...params));
+  const products = db.prepare(sql).all(...params, l, offset);
+
+  res.json({ products, totalCount, page: p, limit: l });
 });
 
 app.get('/api/products/:id', requireAuth, (req: Request, res: Response): void => {
@@ -233,18 +253,19 @@ app.get('/api/products/:id', requireAuth, (req: Request, res: Response): void =>
 });
 
 app.post('/api/products', requireAuth, (req: Request, res: Response): void => {
-  const { sku, title, description, category_id, price, tags, images, active } = req.body ?? {};
+  const { sku, title, description, category_id, price, stock_quantity, tags, images, active } = req.body ?? {};
   if (!title) { res.status(400).json({ error: 'title is required.' }); return; }
 
   const info = db.prepare(`
-    INSERT INTO products (sku, title, description, category_id, price, tags, images, active, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO products (sku, title, description, category_id, price, stock_quantity, tags, images, active, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `).run(
     sku || null,
     title,
     description || null,
     category_id || null,
     price ?? null,
+    stock_quantity !== undefined ? parseInt(stock_quantity, 10) : 0,
     tags ? JSON.stringify(tags) : null,
     images ? JSON.stringify(images) : null,
     active !== false ? 1 : 0,
@@ -253,14 +274,14 @@ app.post('/api/products', requireAuth, (req: Request, res: Response): void => {
 });
 
 app.put('/api/products/:id', requireAuth, (req: Request, res: Response): void => {
-  const { sku, title, description, category_id, price, tags, images, active } = req.body ?? {};
+  const { sku, title, description, category_id, price, stock_quantity, tags, images, active } = req.body ?? {};
 
   const existing = db.prepare('SELECT id FROM products WHERE id = ?').get(req.params.id);
   if (!existing) { res.status(404).json({ error: 'Product not found.' }); return; }
 
   db.prepare(`
     UPDATE products
-    SET sku=?, title=?, description=?, category_id=?, price=?,
+    SET sku=?, title=?, description=?, category_id=?, price=?, stock_quantity=?,
         tags=?, images=?, active=?, updated_at=datetime('now')
     WHERE id=?
   `).run(
@@ -269,6 +290,7 @@ app.put('/api/products/:id', requireAuth, (req: Request, res: Response): void =>
     description || null,
     category_id || null,
     price ?? null,
+    stock_quantity !== undefined ? parseInt(stock_quantity, 10) : 0,
     tags ? JSON.stringify(tags) : null,
     images ? JSON.stringify(images) : null,
     active !== false ? 1 : 0,
@@ -299,7 +321,11 @@ app.post('/api/products/:id/images', requireAuth, upload.single('image'), (req: 
 
 // ─── Categories routes ────────────────────────────────────────────────────────
 app.get('/api/categories', requireAuth, (_req: Request, res: Response): void => {
-  res.json(db.prepare('SELECT * FROM categories ORDER BY name').all());
+  res.json(db.prepare(`
+    SELECT c.*, (SELECT COUNT(*) FROM products WHERE category_id = c.id) as product_count
+    FROM categories c
+    ORDER BY c.name
+  `).all());
 });
 
 app.post('/api/categories', requireAuth, (req: Request, res: Response): void => {
@@ -309,6 +335,25 @@ app.post('/api/categories', requireAuth, (req: Request, res: Response): void => 
   try {
     const info = db.prepare('INSERT INTO categories (name, parent_id) VALUES (?, ?)').run(name, parent_id || null);
     res.status(201).json({ id: info.lastInsertRowid, name });
+  } catch {
+    res.status(409).json({ error: 'A category with that name already exists.' });
+  }
+});
+
+app.get('/api/categories/:id', requireAuth, (req: Request, res: Response): void => {
+  const row = db.prepare('SELECT * FROM categories WHERE id = ?').get(req.params.id);
+  if (!row) { res.status(404).json({ error: 'Category not found.' }); return; }
+  res.json(row);
+});
+
+app.put('/api/categories/:id', requireAuth, (req: Request, res: Response): void => {
+  const { name, parent_id } = req.body ?? {};
+  if (!name) { res.status(400).json({ error: 'name is required.' }); return; }
+
+  try {
+    db.prepare('UPDATE categories SET name = ?, parent_id = ? WHERE id = ?')
+      .run(name, parent_id || null, req.params.id);
+    res.json({ ok: true, name });
   } catch {
     res.status(409).json({ error: 'A category with that name already exists.' });
   }
@@ -412,7 +457,10 @@ app.get('/api/settings', requireAuth, (_req: Request, res: Response): void => {
       result['gateway_key'] = row.value ? '••••••••' : '';
       result['gateway_key_set'] = !!row.value;
       result['gateway_key_updated_at'] = row.updated_at;
-    } else {
+    } else if (row.key === 'gemini_api_key' || row.key === 'claude_api_key') {
+      result[row.key] = row.value ? '••••••••' : '';
+      result[`${row.key}_set`] = !!row.value;
+    } else if (row.key === 'ai_model') {
       result[row.key] = row.value;
     }
   }
@@ -420,7 +468,7 @@ app.get('/api/settings', requireAuth, (_req: Request, res: Response): void => {
 });
 
 app.put('/api/settings', requireAuth, (req: Request, res: Response): void => {
-  const { gateway_key } = req.body ?? {};
+  const { gateway_key, base_url } = req.body ?? {};
 
   if (gateway_key !== undefined) {
     const trimmed = (gateway_key as string).trim();
@@ -434,8 +482,593 @@ app.put('/api/settings', requireAuth, (req: Request, res: Response): void => {
     `).run(trimmed);
   }
 
+  if (base_url !== undefined) {
+    db.prepare(`
+      INSERT INTO settings (key, value, updated_at) VALUES ('base_url', ?, datetime('now'))
+      ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at
+    `).run((base_url as string).trim());
+  }
+
+  // AI Assistant Settings
+  const aiSettings = ['gemini_api_key', 'claude_api_key', 'ai_model'];
+  for (const key of aiSettings) {
+    if (req.body[key] !== undefined) {
+      db.prepare(`
+        INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at
+      `).run(key, (req.body[key] as string).trim());
+    }
+  }
+
+
   res.json({ ok: true });
 });
+
+// ─── Claude Desktop setup script download ────────────────────────────────────
+function getClaudeSetupValues(): { baseUrl: string; gatewayKey: string } | null {
+  const rows = db.prepare(`SELECT key, value FROM settings WHERE key IN ('base_url', 'gateway_key')`).all() as { key: string; value: string }[];
+  const map: Record<string, string> = {};
+  rows.forEach(r => (map[r.key] = r.value));
+  if (!map.base_url || !map.gateway_key) return null;
+  return { baseUrl: map.base_url.trim(), gatewayKey: map.gateway_key.trim() };
+}
+
+app.get('/api/settings/claude-setup-mac', requireAuth, (req: Request, res: Response): void => {
+  const vals = getClaudeSetupValues();
+  if (!vals) {
+    res.status(400).json({ error: 'Base URL and Gateway Key must both be configured before downloading the setup script.' });
+    return;
+  }
+  const sseUrl = `${vals.baseUrl.replace(/\/$/, '')}/sse`;
+
+  const script = `#!/bin/bash
+# ============================================================
+#  Claude Desktop — Add Prompt Commerce MCP Server
+#  Mac version
+#  Right-click this file -> Open With -> Terminal
+# ============================================================
+
+CONFIG="$HOME/Library/Application Support/Claude/claude_desktop_config.json"
+BACKUP="$HOME/Library/Application Support/Claude/claude_desktop_config.backup.json"
+
+clear
+echo "================================================"
+echo "  Claude Desktop — Prompt Commerce Setup"
+echo "================================================"
+echo ""
+
+if [ ! -d "$HOME/Library/Application Support/Claude" ]; then
+  echo "ERROR: Claude Desktop does not appear to be installed."
+  echo "Download it from https://claude.ai/download then run this again."
+  echo ""
+  read -p "Press Enter to exit..."
+  exit 1
+fi
+
+[ ! -f "$CONFIG" ] && echo "{}" > "$CONFIG"
+cp "$CONFIG" "$BACKUP"
+echo "Backup saved."
+echo ""
+echo "Adding Prompt Commerce to Claude Desktop..."
+
+python3 - <<'PYEOF'
+import json, os, sys
+config_path = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
+try:
+    with open(config_path) as f:
+        config = json.load(f)
+except Exception:
+    config = {}
+if "mcpServers" not in config:
+    config["mcpServers"] = {}
+config["mcpServers"]["prompt-commerce"] = {
+    "command": "npx",
+    "args": ["-y", "mcp-remote", "${sseUrl}", "--header", "x-gateway-key:${vals.gatewayKey}"]
+}
+with open(config_path, "w") as f:
+    json.dump(config, f, indent=2)
+print("Done!")
+PYEOF
+
+if [ $? -eq 0 ]; then
+  echo ""
+  echo "================================================"
+  echo "  SUCCESS!"
+  echo ""
+  echo "  Please QUIT and RESTART Claude Desktop"
+  echo "  for the change to take effect."
+  echo "================================================"
+else
+  echo "ERROR: Setup failed. Restoring backup..."
+  cp "$BACKUP" "$CONFIG"
+fi
+
+echo ""
+read -p "Press Enter to exit..."
+`;
+
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Content-Disposition', 'attachment; filename="add_mcp_mac.sh"');
+  res.send(script);
+});
+
+app.get('/api/settings/claude-setup-win', requireAuth, (req: Request, res: Response): void => {
+  const vals = getClaudeSetupValues();
+  if (!vals) {
+    res.status(400).json({ error: 'Base URL and Gateway Key must both be configured before downloading the setup script.' });
+    return;
+  }
+  const sseUrl = `${vals.baseUrl.replace(/\/$/, '')}/sse`;
+
+  const script = `@echo off
+:: ============================================================
+::  Claude Desktop — Add Prompt Commerce MCP Server
+::  Windows version — double-click to run
+:: ============================================================
+setlocal enabledelayedexpansion
+
+set "CONFIG=%APPDATA%\\Claude\\claude_desktop_config.json"
+set "BACKUP=%APPDATA%\\Claude\\claude_desktop_config.backup.json"
+
+cls
+echo ================================================
+echo   Claude Desktop -- Prompt Commerce Setup
+echo ================================================
+echo.
+
+if not exist "%APPDATA%\\Claude" (
+  echo ERROR: Claude Desktop does not appear to be installed.
+  echo Download it from https://claude.ai/download then run this again.
+  echo.
+  pause & exit /b 1
+)
+
+if not exist "%CONFIG%" echo {} > "%CONFIG%"
+copy /Y "%CONFIG%" "%BACKUP%" >nul
+echo Backup saved.
+echo.
+echo Adding Prompt Commerce to Claude Desktop...
+
+set "PS=%TEMP%\\pc_mcp_setup.ps1"
+(
+echo $$p = "$$env:APPDATA\\Claude\\claude_desktop_config.json"
+echo $$raw = Get-Content $$p -Raw -Encoding UTF8
+echo try { $$c = $$raw ^| ConvertFrom-Json } catch { $$c = [PSCustomObject]@{} }
+echo if (-not $$c.PSObject.Properties["mcpServers"]) { $$c ^| Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{}) }
+echo $$entry = [PSCustomObject]@{ command = "npx"; args = @("-y", "mcp-remote", "${sseUrl}", "--header", "x-gateway-key:${vals.gatewayKey}") }
+echo $$c.mcpServers ^| Add-Member -NotePropertyName "prompt-commerce" -NotePropertyValue $$entry -Force
+echo $$c ^| ConvertTo-Json -Depth 10 ^| Set-Content $$p -Encoding UTF8
+echo Write-Host "Done!"
+) > "%%PS%%"
+
+powershell -ExecutionPolicy Bypass -File "%%PS%%"
+del "%%PS%%" >nul 2>&1
+
+if %%errorlevel%% equ 0 (
+  echo.
+  echo ================================================
+  echo   SUCCESS!
+  echo.
+  echo   Please QUIT and RESTART Claude Desktop
+  echo   for the change to take effect.
+  echo ================================================
+) else (
+  echo ERROR: Setup failed. Restoring backup...
+  copy /Y "%%BACKUP%%" "%%CONFIG%%" >nul
+)
+
+echo.
+pause
+`;
+
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Content-Disposition', 'attachment; filename="add_mcp_win.bat"');
+  res.send(script);
+});
+
+// ─── AI tool executor (shared between Claude and Gemini) ──────────────────────
+function executeAiTool(name: string, args: any): any {
+  if (name === 'search_products') {
+    let sql = `SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.active = 1`;
+    const params: any[] = [];
+    if (args.query) { sql += ` AND (p.title LIKE ? OR p.description LIKE ?)`; params.push(`%${args.query}%`, `%${args.query}%`); }
+    if (args.category) { sql += ` AND c.name LIKE ?`; params.push(`%${args.category}%`); }
+    sql += ` LIMIT 10`;
+    return db.prepare(sql).all(...params);
+  }
+  if (name === 'batch_add_categories') {
+    const results = [];
+    for (const cat of args.categories) {
+      let parentId = null;
+      if (cat.parent_name) {
+        const parent = db.prepare('SELECT id FROM categories WHERE name = ?').get(cat.parent_name) as { id: number } | undefined;
+        parentId = parent ? parent.id : db.prepare('INSERT INTO categories (name) VALUES (?)').run(cat.parent_name).lastInsertRowid;
+      }
+      const info = db.prepare('INSERT INTO categories (name, parent_id) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET name=name').run(cat.name, parentId);
+      results.push({ name: cat.name, id: info.lastInsertRowid });
+    }
+    return { success: true, count: results.length, results };
+  }
+  if (name === 'update_product') {
+    const { id, ...fields } = args;
+    const sets = Object.keys(fields).map(key => `${key} = ?`).join(', ');
+    const params = Object.values(fields);
+    db.prepare(`UPDATE products SET ${sets}, updated_at = datetime('now') WHERE id = ?`).run(...params, id);
+    return { success: true, id };
+  }
+  return { error: `Unknown tool: ${name}` };
+}
+
+// Shared tool definitions (used by both Gemini and Claude)
+const AI_TOOLS_GEMINI = [{
+  functionDeclarations: [
+    {
+      name: 'search_products',
+      description: 'Search for products by query, category, or price range.',
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          query: { type: SchemaType.STRING },
+          category: { type: SchemaType.STRING },
+          min_price: { type: SchemaType.NUMBER },
+          max_price: { type: SchemaType.NUMBER },
+        }
+      }
+    },
+    {
+      name: 'batch_add_categories',
+      description: 'Add multiple categories at once. Supports hierarchy.',
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          categories: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                name: { type: SchemaType.STRING },
+                parent_name: { type: SchemaType.STRING }
+              },
+              required: ['name']
+            }
+          }
+        },
+        required: ['categories']
+      }
+    },
+    {
+      name: 'update_product',
+      description: 'Update an existing product.',
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          id: { type: SchemaType.NUMBER },
+          title: { type: SchemaType.STRING },
+          price: { type: SchemaType.NUMBER },
+          stock_quantity: { type: SchemaType.NUMBER },
+          active: { type: SchemaType.BOOLEAN }
+        },
+        required: ['id']
+      }
+    }
+  ]
+}];
+
+const AI_TOOLS_CLAUDE: Anthropic.Tool[] = [
+  {
+    name: 'search_products',
+    description: 'Search for products by query, category, or price range.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search keyword' },
+        category: { type: 'string', description: 'Filter by category name' },
+        min_price: { type: 'number', description: 'Minimum price' },
+        max_price: { type: 'number', description: 'Maximum price' },
+      }
+    }
+  },
+  {
+    name: 'batch_add_categories',
+    description: 'Add multiple categories at once. Supports hierarchy via parent_name.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        categories: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              parent_name: { type: 'string' }
+            },
+            required: ['name']
+          }
+        }
+      },
+      required: ['categories']
+    }
+  },
+  {
+    name: 'update_product',
+    description: 'Update an existing product by ID.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Product ID' },
+        title: { type: 'string' },
+        price: { type: 'number' },
+        stock_quantity: { type: 'number' },
+        active: { type: 'boolean' }
+      },
+      required: ['id']
+    }
+  }
+];
+
+const AI_SYSTEM_PROMPT = `You are a helpful store management assistant for a product catalog.
+You can search products, update product details, and manage categories.
+Always be concise and confirm changes before making them when appropriate.`;
+
+// ─── AI Assistant routes ─────────────────────────────────────────────────────
+app.post('/api/ai/chat', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const { message, history } = req.body ?? {};
+  if (!message) { res.status(400).json({ error: 'message is required.' }); return; }
+
+  const settingsRows = db.prepare('SELECT key, value FROM settings WHERE key IN (?, ?, ?)').all(
+    'gemini_api_key', 'claude_api_key', 'ai_model'
+  ) as { key: string; value: string }[];
+
+  const settings: Record<string, string> = {};
+  settingsRows.forEach(row => settings[row.key] = row.value);
+
+  const modelId = (settings.ai_model || 'gemini-1.5-flash').trim();
+  const isClaude = modelId.startsWith('claude-');
+  console.log(`[AI Chat] Using model: ${modelId}`);
+
+  try {
+    // ── Claude path ──────────────────────────────────────────────────────────
+    if (isClaude) {
+      const claudeApiKey = settings.claude_api_key;
+      if (!claudeApiKey) {
+        res.status(400).json({ error: 'Claude API key is not configured. Add it in Settings → AI Assistant.' });
+        return;
+      }
+
+      const anthropic = new Anthropic({ apiKey: claudeApiKey });
+
+      // Convert history to Claude message format
+      const claudeMessages: Anthropic.MessageParam[] = (history || []).map((h: any) => ({
+        role: h.role === 'assistant' ? 'assistant' : 'user',
+        content: h.content,
+      }));
+      claudeMessages.push({ role: 'user', content: message });
+
+      let response = await anthropic.messages.create({
+        model: modelId,
+        max_tokens: 1024,
+        system: AI_SYSTEM_PROMPT,
+        tools: AI_TOOLS_CLAUDE,
+        messages: claudeMessages,
+      });
+
+      // Agentic tool-use loop
+      while (response.stop_reason === 'tool_use') {
+        const toolUseBlocks = response.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
+        const toolResults: Anthropic.ToolResultBlockParam[] = toolUseBlocks.map(block => ({
+          type: 'tool_result',
+          tool_use_id: block.id,
+          content: JSON.stringify(executeAiTool(block.name, block.input)),
+        }));
+
+        claudeMessages.push({ role: 'assistant', content: response.content });
+        claudeMessages.push({ role: 'user', content: toolResults });
+
+        response = await anthropic.messages.create({
+          model: modelId,
+          max_tokens: 1024,
+          system: AI_SYSTEM_PROMPT,
+          tools: AI_TOOLS_CLAUDE,
+          messages: claudeMessages,
+        });
+      }
+
+      const textContent = response.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined;
+      const replyText = textContent?.text ?? '';
+      res.json({
+        text: replyText,
+        history: [...(history || []), { role: 'user', content: message }, { role: 'assistant', content: replyText }],
+      });
+      return;
+    }
+
+    // ── Gemini path ──────────────────────────────────────────────────────────
+    const geminiApiKey = settings.gemini_api_key;
+
+    if (!geminiApiKey) {
+      res.status(400).json({ error: 'AI Assistant is not connected. Please add a Gemini or Claude API key in Settings.' });
+      return;
+    }
+
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+
+    const model = genAI.getGenerativeModel({
+      model: modelId,
+      // @ts-ignore
+      tools: AI_TOOLS_GEMINI,
+    });
+
+    const chat = model.startChat({
+      history: (history || []).map((h: any) => ({
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: h.content }]
+      }))
+    });
+
+    const result = await chat.sendMessage(message);
+    const geminiResponse = await result.response;
+    const calls = geminiResponse.functionCalls();
+
+    if (calls && calls.length > 0) {
+      const toolResults = calls.map(call => ({
+        functionResponse: {
+          name: call.name,
+          response: { content: executeAiTool(call.name, call.args) }
+        }
+      }));
+      const finalResult = await chat.sendMessage(toolResults);
+      const replyText = finalResult.response.text();
+      res.json({ text: replyText, history: [...(history || []), { role: 'user', content: message }, { role: 'assistant', content: replyText }] });
+    } else {
+      const replyText = geminiResponse.text();
+      res.json({ text: replyText, history: [...(history || []), { role: 'user', content: message }, { role: 'assistant', content: replyText }] });
+    }
+
+  } catch (err: any) {
+    console.error('AI Chat Error:', err);
+    res.status(500).json({ error: err.message || 'An error occurred during AI chat.' });
+  }
+});
+
+app.get('/api/ai/models', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('gemini_api_key') as { value: string } | undefined;
+  if (!row || !row.value) {
+    res.status(400).json({ error: 'Gemini API Key is not configured.' });
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${row.value}`);
+    if (!response.ok) {
+      const errData = await response.json() as any;
+      throw new Error(errData.error?.message || 'Failed to fetch models from Google.');
+    }
+    const data = await response.json() as any;
+    
+    // Filter for the "Gold Standard" models only (Flash and Pro)
+    const discovered = (data.models || [])
+      .filter((m: any) => m.supportedGenerationMethods.includes('generateContent'))
+      .map((m: any) => ({
+        id: m.name.replace('models/', ''),
+        name: m.displayName,
+        description: m.description
+      }));
+    
+    // Pick the best match for each gold standard
+    const goldStandard = [
+      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Latest Experimental)' },
+      { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Fast & Reliable)' },
+      { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Most Capable)' },
+      { id: 'gemini-pro', label: 'Gemini Pro (Legacy)' }
+    ];
+    
+    const filteredModels: any[] = [];
+    for (const gs of goldStandard) {
+      const match = discovered.find((m: any) => m.id === gs.id) || 
+                    discovered.find((m: any) => m.id.startsWith(gs.id));
+      if (match && !filteredModels.find(f => f.id === match.id)) {
+        filteredModels.push({
+          ...match,
+          name: gs.label // Use our friendly label
+        });
+      }
+    }
+
+    res.json({ models: filteredModels.length > 0 ? filteredModels : discovered.slice(0, 5) });
+  } catch (err: any) {
+    console.error('Model Discovery Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Claude model discovery ───────────────────────────────────────────────────
+app.get('/api/ai/models/claude', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('claude_api_key') as { value: string } | undefined;
+  if (!row || !row.value) {
+    res.status(400).json({ error: 'Claude API key is not configured.' });
+    return;
+  }
+
+  // Claude models are stable — return curated list verified against the API key
+  try {
+    const anthropic = new Anthropic({ apiKey: row.value });
+    // Lightweight check: list models (SDK v0.27+) or fall back to curated list
+    let models: { id: string; name: string; description: string }[] = [];
+    try {
+      // @ts-ignore — models.list() available in newer SDK versions
+      const listed = await anthropic.models.list();
+      models = (listed.data ?? [])
+        .filter((m: any) => m.id.startsWith('claude-'))
+        .map((m: any) => ({ id: m.id, name: m.display_name ?? m.id, description: '' }));
+    } catch {
+      // Fall back to well-known models if list() not available
+    }
+
+    if (!models.length) {
+      models = [
+        { id: 'claude-opus-4-5', name: 'Claude Opus 4.5 (Most Capable)', description: 'Best for complex reasoning and catalog analysis' },
+        { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5 (Recommended)', description: 'Fast and capable — ideal for catalog management' },
+        { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5 (Fastest)', description: 'Lightweight and quick for simple updates' },
+      ];
+    }
+
+    res.json({ models });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Claude account info ──────────────────────────────────────────────────────
+app.get('/api/ai/account/claude', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('claude_api_key') as { value: string } | undefined;
+  if (!row?.value) { res.json({ connected: false }); return; }
+
+  try {
+    // Validate key by making a minimal API call
+    const anthropic = new Anthropic({ apiKey: row.value });
+    await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    res.json({ connected: true, platform: 'Anthropic', status: 'Active' });
+  } catch (err: any) {
+    const isAuthError = err.status === 401;
+    res.status(isAuthError ? 401 : 500).json({
+      connected: false,
+      error: isAuthError ? 'Invalid API key' : err.message,
+    });
+  }
+});
+
+app.get('/api/ai/account', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('gemini_api_key') as { value: string } | undefined;
+  if (!row || !row.value) {
+    res.json({ connected: false });
+    return;
+  }
+
+  try {
+    // Attempt to get project info from Google (requires certain permissions, but helps identify account)
+    // For AI Studio keys, we can use the models list as a proxy or hit a specific metadata endpoint if available.
+    // A simple way to "verify" is to just return that we are connected. 
+    // BUT to show "Which Account", we can try to fetch the project list.
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${row.value}`);
+    if (response.ok) {
+       res.json({ 
+         connected: true, 
+         platform: 'Google Gemini',
+         account_hint: 'AI Studio Project', // We can't easily get the email from just an API key without more scopes
+         status: 'Active'
+       });
+    } else {
+       res.status(401).json({ connected: false, error: 'Invalid API Key' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Stats endpoint for dashboard
 app.get('/api/stats', requireAuth, (_req: Request, res: Response): void => {

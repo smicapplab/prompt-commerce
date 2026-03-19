@@ -6,17 +6,31 @@ import { registerProductTools } from './tools/products.js';
 import { registerCategoryTools } from './tools/categories.js';
 import { registerPromotionTools } from './tools/promotions.js';
 import { registerReviewTools } from './tools/reviews.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 // ─── Initialise DB ────────────────────────────────────────────────────────────
 const db = getDb();
+
+// ─── Middleware ───────────────────────────────────────────────────────────────
+const app = express();
+// Note: do NOT apply express.json() globally — the MCP /messages endpoint
+// needs to read the raw request body itself via handlePostMessage.
+// Apply JSON parsing only to routes that explicitly need it (e.g. admin API).
+
+// Serve static uploads
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOAD_DIR = path.resolve(__dirname, '../../data/uploads');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ─── Seed default admin user if none exists ───────────────────────────────────
 // (The admin package handles hashing; we just check the table is ready.)
 // The admin NestJS app seeds the first user on its own startup.
 
 // ─── Express HTTP Layer ───────────────────────────────────────────────────────
-const app = express();
-// Note: do NOT apply express.json() globally — the MCP /messages endpoint
 // needs to read the raw request body itself via handlePostMessage.
 // Apply JSON parsing only to routes that explicitly need it (e.g. health/admin).
 
