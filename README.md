@@ -39,6 +39,30 @@ The MCP server exposes your catalog as tools that any MCP-compatible AI client c
 
 ---
 
+## Screenshots
+### Admin Panel ###
+**Admin Dashboard**: Quick overview of store stats and connection status. 
+![Dashboard](screenshots/dashboard.png) 
+
+**Product Management**: Add, edit, and search your product catalog.
+![Product Management](screenshots/products.png) 
+
+**Category Management**: Organize products with hierarchical categories.
+![Category Management](screenshots/categories.png) 
+
+**Store Settings**: Configure base URL, gateway keys, and AI providers.
+![Store Settings](screenshots/settings.png) 
+
+### AI Management (Claude Desktop)
+**AI Cataloging**: Add or update products simply by chatting.
+![AI Cataloging](screenshots/add-products.png) 
+
+**Bulk Inventory**: Update stock via CSV, Excel, or even a photo. Manage your entire inventory through conversation.
+![Bulk Inventory](screenshots/inventory-update-1.png) 
+![Chat Updates](screenshots/inventory-update-2.png) 
+
+---
+
 ## Key Features
 
 - **Hierarchical Categories**: Organize products with categories and sub-categories.
