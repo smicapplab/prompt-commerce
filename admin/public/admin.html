@@ -1660,6 +1660,27 @@
       document.getElementById('connectModal').style.display = 'none';
     });
 
+    document.getElementById('saveGwKeyBtn').addEventListener('click', async () => {
+      const key = document.getElementById('gatewayKeyInput').value.trim();
+      const baseUrl = document.getElementById('baseUrlInput').value.trim();
+      if (!key && !baseUrl) return showToast('Nothing to save.', 'error');
+
+      const savingMsg = document.getElementById('gwKeySavingMsg');
+      savingMsg.style.display = 'inline';
+      try {
+        const body = {};
+        if (key) body.gateway_key = key;
+        if (baseUrl) body.base_url = baseUrl;
+        await api('PUT', '/api/settings', body);
+        showToast('Gateway settings saved.');
+        loadSettings();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        savingMsg.style.display = 'none';
+      }
+    });
+
     document.getElementById('btnSaveConnection').addEventListener('click', async () => {
       const key = document.getElementById('platformKeyInput').value.trim();
       if (!key) return alert('Please paste your security key.');
