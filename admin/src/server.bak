@@ -7,10 +7,10 @@ import jwt from 'jsonwebtoken';
 import Database from 'better-sqlite3';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, FunctionDeclarationSchemaType } from '@google/generative-ai';
+import { GoogleSearch } from '@google/generative-ai/server';
 import Anthropic from '@anthropic-ai/sdk';
 import * as xlsx from 'xlsx';
-import axios from 'axios';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.ADMIN_PORT ?? '3000', 10);
@@ -31,7 +31,6 @@ const DB_PATH =
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 const db = new Database(DB_PATH);
-console.log(`   Database path: ${DB_PATH}`);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -100,20 +99,17 @@ function initSchema(): void {
 
 /** Seed the default admin user if no users exist yet. */
 async function seedAdmin(): Promise<void> {
-  // Only seed if the DB file was just created
-  if (!fs.existsSync(DB_PATH)) {
-    const count = (db.prepare('SELECT COUNT(*) as n FROM users').get() as { n: number }).n;
-    if (count > 0) return;
+  const count = (db.prepare('SELECT COUNT(*) as n FROM users').get() as { n: number }).n;
+  if (count > 0) return;
 
-    const hash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 12);
-    db.prepare(`INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')`).run(
-      DEFAULT_ADMIN_USERNAME,
-      hash,
-    );
-    console.log(
-      `   Admin seeded  : username="${DEFAULT_ADMIN_USERNAME}" / password="${DEFAULT_ADMIN_PASSWORD}" — change this after first login!`,
-    );
-  }
+  const hash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 12);
+  db.prepare(`INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')`).run(
+    DEFAULT_ADMIN_USERNAME,
+    hash,
+  );
+  console.log(
+    `   Admin seeded  : username="${DEFAULT_ADMIN_USERNAME}" — change the password after first login!`,
+  );
 }
 
 // ─── JWT helpers ──────────────────────────────────────────────────────────────
@@ -184,7 +180,7 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
     .prepare('SELECT * FROM users WHERE username = ?')
     .get(username) as { id: number; username: string; password_hash: string; role: string } | undefined;
 
-  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
     res.status(401).json({ error: 'Invalid username or password.' });
     return;
   }
@@ -196,22 +192,24 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
 app.post('/api/auth/change-password', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { current_password, new_password } = req.body ?? {};
   if (!current_password || !new_password) {
-    res.status(400).json({ error: 'current_password and new_password are required.' }); return;
+    res.status(400).json({ error: 'current_password and new_password are required.' });
+    return;
   }
-  if (typeof new_password !== 'string' || new_password.length < 8) {
-    res.status(400).json({ error: 'New password must be at least 8 characters long.' }); return;
+  if ((new_password as string).length < 8) {
+    res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    return;
   }
 
   const user = req as Request & { user: AdminTokenPayload };
   const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.user.sub) as
     | { password_hash: string }
     | undefined;
-  if (!row || !bcrypt.compareSync(current_password, row.password_hash)) {
+  if (!row || !(await bcrypt.compare(current_password, row.password_hash))) {
     res.status(401).json({ error: 'Current password is incorrect.' });
     return;
   }
 
-  const hash = bcrypt.hashSync(new_password, 12);
+  const hash = await bcrypt.hash(new_password, 12);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, user.user.sub);
   res.json({ ok: true });
 });
@@ -466,7 +464,7 @@ app.get('/api/settings', requireAuth, (_req: Request, res: Response): void => {
       result['gateway_key'] = row.value ? '••••••••' : '';
       result['gateway_key_set'] = !!row.value;
       result['gateway_key_updated_at'] = row.updated_at;
-    } else if (row.key === 'gemini_api_key' || row.key === 'claude_api_key' || row.key === 'serper_api_key') {
+    } else if (row.key === 'gemini_api_key' || row.key === 'claude_api_key') {
       result[row.key] = row.value ? '••••••••' : '';
       result[`${row.key}_set`] = !!row.value;
     } else if (row.key === 'ai_model' || row.key === 'base_url') {
@@ -499,7 +497,7 @@ app.put('/api/settings', requireAuth, (req: Request, res: Response): void => {
   }
 
   // AI Assistant Settings
-  const aiSettings = ['gemini_api_key', 'claude_api_key', 'ai_model', 'serper_api_key'];
+  const aiSettings = ['gemini_api_key', 'claude_api_key', 'ai_model'];
   for (const key of aiSettings) {
     if (req.body[key] !== undefined) {
       db.prepare(`
@@ -690,7 +688,7 @@ async function executeAiTool(name: string, args: any): Promise<any> {
           'Content-Type': 'application/json'
         }
       });
-      return response.data; // Return object directly for Gemini
+      return JSON.stringify(response.data);
     } catch (e: any) {
       return { error: `Web search failed: ${e.message}` };
     }
@@ -716,24 +714,6 @@ async function executeAiTool(name: string, args: any): Promise<any> {
     }
     return { success: true, count: results.length, results };
   }
-  if (name === 'add_product') {
-    const { sku, title, description, category_id, price, stock_quantity, tags, images, active } = args;
-    const info = db.prepare(`
-      INSERT INTO products (sku, title, description, category_id, price, stock_quantity, tags, images, active, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
-      sku || null,
-      title,
-      description || null,
-      category_id || null,
-      price ?? null,
-      stock_quantity !== undefined ? parseInt(stock_quantity, 10) : 0,
-      tags ? JSON.stringify(tags) : null,
-      images ? JSON.stringify(images) : null,
-      active !== false ? 1 : 0,
-    );
-    return { success: true, id: info.lastInsertRowid };
-  }
   if (name === 'update_product') {
     const { id, ...fields } = args;
     const sets = Object.keys(fields).map(key => `${key} = ?`).join(', ');
@@ -745,7 +725,7 @@ async function executeAiTool(name: string, args: any): Promise<any> {
 }
 
 // Shared tool definitions (used by both Gemini and Claude)
-const localTools: any[] = [
+const localTools = [
   {
     name: 'web_search',
     description: 'Search the web for information, such as product descriptions, specifications, or images.',
@@ -792,24 +772,6 @@ const localTools: any[] = [
     }
   },
   {
-    name: 'add_product',
-    description: 'Add a new product to the catalog.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Product name' },
-        sku: { type: 'string', description: 'Optional unique SKU' },
-        description: { type: 'string', description: 'Product description' },
-        price: { type: 'number' },
-        stock_quantity: { type: 'number' },
-        tags: { type: 'array', items: { type: 'string' } },
-        images: { type: 'array', items: { type: 'string' } },
-        active: { type: 'boolean' }
-      },
-      required: ['title']
-    }
-  },
-  {
     name: 'update_product',
     description: 'Update an existing product by ID.',
     input_schema: {
@@ -846,14 +808,14 @@ app.post('/api/ai/chat', requireAuth, async (req: Request, res: Response): Promi
   const { message, history, file_data, file_mime, file_name } = req.body ?? {};
   if (!message) { res.status(400).json({ error: 'message is required.' }); return; }
 
-  const settingsRows = db.prepare('SELECT key, value FROM settings WHERE key IN (?, ?, ?, ?)').all(
-    'gemini_api_key', 'claude_api_key', 'ai_model', 'serper_api_key'
+  const settingsRows = db.prepare('SELECT key, value FROM settings WHERE key IN (?, ?, ?)').all(
+    'gemini_api_key', 'claude_api_key', 'ai_model'
   ) as { key: string; value: string }[];
 
   const settings: Record<string, string> = {};
   settingsRows.forEach(row => settings[row.key] = row.value);
 
-  const modelId = (settings.ai_model || 'gemini-flash-latest').trim();
+  const modelId = (settings.ai_model || 'gemini-1.5-flash').trim();
   const isClaude = modelId.startsWith('claude-');
   
   let processedMessage = message;
@@ -934,18 +896,12 @@ ${csvData}`;
       // Agentic tool-use loop
       while (response.stop_reason === 'tool_use') {
         const toolUseBlocks = response.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const block of toolUseBlocks) {
-          console.log(`[AI Chat] Claude calling tool: ${block.name} with args:`, block.input);
-          const result = await executeAiTool(block.name, block.input);
-          console.log(`[AI Chat] Tool ${block.name} result:`, JSON.stringify(result).slice(0, 200) + '...');
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            content: JSON.stringify(result),
-          });
-        }
-        
+        const toolResults: Anthropic.ToolResultBlockParam[] = toolUseBlocks.map(block => ({
+          type: 'tool_result',
+          tool_use_id: block.id,
+          content: JSON.stringify(executeAiTool(block.name, block.input)),
+        }));
+
         claudeMessages.push({ role: 'assistant', content: response.content });
         claudeMessages.push({ role: 'user', content: toolResults });
 
@@ -960,7 +916,6 @@ ${csvData}`;
 
       const textContent = response.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined;
       const replyText = textContent?.text ?? '';
-      console.log(`[AI Chat] Claude final reply: ${replyText.slice(0, 100)}...`);
       res.json({
         text: replyText,
         history: [...(history || []), { role: 'user', content: message }, { role: 'assistant', content: replyText }],
@@ -980,7 +935,7 @@ ${csvData}`;
 
     const model = genAI.getGenerativeModel({
       model: modelId,
-      tools: [AI_TOOLS_GEMINI],
+      tools: [AI_TOOLS_GEMINI, new GoogleSearch()], // <-- Internet access enabled here
     });
 
     const chat = model.startChat({
@@ -1001,33 +956,24 @@ ${csvData}`;
       });
     }
 
-    let result = await chat.sendMessage(msgParts);
-    let geminiResponse = await result.response;
-    let calls = geminiResponse.functionCalls();
+    const result = await chat.sendMessage(msgParts);
+    const geminiResponse = await result.response;
+    const calls = geminiResponse.functionCalls();
 
-    // Loop for multi-round tool use in Gemini
-    while (calls && calls.length > 0) {
-      const toolResults = [];
-      for (const call of calls) {
-        console.log(`[AI Chat] Gemini calling tool: ${call.name} with args:`, call.args);
-        const res = await executeAiTool(call.name, call.args);
-        console.log(`[AI Chat] Tool ${call.name} result:`, JSON.stringify(res).slice(0, 200) + '...');
-        toolResults.push({
-          functionResponse: {
-            name: call.name,
-            response: { content: res }
-          }
-        });
-      }
-      
-      result = await chat.sendMessage(toolResults);
-      geminiResponse = await result.response;
-      calls = geminiResponse.functionCalls();
+    if (calls && calls.length > 0) {
+      const toolResults = calls.map(call => ({
+        functionResponse: {
+          name: call.name,
+          response: { content: executeAiTool(call.name, call.args) }
+        }
+      }));
+      const finalResult = await chat.sendMessage(toolResults);
+      const replyText = finalResult.response.text();
+      res.json({ text: replyText, history: [...(history || []), { role: 'user', content: message }, { role: 'assistant', content: replyText }] });
+    } else {
+      const replyText = geminiResponse.text();
+      res.json({ text: replyText, history: [...(history || []), { role: 'user', content: message }, { role: 'assistant', content: replyText }] });
     }
-
-    const replyText = geminiResponse.text();
-    console.log(`[AI Chat] Gemini final reply: ${replyText.slice(0, 100)}...`);
-    res.json({ text: replyText, history: [...(history || []), { role: 'user', content: message }, { role: 'assistant', content: replyText }] });
 
   } catch (err: any) {
     console.error('AI Chat Error:', err);
@@ -1050,7 +996,7 @@ app.get('/api/ai/models', requireAuth, async (_req: Request, res: Response): Pro
     }
     const data = await response.json() as any;
     
-    // Filter for the chat-capable models
+    // Filter for the "Gold Standard" models only (Flash and Pro)
     const discovered = (data.models || [])
       .filter((m: any) => m.supportedGenerationMethods.includes('generateContent'))
       .map((m: any) => ({
@@ -1059,35 +1005,35 @@ app.get('/api/ai/models', requireAuth, async (_req: Request, res: Response): Pro
         description: m.description
       }));
     
-    // Recommendations for labeling and sorting
-    const recommended = [
-      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Newest)' },
-      { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
-      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-      { id: 'gemini-flash-latest', label: 'Gemini Flash (Stable)' },
-      { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-      { id: 'gemini-pro-latest', label: 'Gemini Pro (Most Capable)' }
+    // Pick the best match for each gold standard (ordered by preference for default)
+    const goldStandard = [
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Newest - Recommended)' },
+      { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (Lowest Quota usage)' },
+      { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Fast)' },
+      { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Stable)' },
+      { id: 'gemini-pro', label: 'Gemini Pro (Most Capable)' }
     ];
     
-    const finalModels = discovered.map(m => {
-      const rec = recommended.find(r => r.id === m.id || m.id.startsWith(r.id));
-      return {
-        ...m,
-        name: rec ? rec.label : m.name // Use friendly label if known, otherwise raw name
-      };
-    });
+    const filteredModels: any[] = [];
+    for (const gs of goldStandard) {
+      // Find exact match or closest version
+      const match = discovered.find((m: any) => m.id === gs.id) || 
+                    discovered.find((m: any) => m.id.startsWith(gs.id));
+      
+      if (match && !filteredModels.find(f => f.id === match.id)) {
+        filteredModels.push({
+          ...match,
+          name: gs.label // Use our friendly label
+        });
+      }
+    }
 
-    // Sort: recommended first, then others
-    finalModels.sort((a, b) => {
-      const aRec = recommended.findIndex(r => a.id.startsWith(r.id));
-      const bRec = recommended.findIndex(r => b.id.startsWith(r.id));
-      if (aRec !== -1 && bRec !== -1) return aRec - bRec;
-      if (aRec !== -1) return -1;
-      if (bRec !== -1) return 1;
-      return a.id.localeCompare(b.id);
-    });
+    // If still no models found, just return the first few discovered ones
+    if (filteredModels.length === 0) {
+      discovered.slice(0, 10).forEach(m => filteredModels.push(m));
+    }
 
-    res.json({ models: finalModels });
+    res.json({ models: filteredModels });
   } catch (err: any) {
     console.error('Model Discovery Error:', err);
     res.status(500).json({ error: err.message });
