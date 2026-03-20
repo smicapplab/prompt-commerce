@@ -1069,7 +1069,7 @@ app.get('/api/ai/models', requireAuth, async (_req: Request, res: Response): Pro
       { id: 'gemini-pro-latest', label: 'Gemini Pro (Most Capable)' }
     ];
     
-    const finalModels = discovered.map(m => {
+    const finalModels = discovered.map((m: { id: string; name: any; }) => {
       const rec = recommended.find(r => r.id === m.id || m.id.startsWith(r.id));
       return {
         ...m,
@@ -1078,7 +1078,7 @@ app.get('/api/ai/models', requireAuth, async (_req: Request, res: Response): Pro
     });
 
     // Sort: recommended first, then others
-    finalModels.sort((a, b) => {
+    finalModels.sort((a: { id: string; }, b: { id: string; }) => {
       const aRec = recommended.findIndex(r => a.id.startsWith(r.id));
       const bRec = recommended.findIndex(r => b.id.startsWith(r.id));
       if (aRec !== -1 && bRec !== -1) return aRec - bRec;
