@@ -1,12 +1,12 @@
 @echo off
-TITLE Prompt Commerce - Seller Launcher
+TITLE Prompt Commerce - Seller Dev
 
 SET DIR=%~dp0
-SET ADMIN_DIR=%DIR%admin
 
 echo.
-echo   Prompt Commerce - Seller Launcher
-echo   ----------------------------------
+echo   Prompt Commerce - Seller Dev
+echo   -----------------------------
+echo   Single port: Express + Vite middleware on :3000
 echo.
 
 IF NOT EXIST "%DIR%.env" (
@@ -15,23 +15,18 @@ IF NOT EXIST "%DIR%.env" (
 )
 
 IF NOT EXIST "%DIR%node_modules" (
-    echo Installing MCP server dependencies...
+    echo Installing dependencies...
     cd /d "%DIR%" && call npm install
 )
-IF NOT EXIST "%ADMIN_DIR%\node_modules" (
-    echo Installing admin dependencies...
-    cd /d "%ADMIN_DIR%" && call npm install
-)
 
-echo Starting MCP Server (port 3001)...
-start "MCP Server" cmd /k "cd /d "%DIR%" && npm run dev"
-
-echo Starting Admin Panel (port 3000)...
-start "Admin Panel" cmd /k "cd /d "%ADMIN_DIR%" && npm run dev"
+echo Running DB migrations...
+cd /d "%DIR%" && call npm run db:migrate
 
 echo.
-echo   MCP Server  - http://localhost:3001
-echo   Admin Panel - http://localhost:3000
+echo Starting seller server (port 3000)...
+npm run dev:server
+
 echo.
-echo   Close the separate windows to stop the services.
+echo   Admin UI   -^> http://localhost:3000/admin
+echo   MCP / SSE  -^> http://localhost:3000/sse/:store-slug
 echo.

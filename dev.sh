@@ -1,80 +1,76 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
 # Prompt Commerce — Seller Dev Launcher
-# Starts MCP Server (3001) and Admin Panel (3000) with colour-coded output.
+#
+# Starts a single process on port 3000:
+#   Express  — MCP/SSE endpoint for the gateway
+#   Vite     — Admin UI with hot reload (mounted as Express middleware)
+#
+# Usage: ./dev.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# ANSI colours
-G='\033[0;32m'  # green
-B='\033[0;34m'  # blue
-R='\033[0;31m'  # red
-N='\033[0m'     # reset
+G='\033[0;32m'
+R='\033[0;31m'
+N='\033[0m'
 
-PREFIX_MCP="${G}[mcp-server] ${N}"
-PREFIX_ADMIN="${B}[admin]      ${N}"
+PREFIX="${G}[seller]${N} "
 
 pids=()
-
 cleanup() {
   echo ""
-  echo "Stopping seller services…"
-  for pid in "${pids[@]}"; do
-    kill "$pid" 2>/dev/null || true
-  done
+  echo "Stopping seller…"
+  for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   echo "Done."
 }
 trap cleanup EXIT INT TERM
 
-run_with_prefix() {
-  local prefix="$1"
-  shift
-  "$@" 2>&1 | while IFS= read -r line; do
-    echo -e "${prefix}${line}"
-  done &
+run_prefix() {
+  local prefix="$1"; shift
+  "$@" 2>&1 | while IFS= read -r line; do echo -e "${prefix}${line}"; done &
   pids+=($!)
 }
 
 echo ""
-echo "  Prompt Commerce — Seller Launcher"
-echo "  ──────────────────────────────────"
+echo "  Prompt Commerce — Seller Dev"
+echo "  ─────────────────────────────"
 echo ""
 
-# ── Pre-flight: Clear Ports ───────────────────────────────────────────────────
-echo "Checking for existing processes on ports 3000, 3001..."
-PIDS=$(lsof -ti :3000,3001 || true)
+# ── Clear port 3000 ───────────────────────────────────────────────────────────
+PIDS=$(lsof -ti :3000 2>/dev/null || true)
 if [ -n "$PIDS" ]; then
-  echo "Stopping existing processes ($PIDS)..."
+  echo "  Clearing port 3000…"
   echo "$PIDS" | xargs kill -9 2>/dev/null || true
   sleep 1
 fi
 
+# ── Bootstrap .env ────────────────────────────────────────────────────────────
 if [ ! -f "$DIR/.env" ]; then
-  echo -e "${R}[warn] .env not found — copying from .env.example${N}"
+  echo -e "  ${R}[warn]${N} .env not found — copying from .env.example"
   cp "$DIR/.env.example" "$DIR/.env"
 fi
 
-# Install deps if needed
+# ── Install deps if needed ────────────────────────────────────────────────────
 if [ ! -d "$DIR/node_modules" ]; then
-  echo "Installing MCP server dependencies…"
-  npm install
-fi
-if [ ! -d "$DIR/admin/node_modules" ]; then
-  echo "Installing admin dependencies…"
-  (cd admin && npm install)
+  echo "  Installing dependencies…"
+  cd "$DIR" && npm install
 fi
 
-run_with_prefix "$PREFIX_MCP"   bash -c "npm run dev"
-run_with_prefix "$PREFIX_ADMIN" bash -c "cd admin && npm run dev"
+# ── Run migrations (safe, idempotent) ─────────────────────────────────────────
+echo "  Running DB migrations…"
+cd "$DIR" && npm run db:migrate --silent
+
+# ── Start server (Express + Vite middleware) ──────────────────────────────────
+run_prefix "$PREFIX" bash -c "cd '$DIR' && npm run dev:server"
 
 echo ""
-echo -e "  ${G}MCP Server${N}  → http://localhost:3001"
-echo -e "  ${B}Admin Panel${N} → http://localhost:3000"
+echo -e "  ${G}Admin UI${N}   → http://localhost:3000/admin"
+echo -e "  ${G}MCP / SSE${N}  → http://localhost:3000/sse/:store-slug"
 echo ""
-echo "  Press Ctrl+C to stop everything."
+echo "  Press Ctrl+C to stop."
 echo ""
 
 wait

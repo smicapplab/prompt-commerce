@@ -5,13 +5,16 @@ node_modules/
 dist/
 build/
 
+# SvelteKit generated artifacts (type stubs, adapter cache — rebuilt on dev/build)
+.svelte-kit/
+
 # Environment variables
 .env
 
-# Database (auto-generated on first run)
-data/*.db
-data/*.db-shm
-data/*.db-wal
+# Data directory lives at <repo-root>/_data/ — ignored from the root .gitignore
+
+# Screenshots / demo assets (not part of the application)
+screenshots/
 
 # OS
 .DS_Store

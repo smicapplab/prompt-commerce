@@ -1,53 +1,42 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// PM2 Ecosystem — Prompt Commerce Seller (EC2)
+// PM2 Ecosystem — Prompt Commerce Seller
+//
+// Single process serves everything on port 3000:
+//   /sse  /messages   — MCP SSE for the gateway
+//   /admin  /api/*    — SvelteKit admin panel + REST API
 //
 // First-time setup:
-//   npm install && npm run build          (in prompt-commerce/)
-//   cd admin && npm install && npm run build && cd ..
-//   pm2 start ecosystem.config.js
-//   pm2 save
-//   pm2 startup    (copy-paste the command it prints to enable reboot survival)
+//   ./start.sh                        (installs, migrates, builds, starts)
 //
-// Useful commands:
-//   pm2 list                see all processes
-//   pm2 logs                tail all logs
-//   pm2 logs mcp-server     tail one service
-//   pm2 restart all         restart everything
-//   pm2 reload all          zero-downtime reload
-//   pm2 stop all            stop without removing
-//   pm2 delete all          stop and remove from pm2
+// Update / redeploy:
+//   npm run db:migrate                (apply any new schema changes)
+//   npm run build                     (rebuild the app)
+//   pm2 reload prompt-commerce        (zero-downtime reload)
+//
+// Useful PM2 commands:
+//   pm2 list                          see all processes
+//   pm2 logs                          tail all logs
+//   pm2 logs prompt-commerce          tail this service
+//   pm2 restart prompt-commerce       hard restart
+//   pm2 reload prompt-commerce        zero-downtime reload
+//   pm2 stop prompt-commerce          stop without removing
+//   pm2 delete prompt-commerce        stop and remove
+//   pm2 save && pm2 startup           survive reboots (run once)
 // ─────────────────────────────────────────────────────────────────────────────
-
-const path = require('path');
-const ROOT = __dirname;
 
 module.exports = {
   apps: [
-    // ── MCP Server (port 3001) ──────────────────────────────────────────────
     {
-      name: 'mcp-server',
-      script: 'dist/index.js',
-      cwd: ROOT,
+      name: 'prompt-commerce',
+      script: 'build/index.js',    // adapter-node production entry
+      cwd: __dirname,
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: '300M',
+      max_memory_restart: '400M',
       env: {
         NODE_ENV: 'production',
-      },
-    },
-
-    // ── Admin Panel (port 3000) ─────────────────────────────────────────────
-    {
-      name: 'admin',
-      script: 'dist/server.js',
-      cwd: path.join(ROOT, 'admin'),
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '300M',
-      env: {
-        NODE_ENV: 'production',
+        PORT: '3000',
       },
     },
   ],
