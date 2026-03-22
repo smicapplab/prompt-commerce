@@ -28,7 +28,12 @@ module.exports = {
   apps: [
     {
       name: 'prompt-commerce',
-      script: 'build/index.js',    // adapter-node production entry
+      // server.ts is the correct production entry — it loads dotenv, sets up
+      // Express + MCP SSE routes, and serves the built SvelteKit handler.
+      // build/index.js alone never loads .env, so DATA_DIR / JWT_SECRET etc.
+      // would be undefined and the app would open the wrong database.
+      script: 'node',
+      args: '--import tsx/esm server.ts',
       cwd: __dirname,
       instances: 1,
       autorestart: true,

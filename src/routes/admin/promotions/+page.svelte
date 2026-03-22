@@ -267,7 +267,12 @@
 
 <!-- Add / Edit Modal -->
 {#if showModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onclick={(e) => e.target === e.currentTarget && (showModal = false)}>
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+    role="presentation"
+    onclick={(e) => e.target === e.currentTarget && (showModal = false)}
+    onkeydown={(e) => e.key === 'Escape' && (showModal = false)}
+  >
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
       <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h2 class="text-base font-semibold text-gray-900">{editingId ? 'Edit Promotion' : 'New Promotion'}</h2>
@@ -280,36 +285,36 @@
         {/if}
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
-          <input type="text" bind:value={fTitle} placeholder="Summer Sale 20%" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <label for="promo-title" class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+          <input id="promo-title" type="text" bind:value={fTitle} placeholder="Summer Sale 20%" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Discount Type <span class="text-red-500">*</span></label>
-            <select bind:value={fDiscountType} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label for="promo-type" class="block text-sm font-medium text-gray-700 mb-1">Discount Type <span class="text-red-500">*</span></label>
+            <select id="promo-type" bind:value={fDiscountType} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
               <option value="percentage">Percentage (%)</option>
               <option value="fixed">Fixed amount</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="promo-value" class="block text-sm font-medium text-gray-700 mb-1">
               Value <span class="text-red-500">*</span>
               <span class="text-gray-400 font-normal">{fDiscountType === 'percentage' ? '(%)' : '(amount)'}</span>
             </label>
-            <input type="number" bind:value={fDiscountValue} min="0" step="0.01" placeholder="20" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input id="promo-value" type="number" bind:value={fDiscountValue} min="0" step="0.01" placeholder="20" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Voucher Code <span class="text-gray-400 font-normal">(optional)</span></label>
-          <input type="text" bind:value={fVoucherCode} placeholder="SUMMER20" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <label for="promo-code" class="block text-sm font-medium text-gray-700 mb-1">Voucher Code <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input id="promo-code" type="text" bind:value={fVoucherCode} placeholder="SUMMER20" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           <p class="mt-1 text-xs text-gray-500">Leave blank for automatic / no-code promotions.</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Apply to Product <span class="text-gray-400 font-normal">(optional)</span></label>
-          <select bind:value={fProductId} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <label for="promo-product" class="block text-sm font-medium text-gray-700 mb-1">Apply to Product <span class="text-gray-400 font-normal">(optional)</span></label>
+          <select id="promo-product" bind:value={fProductId} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option value="">All products</option>
             {#each products as p}
               <option value={String(p.id)}>{p.title}</option>
@@ -319,18 +324,20 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-            <input type="date" bind:value={fStartDate} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <label for="promo-start" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input id="promo-start" type="date" bind:value={fStartDate} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-            <input type="date" bind:value={fEndDate} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <label for="promo-end" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input id="promo-end" type="date" bind:value={fEndDate} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
         </div>
 
         <div class="flex items-center gap-3">
           <button
             onclick={() => (fActive = !fActive)}
+            aria-label={fActive ? 'Deactivate promotion' : 'Activate promotion'}
+            aria-pressed={fActive}
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {fActive ? 'bg-indigo-600' : 'bg-gray-200'}"
           >
             <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {fActive ? 'translate-x-6' : 'translate-x-1'}"></span>

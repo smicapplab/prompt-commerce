@@ -502,8 +502,9 @@
 
 				<div class="p-6 space-y-4">
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+						<label for="product-title" class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
 						<input
+							id="product-title"
 							type="text"
 							bind:value={formData.title}
 							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -512,8 +513,9 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+						<label for="product-sku" class="block text-sm font-medium text-gray-700 mb-1">SKU</label>
 						<input
+							id="product-sku"
 							type="text"
 							bind:value={formData.sku}
 							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -522,8 +524,9 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+						<label for="product-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
 						<textarea
+							id="product-description"
 							bind:value={formData.description}
 							rows="3"
 							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -532,8 +535,9 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+						<label for="product-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
 						<select
+							id="product-category"
 							bind:value={formData.category_id}
 							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 						>
@@ -546,8 +550,9 @@
 
 					<div class="grid grid-cols-2 gap-4">
 						<div>
-							<label class="block text-sm font-medium text-gray-700 mb-1">Price</label>
+							<label for="product-price" class="block text-sm font-medium text-gray-700 mb-1">Price</label>
 							<input
+								id="product-price"
 								type="number"
 								bind:value={formData.price}
 								step="0.01"
@@ -557,8 +562,9 @@
 							/>
 						</div>
 						<div>
-							<label class="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+							<label for="product-stock" class="block text-sm font-medium text-gray-700 mb-1">Stock</label>
 							<input
+								id="product-stock"
 								type="number"
 								bind:value={formData.stock_quantity}
 								min="0"
@@ -570,8 +576,9 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+						<label for="product-tags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
 						<input
+							id="product-tags"
 							type="text"
 							bind:value={formData.tags}
 							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -589,7 +596,7 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-3">Status</label>
+						<p class="block text-sm font-medium text-gray-700 mb-3">Status</p>
 						<div class="flex items-center gap-3">
 							<button
 								onclick={() => (formData.active = true)}
@@ -615,7 +622,7 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 mb-3">Images</label>
+						<p class="block text-sm font-medium text-gray-700 mb-3">Images</p>
 						{#if formData.images_urls.length > 0}
 							<div class="mb-4">
 								<p class="text-xs text-gray-600 mb-2">Existing images:</p>

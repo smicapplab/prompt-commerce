@@ -317,6 +317,8 @@
             </div>
             <button
               onclick={() => set('ai_enabled', val('ai_enabled') === '1' ? '0' : '1')}
+              aria-label={val('ai_enabled') === '1' ? 'Disable AI responses' : 'Enable AI responses'}
+              aria-pressed={val('ai_enabled') === '1'}
               class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {val('ai_enabled') === '1' ? 'bg-indigo-600' : 'bg-gray-200'}"
             >
               <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {val('ai_enabled') === '1' ? 'translate-x-6' : 'translate-x-1'}"></span>

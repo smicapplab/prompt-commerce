@@ -48,8 +48,9 @@
 
     <form onsubmit={handleLogin} class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <label for="login-username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
         <input
+          id="login-username"
           bind:value={username}
           type="text"
           placeholder="admin"
@@ -58,9 +59,10 @@
         />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
         <div class="relative">
           <input
+            id="login-password"
             bind:value={password}
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"

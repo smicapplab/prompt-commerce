@@ -40,7 +40,7 @@
   let newMessage = $state('');
   let sending = $state(false);
   let pollingTimer: ReturnType<typeof setInterval> | null = null;
-  let messagesEnd: HTMLDivElement | null = null;
+  let messagesEnd = $state<HTMLDivElement | null>(null);
 
   const token = () => localStorage.getItem('pc_token') ?? '';
 
