@@ -18,6 +18,7 @@ const STORE_KEYS = [
   // AI
   'claude_api_key',
   'gemini_api_key',
+  'openai_api_key',
   'serper_api_key',
   'ai_provider',
   'ai_model',
@@ -55,7 +56,7 @@ function readSettings(db: ReturnType<typeof getDb>, isStore: boolean): Record<st
   if (isStore) {
     // Mask sensitive keys — return _set boolean instead of value
     const sensitive = new Set<StoreKey>([
-      'claude_api_key', 'gemini_api_key', 'serper_api_key', 'telegram_bot_token',
+      'claude_api_key', 'gemini_api_key', 'openai_api_key', 'serper_api_key', 'telegram_bot_token',
       'payment_api_key', 'payment_webhook_secret',
     ]);
     for (const key of STORE_KEYS) {
@@ -115,7 +116,7 @@ export const PATCH: RequestHandler = async (event) => {
 
   // ── Fire-and-forget: push config changes to gateway ─────────────────────────
   if (slug) {
-    const AI_KEYS      = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model', 'ai_system_prompt']);
+    const AI_KEYS      = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
     const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
 
     const hasAiChange      = entries.some(([key]) => AI_KEYS.has(key));
@@ -140,7 +141,7 @@ export const PATCH: RequestHandler = async (event) => {
           // Read all relevant settings from the store DB (post-save)
           const storeDb = getStoreDb(slug);
           const allKeys = [
-            'ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model', 'ai_system_prompt',
+            'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
             'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret',
           ];
           const settingRows = storeDb
@@ -157,7 +158,11 @@ export const PATCH: RequestHandler = async (event) => {
           // ── Push AI config ─────────────────────────────────────────────────
           if (hasAiChange) {
             const provider = s['ai_provider'] || 'claude';
-            const apiKey   = provider === 'gemini' ? s['gemini_api_key'] : s['claude_api_key'];
+            const apiKey   = provider === 'gemini'
+              ? s['gemini_api_key']
+              : provider === 'openai'
+                ? s['openai_api_key']
+                : s['claude_api_key'];
             if (apiKey) {
               await fetch(`${gatewayUrl}/api/stores/${slug}/ai-config`, {
                 method: 'PATCH',
@@ -167,6 +172,7 @@ export const PATCH: RequestHandler = async (event) => {
                   aiApiKey:       apiKey,
                   aiModel:        s['ai_model']        || null,
                   aiSystemPrompt: s['ai_system_prompt'] || null,
+                  serperApiKey:   s['serper_api_key']  || null,
                 }),
               });
             }

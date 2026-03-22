@@ -34,35 +34,6 @@ interface ToolDef {
   required?: string[];
 }
 
-function toAnthropicTool(def: ToolDef) {
-  return {
-    name: def.name,
-    description: def.description,
-    input_schema: {
-      type: 'object' as const,
-      properties: def.properties,
-      required: def.required ?? [],
-    },
-  };
-}
-
-function toGeminiTool(def: ToolDef) {
-  return {
-    name: def.name,
-    description: def.description,
-    parameters: {
-      type: 'OBJECT',
-      properties: Object.fromEntries(
-        Object.entries(def.properties).map(([k, v]) => [
-          k,
-          { type: v.type.toUpperCase(), description: v.description },
-        ])
-      ),
-      required: def.required ?? [],
-    },
-  };
-}
-
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
 const TOOL_DEFS: ToolDef[] = [
@@ -216,6 +187,30 @@ const TOOL_DEFS: ToolDef[] = [
       confirm:    { type: 'boolean', description: 'Set to true to actually download. Default false (preview only).', default: false },
     },
     required: ['product_id', 'url'],
+  },
+  {
+    name: 'search_images',
+    description:
+      'Search Google Images for a product and return direct image URLs. ' +
+      'Use this to automatically find product images — e.g. when the seller says "find an image for iPhone 15" or "add images to my products". ' +
+      'Returns image URLs you can immediately pass to download_image to attach to a product. ' +
+      'Requires a Serper API key configured in Settings → AI/LLM.',
+    properties: {
+      query: { type: 'string',  description: 'Product name or description to search for images of' },
+      num:   { type: 'integer', description: 'Number of image results to return (default 5, max 10)', minimum: 1, maximum: 10, default: 5 },
+    },
+    required: ['query'],
+  },
+  {
+    name: 'fetch_url',
+    description:
+      'Fetch any public URL and return its text content and any image URLs found on the page. ' +
+      'Use this to visit product pages (e.g. Amazon, Shopee, Lazada) and extract product info, descriptions, or image URLs. ' +
+      'Image URLs found can be passed to download_image to attach to a product.',
+    properties: {
+      url: { type: 'string', description: 'The full URL to fetch (must start with https://)' },
+    },
+    required: ['url'],
   },
   {
     name: 'create_promotion',
@@ -469,29 +464,96 @@ export async function executeStoreTool(
 
     case 'download_image': {
       const { product_id, url, confirm = false } = args;
-      const product = db.prepare(`SELECT id, title, images_urls FROM products WHERE id = ?`).get(product_id) as any;
+      const product = db.prepare(`SELECT id, title, images FROM products WHERE id = ?`).get(product_id) as any;
       if (!product) return `Product ID ${product_id} not found.`;
-      
+
       if (!confirm) return `📋 PREVIEW — Download image from ${url} and attach to "${product.title}" (ID ${product_id}).\n\nCall download_image with confirm=true to execute.`;
 
       try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+        const response = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status} from ${url}`);
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.startsWith('image/')) throw new Error(`URL did not return an image (got ${contentType})`);
         const buffer = await response.arrayBuffer();
-        const ext = path.extname(new URL(url).pathname) || '.jpg';
-        const filename = `${crypto.randomUUID()}${ext}`;
+        const rawExt = path.extname(new URL(url).pathname).split(/[#?]/)[0] || '.jpg';
+        const ext = rawExt.length > 5 ? '.jpg' : rawExt;
+        const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
         const uploadDir = getUploadDir();
-        const filePath = path.join(uploadDir, filename);
-        
-        fs.writeFileSync(filePath, Buffer.from(buffer));
-        
-        const currentImages = product.images_urls ? JSON.parse(product.images_urls) : [];
+        fs.mkdirSync(uploadDir, { recursive: true });
+        fs.writeFileSync(path.join(uploadDir, filename), Buffer.from(buffer));
+
+        const currentImages: string[] = product.images ? JSON.parse(product.images) : [];
         const newImages = [...currentImages, `/uploads/${filename}`];
-        db.prepare(`UPDATE products SET images_urls = ?, updated_at = datetime('now') WHERE id = ?`).run(JSON.stringify(newImages), product_id);
-        
-        return `✅ Image downloaded and attached to "${product.title}". Local path: /uploads/${filename}`;
+        db.prepare(`UPDATE products SET images = ?, is_synced = 0, updated_at = datetime('now') WHERE id = ?`).run(JSON.stringify(newImages), product_id);
+
+        return `✅ Image downloaded and attached to "${product.title}" (ID ${product_id}). Saved as /uploads/${filename}`;
       } catch (err: any) {
         return `❌ Failed to download image: ${err.message}`;
+      }
+    }
+
+    case 'search_images': {
+      const { query, num = 5 } = args;
+      if (!query?.trim()) return 'Error: query is required.';
+      const keyRow = db.prepare(`SELECT value FROM settings WHERE key = 'serper_api_key'`).get() as { value: string } | undefined;
+      if (!keyRow?.value) return '⚠️ Image search is not configured. Ask the store owner to add a Serper API key in Settings → AI/LLM.';
+      try {
+        const res = await fetch('https://google.serper.dev/images', {
+          method: 'POST',
+          headers: { 'X-API-KEY': keyRow.value, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: query.trim(), num: Math.min(Number(num) || 5, 10) }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!res.ok) return `❌ Serper API error ${res.status}. Check the Serper API key in Settings.`;
+        const data = await res.json() as { images?: Array<{ imageUrl: string; title: string; source: string }> };
+        const images = (data.images ?? []).slice(0, num);
+        if (!images.length) return `No images found for "${query}".`;
+        return JSON.stringify({
+          query,
+          results: images.map((img, i) => ({ index: i + 1, imageUrl: img.imageUrl, title: img.title, source: img.source })),
+          tip: 'Pass any imageUrl to download_image(product_id, url, confirm=true) to attach it to a product.',
+        }, null, 2);
+      } catch (err: any) {
+        return `❌ Image search failed: ${err.message}`;
+      }
+    }
+
+    case 'fetch_url': {
+      const { url } = args;
+      if (!url?.startsWith('http')) return 'Error: URL must start with https://';
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,*/*',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!res.ok) return `Error: HTTP ${res.status} from ${url}`;
+        const contentType = res.headers.get('content-type') ?? '';
+        if (contentType.startsWith('image/')) return JSON.stringify({ type: 'image', imageUrl: url });
+        const html = await res.text();
+        const text = html
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s{2,}/g, ' ')
+          .trim()
+          .slice(0, 3000);
+        const imgRegex = /(?:src|data-src|data-lazy-src)=["']([^"']*\.(?:jpg|jpeg|png|webp|gif)[^"']*)/gi;
+        const imageUrls: string[] = [];
+        let m: RegExpExecArray | null;
+        while ((m = imgRegex.exec(html)) !== null && imageUrls.length < 20) {
+          const src = m[1];
+          const absolute = src.startsWith('http') ? src : new URL(src, url).href;
+          if (!imageUrls.includes(absolute)) imageUrls.push(absolute);
+        }
+        return JSON.stringify({ type: 'page', text, imageUrls }, null, 2);
+      } catch (err: any) {
+        return `Error fetching URL: ${err.message}`;
       }
     }
 
@@ -551,5 +613,33 @@ export async function executeStoreTool(
 
 // ─── Exported format helpers ─────────────────────────────────────────────────
 
+function toAnthropicTool(def: ToolDef): any {
+  return {
+    name: def.name,
+    description: def.description,
+    input_schema: { type: 'object', properties: def.properties },
+  };
+}
+
+function toGeminiTool(def: ToolDef): any {
+  return {
+    name: def.name,
+    description: def.description,
+    parameters: { type: 'object', properties: def.properties, required: def.required },
+  };
+}
+
+function toOpenaiTool(def: ToolDef): any {
+  return {
+    type: 'function',
+    function: {
+      name: def.name,
+      description: def.description,
+      parameters: { type: 'object', properties: def.properties, required: def.required },
+    }
+  };
+}
+
 export const anthropicTools = TOOL_DEFS.map(toAnthropicTool);
 export const geminiTools = TOOL_DEFS.map(toGeminiTool);
+export const openaiTools = TOOL_DEFS.map(toOpenaiTool);

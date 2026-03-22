@@ -2,7 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireAuth } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
-import { anthropicTools, geminiTools, executeStoreTool } from '$lib/server/chatTools.js';
+import { anthropicTools, geminiTools, openaiTools, executeStoreTool } from '$lib/server/chatTools.js';
+
+const OPENAI_DEFAULT_MODEL = 'gpt-4o';
 
 /**
  * POST /api/ai/chat?store=<slug>
@@ -38,21 +40,31 @@ export const POST: RequestHandler = async (event) => {
   }
 
   const storeName = getSetting('display_name') || slug;
-  const defaultPrompt = `You are a helpful store admin assistant for "${storeName}". 
-You have access to live store tools — use them proactively to answer questions about products, orders, inventory, promotions, and reviews. 
+  const defaultPrompt = `You are a helpful store admin assistant for "${storeName}".
+You have access to live store tools — use them proactively. Never ask for permission before using a tool; just use it.
 
-If a user asks for ideas (like "generate categories for a tech store"), use your general knowledge to brainstorm and propose a comprehensive structure. 
+**Image workflow — do this automatically, without asking:**
+When the seller asks to "find images", "add images", "download images", or anything similar:
+1. Call search_products to get the list of products (or use the ones already mentioned).
+2. For each product, call search_images("product name") to find image URLs from the internet.
+3. Immediately call download_image(product_id, imageUrl, confirm=true) to attach the best result.
+4. Report what you did — do NOT ask the user to pick URLs or confirm each step.
 
-**Crucial Capabilities:**
-- You CAN create categories independently of products using the "create_category" tool.
-- You CAN build hierarchical structures by using the "parent_id" parameter in "create_category".
-- You don't have a live web browser, but you should use your internal training data to suggest best e-commerce practices.
+Do the whole thing in one go. The user wants action, not a list of questions.
 
-Always look up real data from the store before guessing, but be creative and helpful when the user asks for suggestions or planning assistance.`;
+**Other capabilities:**
+- search_images: searches Google Images — use it any time a product needs an image. No Serper key? Tell the user to add one in Settings → AI/LLM.
+- fetch_url: fetches any public webpage and returns its text + image URLs. Use for product pages on Amazon, Shopee, Lazada, etc.
+- download_image(product_id, url, confirm=true): downloads and attaches an image to a product.
+- create_category with parent_id: builds full category hierarchies.
+
+Always look up real store data before guessing. Be creative and action-oriented.`;
 
   const systemPrompt = getSetting('ai_system_prompt') || defaultPrompt;
 
   const isClaude = body.model.startsWith('claude-');
+  const isGemini = body.model.startsWith('gemini-');
+  const isOpenai = !isClaude && !isGemini;
 
   // ─── Claude (Anthropic) — full tool-use loop ─────────────────────────────
   if (isClaude) {
@@ -136,6 +148,83 @@ Always look up real data from the store before guessing, but be creative and hel
       return json({ reply: reply || '(no response)' });
     } catch (err: any) {
       return json({ error: err.message ?? 'Claude API error' }, { status: 502 });
+    }
+  }
+
+  // ─── OpenAI — function-calling loop ─────────────────────────────────────
+  if (isOpenai) {
+    const apiKey = getSetting('openai_api_key');
+    if (!apiKey) return json({ error: 'OpenAI API key not configured for this store.' }, { status: 400 });
+
+    try {
+      const { default: OpenAI } = await import('openai');
+      const client = new OpenAI({ apiKey });
+
+      const msgs: any[] = body.messages.map((m: any) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      // Add system prompt
+      msgs.unshift({ role: 'system', content: systemPrompt });
+      
+      // Handle file content for the last user message
+      const lastUserMsg = msgs[msgs.length - 1];
+      if (body.file) {
+        if (body.file.mimeType.startsWith('image/')) {
+          lastUserMsg.content = [
+            { type: 'text', text: lastUserMsg.content },
+            { type: 'image_url', image_url: { url: `data:${body.file.mimeType};base64,${body.file.data}` } },
+          ];
+        } else if (body.file.mimeType === 'text/csv' || body.file.name.endsWith('.csv') || body.file.mimeType.startsWith('text/')) {
+          const decoded = Buffer.from(body.file.data, 'base64').toString('utf-8');
+          lastUserMsg.content += `\n\n[Attached File: ${body.file.name}]\nFILE CONTENT:\n${decoded}`;
+        } else {
+          lastUserMsg.content += `\n\n[Attached file: ${body.file.name}]`;
+        }
+      }
+
+      for (let round = 0; round < 10; round++) {
+        const response = await client.chat.completions.create({
+          model: body.model || OPENAI_DEFAULT_MODEL,
+          messages: msgs,
+          tools: openaiTools as any,
+          tool_choice: 'auto',
+        });
+
+        const choice = response.choices[0];
+        if (!choice.message.tool_calls) {
+          return json({ reply: choice.message.content || '(no response)' });
+        }
+
+        msgs.push(choice.message); // Add assistant's tool call message
+
+        const toolResults: any[] = [];
+        for (const toolCall of choice.message.tool_calls) {
+          let toolOutput: string;
+          try {
+            toolOutput = await executeStoreTool(
+              toolCall.function.name,
+              JSON.parse(toolCall.function.arguments),
+              db
+            );
+          } catch (err: any) {
+            toolOutput = `Tool error: ${err.message}`;
+          }
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: 'tool',
+            name: toolCall.function.name,
+            content: toolOutput,
+          });
+        }
+        msgs.push(...toolResults); // Add tool results
+      }
+      
+      return json({ reply: '(tool use loop exceeded max rounds)' });
+
+    } catch (err: any) {
+      return json({ error: err.message ?? 'OpenAI API error' }, { status: 502 });
     }
   }
 

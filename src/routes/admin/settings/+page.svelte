@@ -15,9 +15,11 @@
 
   // Gateway sync status for AI config
   let aiGatewayStatus = $state<'idle' | 'synced' | 'failed'>('idle');
+  let aiGatewayReason = $state<string>('');
 
   let showClaudeKey          = $state(false);
   let showGeminiKey          = $state(false);
+  let showOpenaiKey          = $state(false);
   let showSerperKey          = $state(false);
   let showTelegramKey        = $state(false);
   let showPaymentApiKey      = $state(false);
@@ -26,6 +28,7 @@
   // Inputs for sensitive fields (not in storeSettings since server masks them)
   let claudeKeyInput          = $state('');
   let geminiKeyInput          = $state('');
+  let openaiKeyInput          = $state('');
   let serperKeyInput          = $state('');
   let telegramKeyInput        = $state('');
   let paymentApiKeyInput      = $state('');
@@ -38,7 +41,11 @@
     const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
       headers: { Authorization: `Bearer ${token()}` }
     });
-    if (res.ok) storeSettings = await res.json();
+    if (res.ok) {
+      storeSettings = await res.json();
+      // If a custom model name was previously saved (not in any preset list), open custom mode.
+      customModelMode = savedModelIsCustom();
+    }
   }
 
   async function loadServer() {
@@ -70,10 +77,11 @@
 
   async function saveAi() {
     if (!activeStore.slug) return;
-    saving = true; saved = ''; error = ''; aiGatewayStatus = 'idle';
+    saving = true; saved = ''; error = ''; aiGatewayStatus = 'idle'; aiGatewayReason = '';
     const payload: Record<string, string> = {};
     if (claudeKeyInput)   payload.claude_api_key   = claudeKeyInput;
     if (geminiKeyInput)   payload.gemini_api_key   = geminiKeyInput;
+    if (openaiKeyInput)   payload.openai_api_key   = openaiKeyInput;
     if (serperKeyInput)   payload.serper_api_key   = serperKeyInput;
     payload.ai_enabled      = String(storeSettings.ai_enabled ?? '0');
     payload.ai_provider     = val('ai_provider', 'claude');
@@ -88,7 +96,7 @@
     saving = false;
     if (res.ok) {
       storeSettings = await res.json();
-      claudeKeyInput = ''; geminiKeyInput = ''; serperKeyInput = '';
+      claudeKeyInput = ''; geminiKeyInput = ''; openaiKeyInput = ''; serperKeyInput = '';
       saved = 'ai';
       // Poll gateway sync status — the server push is fire-and-forget, give it 1.5s
       setTimeout(async () => {
@@ -98,12 +106,14 @@
             headers: { Authorization: `Bearer ${token()}` }
           });
           if (gwRes.ok) {
-            const { synced } = await gwRes.json();
+            const { synced, reason } = await gwRes.json();
             aiGatewayStatus = synced ? 'synced' : 'failed';
+            aiGatewayReason = reason ?? '';
           } else {
             aiGatewayStatus = 'failed';
+            aiGatewayReason = 'unreachable';
           }
-        } catch { aiGatewayStatus = 'failed'; }
+        } catch { aiGatewayStatus = 'failed'; aiGatewayReason = 'unreachable'; }
       }, 1500);
       setTimeout(() => (saved = ''), 3000);
     } else { const d = await res.json(); error = d.error ?? 'Save failed'; }
@@ -174,6 +184,54 @@
     if (v === undefined || v === null) return fallback;
     return String(v);
   }
+
+  // Preset model lists per provider. Empty string = use provider default.
+  const PROVIDER_MODELS: Record<string, Array<[string, string]>> = {
+    claude: [
+      ['', 'Default (claude-sonnet-4-5)'],
+      ['claude-opus-4-5', 'claude-opus-4-5 — Most capable'],
+      ['claude-sonnet-4-5', 'claude-sonnet-4-5'],
+      ['claude-haiku-4-5', 'claude-haiku-4-5 — Fast'],
+      ['claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-20241022 (Legacy)'],
+      ['claude-3-haiku-20240307', 'claude-3-haiku-20240307 (Legacy)'],
+    ],
+    gemini: [
+      ['', 'Default (gemini-1.5-flash)'],
+      ['gemini-2.0-flash', 'gemini-2.0-flash'],
+      ['gemini-2.0-flash-lite', 'gemini-2.0-flash-lite — Fast'],
+      ['gemini-1.5-pro', 'gemini-1.5-pro'],
+      ['gemini-1.5-flash', 'gemini-1.5-flash'],
+    ],
+    openai: [
+      ['', 'Default (gpt-4o-mini)'],
+      ['gpt-4o', 'gpt-4o'],
+      ['gpt-4o-mini', 'gpt-4o-mini — Fast'],
+      ['o1', 'o1'],
+      ['o1-mini', 'o1-mini'],
+      ['gpt-4-turbo', 'gpt-4-turbo (Legacy)'],
+    ],
+  };
+
+  // When provider changes: clear the model and exit custom mode.
+  function setProvider(pid: string) {
+    set('ai_provider', pid);
+    set('ai_model', '');
+    customModelMode = false;
+  }
+
+  // True when the currently saved model is not a known preset (e.g. loaded from DB).
+  function savedModelIsCustom(): boolean {
+    const provider = val('ai_provider', 'claude');
+    const model = val('ai_model');
+    if (!model) return false;
+    const presets = PROVIDER_MODELS[provider] ?? [];
+    return !presets.some(([v]) => v === model);
+  }
+
+  // State: whether we're showing the custom model text input.
+  // Set to true when: the user picks "Custom…" from the dropdown, OR the loaded model
+  // isn't in the preset list (e.g. a custom model name was saved previously).
+  let customModelMode = $state(false);
 
   onMount(() => { loadStore(); loadServer(); });
 </script>
@@ -259,9 +317,9 @@
         <div>
           <p class="block text-sm font-medium text-gray-700 mb-2">Active AI Provider</p>
           <div class="flex gap-3">
-            {#each [['claude','🤖 Claude'],['gemini','✨ Gemini']] as [pid, label]}
+            {#each [['claude','🤖 Claude'],['gemini','✨ Gemini'], ['openai', '⚫️ OpenAI']] as [pid, label]}
               <button
-                onclick={() => set('ai_provider', pid)}
+                onclick={() => setProvider(pid)}
                 class="flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors
                   {val('ai_provider','claude') === pid
                     ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
@@ -272,16 +330,40 @@
           <p class="mt-1 text-xs text-gray-500">The Telegram bot will use this provider for AI chat responses.</p>
         </div>
 
-        <!-- AI Model override -->
+        <!-- AI Model selector -->
         <div>
-          <label for="ai-model" class="block text-sm font-medium text-gray-700 mb-1">Model <span class="font-normal text-gray-400">(optional override)</span></label>
-          <input id="ai-model" type="text"
-            value={val('ai_model')}
-            oninput={(e) => set('ai_model', (e.target as HTMLInputElement).value)}
-            placeholder={val('ai_provider','claude') === 'gemini' ? 'gemini-1.5-flash' : 'claude-haiku-4-5-20251001'}
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <p class="mt-1 text-xs text-gray-500">Leave blank to use the default model for the selected provider.</p>
+          <label for="ai-model" class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+          <!-- Preset dropdown — always visible; switches to custom text input when "Custom…" is chosen -->
+          <select id="ai-model"
+            value={customModelMode ? '__custom__' : val('ai_model')}
+            onchange={(e) => {
+              const v = (e.target as HTMLSelectElement).value;
+              if (v === '__custom__') {
+                customModelMode = true;
+                // Leave ai_model as-is so the text input pre-fills with whatever was there
+              } else {
+                customModelMode = false;
+                set('ai_model', v);
+              }
+            }}
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 {customModelMode ? 'mb-2' : ''}"
+          >
+            {#each (PROVIDER_MODELS[val('ai_provider','claude')] ?? PROVIDER_MODELS.claude) as [v, label]}
+              <option value={v}>{label}</option>
+            {/each}
+            <option value="__custom__">Custom…</option>
+          </select>
+          {#if customModelMode}
+            <input type="text"
+              value={val('ai_model')}
+              oninput={(e) => set('ai_model', (e.target as HTMLInputElement).value)}
+              placeholder="e.g. claude-3-5-sonnet-20241022"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">Type any model ID. Select a preset above to go back to the list.</p>
+          {:else}
+            <p class="mt-1 text-xs text-gray-500">Leave at "Default" to use the recommended model for the selected provider.</p>
+          {/if}
         </div>
 
         <!-- Claude -->
@@ -347,6 +429,40 @@
               <button type="button" onclick={() => (showGeminiKey = !showGeminiKey)}
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {#if showGeminiKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- OpenAI -->
+        <div class="rounded-xl border border-gray-200 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-gray-700 flex items-center justify-center">
+                <span class="text-sm">⚫️</span>
+              </div>
+              <span class="text-sm font-medium text-gray-800">OpenAI</span>
+            </div>
+            {#if storeSettings.openai_api_key_set}
+              <span class="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">✓ Connected</span>
+            {:else}
+              <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Not connected</span>
+            {/if}
+          </div>
+          <div>
+            <label for="ai-openai" class="block text-xs font-medium text-gray-600 mb-1">
+              {storeSettings.openai_api_key_set ? 'Replace API Key' : 'API Key'}
+            </label>
+            <div class="relative">
+              <input id="ai-openai"
+                type={showOpenaiKey ? 'text' : 'password'}
+                bind:value={openaiKeyInput}
+                placeholder={storeSettings.openai_api_key_set ? 'Paste new key to replace…' : 'sk-…'}
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 pr-16 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button type="button" onclick={() => (showOpenaiKey = !showOpenaiKey)}
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {#if showOpenaiKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
               </button>
             </div>
           </div>
@@ -418,11 +534,22 @@
           </button>
           {#if aiGatewayStatus === 'synced'}
             <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Synced to gateway
+              <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Synced to gateway ✓
             </span>
           {:else if aiGatewayStatus === 'failed'}
             <span class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Gateway unreachable — saved locally
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              {#if aiGatewayReason === 'not_registered'}
+                Store not registered in gateway — check Retailers panel
+              {:else if aiGatewayReason === 'auth_failed'}
+                Gateway key mismatch — re-register store and update key
+              {:else if aiGatewayReason === 'no_gateway_key'}
+                No gateway key — link store to gateway first
+              {:else if aiGatewayReason === 'no_api_key'}
+                Saved locally — push to gateway may still be in-flight
+              {:else}
+                Gateway unreachable — saved locally
+              {/if}
             </span>
           {/if}
         </div>

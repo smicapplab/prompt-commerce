@@ -20,6 +20,7 @@
   let modelsLoading = $state(true);
   let hasClaudeKey  = $state(false);
   let hasGeminiKey  = $state(false);
+  let hasOpenaiKey  = $state(false);
   let settingsChecked = $state(false);
 
   // File attachment
@@ -40,6 +41,7 @@
       const data = await res.json();
       hasClaudeKey = !!data.claude_api_key_set;
       hasGeminiKey = !!data.gemini_api_key_set;
+      hasOpenaiKey = !!data.openai_api_key_set;
     }
     settingsChecked = true;
   }
@@ -79,6 +81,21 @@
       } catch { /* ignore */ }
     }
 
+    // Load OpenAI models
+    if (hasOpenaiKey) {
+      try {
+        const res = await fetch(`/api/ai/models/openai`, {
+          headers: { Authorization: `Bearer ${token()}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          for (const m of (data.models ?? [])) {
+            all.push({ id: m.id, displayName: m.displayName, provider: 'openai' });
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
     models = all;
     if (all.length > 0 && !selectedModel) {
       selectedModel = all[0].id;
@@ -90,7 +107,7 @@
     if (!activeStore.slug) { goto('/admin'); return; }
     chatStore.load(activeStore.slug);
     await loadSettings();
-    if (hasClaudeKey || hasGeminiKey) {
+    if (hasClaudeKey || hasGeminiKey || hasOpenaiKey) {
       await loadModels();
     }
   });
@@ -204,7 +221,7 @@
 
   $effect(() => {
     // Re-check models whenever keys change
-    if (settingsChecked && (hasClaudeKey || hasGeminiKey)) {
+    if (settingsChecked && (hasClaudeKey || hasGeminiKey || hasOpenaiKey)) {
       loadModels();
     }
   });
@@ -212,6 +229,7 @@
   // Group models for display in selector
   const geminiModels = $derived(models.filter(m => m.provider === 'gemini'));
   const claudeModels = $derived(models.filter(m => m.provider === 'claude'));
+  const openaiModels = $derived(models.filter(m => m.provider === 'openai'));
 
   function modelLabel(id: string) {
     return models.find(m => m.id === id)?.displayName ?? id;
@@ -252,6 +270,13 @@
             {#if claudeModels.length > 0}
               <optgroup label="Anthropic Claude">
                 {#each claudeModels as m}
+                  <option value={m.id}>{m.displayName}</option>
+                {/each}
+              </optgroup>
+            {/if}
+            {#if openaiModels.length > 0}
+              <optgroup label="OpenAI">
+                {#each openaiModels as m}
                   <option value={m.id}>{m.displayName}</option>
                 {/each}
               </optgroup>
@@ -452,17 +477,16 @@
       </div>
 
       <p class="text-center text-xs text-gray-400 mt-2">
-        {#if models.length > 0}
-          Using <span class="font-medium">{modelLabel(selectedModel)}</span>
-          · <span class="text-violet-500 font-medium">🔗 Connected to {activeStore.name}</span>
-          · AI can make mistakes — verify important info
-        {:else if settingsChecked && (hasClaudeKey || hasGeminiKey)}
-          Loading models…
-        {:else if settingsChecked}
-          No AI keys configured
-        {/if}
-      </p>
-    </div>
+      {#if models.length > 0}
+        Using <span class="font-medium">{modelLabel(selectedModel)}</span>
+        · <span class="text-violet-500 font-medium">🔗 Connected to {activeStore.name}</span>
+        · AI can make mistakes — verify important info
+      {:else if settingsChecked && (hasClaudeKey || hasGeminiKey || hasOpenaiKey)}
+        Loading models…
+      {:else if settingsChecked}
+        No AI keys configured
+      {/if}
+      </p>    </div>
   </div>
 </div>
 
