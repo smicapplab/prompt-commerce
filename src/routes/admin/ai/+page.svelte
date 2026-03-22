@@ -4,6 +4,7 @@
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
   import { chatStore, type Message } from '$lib/stores/chatStore.svelte.js';
   import { Bot, Send, Paperclip, Trash2, Settings, X, ChevronDown } from 'lucide-svelte';
+  import { marked } from 'marked';
 
   interface ModelOption {
     id: string;
@@ -359,8 +360,8 @@
               <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 mt-0.5">
                 <Bot class="w-3.5 h-3.5 text-white" />
               </div>
-              <div class="max-w-[80%] bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-sm text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                {msg.content}
+              <div class="max-w-[80%] bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-sm text-sm text-gray-800 leading-relaxed markdown-content">
+                {@html marked.parse(msg.content)}
               </div>
             </div>
           {/if}
@@ -464,3 +465,36 @@
     </div>
   </div>
 </div>
+
+<style>
+  .markdown-content :global(p) {
+    margin-bottom: 0.75rem;
+  }
+  .markdown-content :global(p:last-child) {
+    margin-bottom: 0;
+  }
+  .markdown-content :global(ul), .markdown-content :global(ol) {
+    margin-bottom: 0.75rem;
+    padding-left: 1.25rem;
+  }
+  .markdown-content :global(ul) {
+    list-style-type: disc;
+  }
+  .markdown-content :global(ol) {
+    list-style-type: decimal;
+  }
+  .markdown-content :global(li) {
+    margin-bottom: 0.25rem;
+  }
+  .markdown-content :global(strong) {
+    font-weight: 600;
+    color: #111827;
+  }
+  .markdown-content :global(code) {
+    background-color: #f3f4f6;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.875em;
+  }
+</style>
