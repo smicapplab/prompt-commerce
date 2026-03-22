@@ -56,6 +56,14 @@ Products and categories carry two sync-tracking columns: `is_synced` (dirty flag
 - **Dual provider** — switch between Claude, Gemini, and OpenAI per store. Models are loaded dynamically based on which API keys are configured.
 - **Image Auto-Caching** — when adding products via AI, the system automatically downloads and caches images from URLs to the local `data/uploads` folder for persistence.
 
+### Order Management & Lifecycle
+
+- **Standardized lifecycle** — orders follow a strict progression: `pending` → `paid` → `picking` → `packing` → `ready_for_pickup` → `in_transit` → `delivered`. Supports `cancelled` and `refunded` states.
+- **Visual status timeline** — each order detail page shows a clear progress indicator of where the order is in the fulfillment process.
+- **Quick actions** — advance orders with a single click (e.g., "Mark as Packed", "Ship Order") based on their current status.
+- **Manual order creation** — create orders directly from the admin panel by searching the product catalog and specifying buyer details.
+- **Filtering & Search** — find orders by status, buyer reference, or internal notes.
+
 ### Delta Sync & Config Push
 
 Products and categories track whether they have been pushed to the gateway:
@@ -231,7 +239,6 @@ npm run db:migrate && npm run build && pm2 reload prompt-commerce
 ## Roadmap / TODO
 
 - [ ] **Vector search** — generate embeddings for products on sync using a Hugging Face model (`all-MiniLM-L6-v2` via `@xenova/transformers` or HF Inference API), store in pgvector, enable semantic search like "apple laptop" → "Apple MacBook Pro" without requiring exact tag matches.
-- [ ] Order management UI — create/edit orders from the admin panel
 - [ ] Webhook support — notify external services on product/order changes
 - [ ] Multi-language product descriptions
 - [ ] Reviews and ratings integration

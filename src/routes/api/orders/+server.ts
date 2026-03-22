@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from './$types.js';
 import { requireAuth } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
-export const GET: RequestHandler = async (event) => {
+export const GET: RequestHandler = async (event: any) => {
   const authResult = await requireAuth(event);
   if (authResult instanceof Response) return authResult;
 
@@ -60,7 +60,7 @@ export const GET: RequestHandler = async (event) => {
   return json({ orders: enriched, totalCount: count });
 };
 
-export const POST: RequestHandler = async (event) => {
+export const POST: RequestHandler = async (event: any) => {
   const authResult = await requireAuth(event);
   if (authResult instanceof Response) return authResult;
 
@@ -68,37 +68,47 @@ export const POST: RequestHandler = async (event) => {
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
   const body = await event.request.json();
-  const { buyer_ref, channel, status, total, notes, items } = body;
+  const { items, ...orderBody } = body;
 
   const db = getStoreDb(store);
   const now = new Date().toISOString();
 
-  const createOrder = db.transaction(() => {
+  const createOrder = db.transaction((orderData: any, itemsData: any[]) => {
     const result = db.prepare(`
       INSERT INTO orders (buyer_ref, channel, status, total, notes, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
-      buyer_ref || null,
-      channel || 'telegram',
-      status || 'pending',
-      total || null,
-      notes || null,
+      orderData.buyer_ref || null,
+      orderData.channel || 'manual',
+      orderData.status || 'pending',
+      orderData.total || null,
+      orderData.notes || null,
       now, now
     );
 
     const orderId = result.lastInsertRowid;
-    if (Array.isArray(items)) {
-      for (const item of items) {
+    let calculatedTotal = 0;
+
+    if (Array.isArray(itemsData)) {
+      for (const item of itemsData) {
+        const price = item.price || 0;
+        const qty = item.quantity || 1;
         db.prepare(`
           INSERT INTO order_items (order_id, product_id, title, price, quantity)
           VALUES (?, ?, ?, ?, ?)
-        `).run(orderId, item.product_id || null, item.title, item.price, item.quantity || 1);
+        `).run(orderId, item.product_id || null, item.title, price, qty);
+        calculatedTotal += price * qty;
+      }
+
+      // If no total was provided, use the calculated one
+      if (orderData.total === undefined || orderData.total === null) {
+        db.prepare(`UPDATE orders SET total = ? WHERE id = ?`).run(calculatedTotal, orderId);
       }
     }
     return orderId;
   });
 
-  const orderId = createOrder();
+  const orderId = createOrder(orderBody, items);
   const order = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(orderId);
   const orderItems = db.prepare(`
     SELECT oi.*, p.title as product_title
