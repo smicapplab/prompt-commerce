@@ -52,7 +52,7 @@
 
   function switchStore() {
     activeStore.clear();
-    goto('/admin');
+    goto('/admin?switch=1');
   }
 
   // Store-scoped nav (only shown when a store is active)

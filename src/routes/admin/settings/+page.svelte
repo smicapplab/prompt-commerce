@@ -211,7 +211,7 @@
 
         <!-- Provider selector -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Active AI Provider</label>
+          <p class="block text-sm font-medium text-gray-700 mb-2">Active AI Provider</p>
           <div class="flex gap-3">
             {#each [['claude','🤖 Claude'],['gemini','✨ Gemini']] as [pid, label]}
               <button

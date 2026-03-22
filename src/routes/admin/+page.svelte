@@ -32,8 +32,9 @@
 
   onMount(async () => {
     await load();
-    // Auto-enter if only one store exists
-    if (stores.length === 1) enter(stores[0]);
+    // Auto-enter if only one store exists — but NOT when the user clicked "Switch"
+    const isSwitching = new URLSearchParams(window.location.search).has('switch');
+    if (stores.length === 1 && !isSwitching) enter(stores[0]);
   });
 </script>
 
