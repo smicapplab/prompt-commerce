@@ -41,7 +41,7 @@ export const GET: RequestHandler = async (event) => {
 		SELECT p.*, c.name AS category_name
 		FROM products p
 		LEFT JOIN categories c ON p.category_id = c.id
-		WHERE 1=1
+		WHERE p.deleted_at IS NULL
 	`;
 	const params: any[] = [];
 
@@ -65,7 +65,7 @@ export const GET: RequestHandler = async (event) => {
 		tags: p.tags ? JSON.parse(p.tags) : []
 	}));
 
-	let countQuery = `SELECT COUNT(*) as count FROM products WHERE 1=1`;
+	let countQuery = `SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL`;
 	const countParams: any[] = [];
 	if (q) {
 		countQuery += ` AND (title LIKE ? OR sku LIKE ? OR description LIKE ?)`;

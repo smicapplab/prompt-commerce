@@ -5,6 +5,7 @@ import { registerProductTools } from './tools/products.js';
 import { registerCategoryTools } from './tools/categories.js';
 import { registerPromotionTools } from './tools/promotions.js';
 import { registerReviewTools } from './tools/reviews.js';
+import { registerOrderTools } from './tools/orders.js';
 import { getRegistryDb, getStoreDb } from './db/client.js';
 import type Database from 'better-sqlite3';
 
@@ -19,6 +20,7 @@ function createMcpServer(storeDb: Database.Database, storeSlug: string): McpServ
   registerCategoryTools(mcpServer, storeDb);
   registerPromotionTools(mcpServer, storeDb);
   registerReviewTools(mcpServer, storeDb);
+  registerOrderTools(mcpServer, storeDb);
 
   return mcpServer;
 }

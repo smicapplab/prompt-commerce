@@ -15,7 +15,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { initRegistrySchema } from './schema.js';
+import { initRegistrySchema, initStoreSchema } from './schema.js';
 import { DATA_DIR } from './client.js';
 import bcrypt from 'bcryptjs';
 
@@ -59,5 +59,31 @@ if (userCount === 0) {
 }
 
 db.close();
+
+// ── Migrate all existing per-store DBs ────────────────────────────────────────
+// Adds is_synced / deleted_at columns if they don't exist yet.
+const storesDir = path.join(DATA_DIR, 'stores');
+if (fs.existsSync(storesDir)) {
+  const storeFiles = fs.readdirSync(storesDir).filter(f => f.endsWith('.db'));
+  for (const file of storeFiles) {
+    const storePath = path.join(storesDir, file);
+    const sdb = new Database(storePath);
+    // Re-apply full schema (CREATE TABLE IF NOT EXISTS is safe)
+    initStoreSchema(sdb);
+    // Add new columns to existing tables — SQLite doesn't support IF NOT EXISTS
+    // for ALTER TABLE, so we catch the "duplicate column" error and continue.
+    for (const stmt of [
+      'ALTER TABLE products   ADD COLUMN is_synced  INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE products   ADD COLUMN deleted_at TEXT    DEFAULT NULL',
+      'ALTER TABLE categories ADD COLUMN is_synced  INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE categories ADD COLUMN deleted_at TEXT    DEFAULT NULL',
+    ]) {
+      try { sdb.exec(stmt); } catch { /* column already exists */ }
+    }
+    sdb.close();
+    console.log(`✔  Migrated store DB: ${file}`);
+  }
+}
+
 console.log('\n🚀  Migration complete.');
 console.log(`   Data directory: ${DATA_DIR}`);

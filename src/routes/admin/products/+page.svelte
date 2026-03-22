@@ -1,10 +1,37 @@
 <script>
 	import { onMount } from 'svelte';
-	import { ChevronLeft, ChevronRight, Plus, Edit2, Eye, EyeOff, Trash2, X } from 'lucide-svelte';
+	import { ChevronLeft, ChevronRight, Plus, Edit2, Eye, EyeOff, Trash2, X, RefreshCw } from 'lucide-svelte';
 	import { activeStore } from '$lib/stores/activeStore.svelte.js';
+	import { fetchSyncStatus, syncToGateway as doSync } from '$lib/syncGateway.js';
 
 	let products = $state([]);
 	let loading = $state(true);
+
+	// ── Sync banner state ──────────────────────────────────────────────────────
+	let dirtyCount  = $state(0);
+	let syncing     = $state(false);
+	let syncSuccess = $state('');
+	let syncError   = $state('');
+
+	async function loadDirtyCount() {
+		if (!activeStore.slug) return;
+		const s = await fetchSyncStatus(activeStore.slug).catch(() => null);
+		dirtyCount = s?.dirty ?? 0;
+	}
+
+	async function runSync() {
+		if (!activeStore.slug || syncing) return;
+		syncing = true; syncSuccess = ''; syncError = '';
+		try {
+			syncSuccess = await doSync(activeStore.slug);
+			dirtyCount = 0;
+			setTimeout(() => (syncSuccess = ''), 5000);
+		} catch (e) {
+			syncError = e?.message ?? 'Sync failed';
+			setTimeout(() => (syncError = ''), 6000);
+		}
+		syncing = false;
+	}
 	let currentPage = $state(1);
 	let totalCount = $state(0);
 	let itemsPerPage = 20;
@@ -232,6 +259,7 @@
 				showToast(isEditing ? 'Product updated' : 'Product created', 'success');
 				showModal = false;
 				loadProducts();
+				loadDirtyCount();
 			} else {
 				showToast('Failed to save product', 'error');
 			}
@@ -253,6 +281,7 @@
 			if (response.ok) {
 				showToast('Product deleted', 'success');
 				loadProducts();
+				loadDirtyCount();
 			} else {
 				showToast('Failed to delete product', 'error');
 			}
@@ -294,6 +323,7 @@
 		if (activeStore.slug) {
 			loadCategories();
 			loadProducts();
+			loadDirtyCount();
 		}
 	});
 
@@ -307,9 +337,41 @@
 
 <div class="min-h-screen bg-gray-50 p-8">
 	<div class="max-w-7xl mx-auto">
-		<div class="flex items-center justify-between mb-8">
+		<div class="flex items-center justify-between mb-4">
 			<h1 class="text-3xl font-bold text-gray-900">Products</h1>
 		</div>
+
+		<!-- Sync banner -->
+		{#if syncing}
+			<div class="flex items-center gap-3 mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+				<RefreshCw size={15} class="animate-spin shrink-0" />
+				<span>Syncing changes to gateway…</span>
+			</div>
+		{:else if syncSuccess}
+			<div class="flex items-center gap-3 mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+				<span class="shrink-0">✓</span>
+				<span>{syncSuccess}</span>
+			</div>
+		{:else if syncError}
+			<div class="flex items-center gap-3 mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+				<span class="shrink-0">⚠</span>
+				<span>{syncError}</span>
+			</div>
+		{:else if dirtyCount > 0}
+			<div class="flex items-center justify-between mb-6 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm">
+				<span class="text-orange-800">
+					<strong>{dirtyCount}</strong> unsaved change{dirtyCount !== 1 ? 's' : ''} not yet synced to the gateway.
+					Customers won't see them until you sync.
+				</span>
+				<button
+					onclick={runSync}
+					class="ml-4 shrink-0 inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700"
+				>
+					<RefreshCw size={12} />
+					Sync now
+				</button>
+			</div>
+		{/if}
 
 		<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
 			<div class="flex gap-4 mb-4">

@@ -15,6 +15,7 @@ export const GET: RequestHandler = async (event) => {
 		SELECT c.*, p.name as parent_name
 		FROM categories c
 		LEFT JOIN categories p ON c.parent_id = p.id
+		WHERE c.deleted_at IS NULL
 		ORDER BY c.name
 	`).all() as any[];
 

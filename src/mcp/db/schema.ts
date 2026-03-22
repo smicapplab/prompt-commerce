@@ -59,6 +59,8 @@ export function initStoreSchema(db: Database.Database): void {
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT    NOT NULL UNIQUE,
       parent_id  INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      is_synced  INTEGER NOT NULL DEFAULT 0,  -- 0=dirty (needs push), 1=synced
+      deleted_at TEXT    DEFAULT NULL,        -- NULL=active; timestamp=soft-deleted
       created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -74,6 +76,8 @@ export function initStoreSchema(db: Database.Database): void {
       tags           TEXT,
       images         TEXT,
       active         INTEGER NOT NULL DEFAULT 1,
+      is_synced      INTEGER NOT NULL DEFAULT 0,  -- 0=dirty (needs push), 1=synced
+      deleted_at     TEXT    DEFAULT NULL,        -- NULL=active; timestamp=soft-deleted
       created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
     );

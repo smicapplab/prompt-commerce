@@ -102,6 +102,7 @@ export const PATCH: RequestHandler = async (event) => {
 	if (allImages.length > 0 || imageUrls !== '') { updates.push('images = ?'); values.push(JSON.stringify(allImages)); }
 	if (active !== null) { updates.push('active = ?'); values.push(active); }
 
+	updates.push('is_synced = 0');   // mark dirty — will be picked up by next sync
 	updates.push('updated_at = ?');
 	values.push(new Date().toISOString());
 	values.push(id);
@@ -134,7 +135,10 @@ export const DELETE: RequestHandler = async (event) => {
 	const existing = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id);
 	if (!existing) return json({ error: 'Product not found' }, { status: 404 });
 
-	// Soft delete
-	db.prepare(`UPDATE products SET active = 0 WHERE id = ?`).run(id);
+	// Soft delete — preserves the row so the next delta sync can tell the gateway to remove it
+	db.prepare(`
+		UPDATE products SET deleted_at = datetime('now'), is_synced = 0, active = 0, updated_at = ?
+		WHERE id = ?
+	`).run(new Date().toISOString(), id);
 	return new Response(null, { status: 204 });
 };

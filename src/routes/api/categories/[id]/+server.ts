@@ -25,6 +25,7 @@ export const PATCH: RequestHandler = async (event) => {
 	if (parent_id !== undefined) { updates.push('parent_id = ?'); values.push(parent_id || null); }
 	if (updates.length === 0) return json({ error: 'No fields to update' }, { status: 400 });
 
+	updates.push('is_synced = 0');  // mark dirty
 	values.push(id);
 	db.prepare(`UPDATE categories SET ${updates.join(', ')} WHERE id = ?`).run(...values);
 
@@ -50,6 +51,7 @@ export const DELETE: RequestHandler = async (event) => {
 	const existing = db.prepare(`SELECT * FROM categories WHERE id = ?`).get(id);
 	if (!existing) return json({ error: 'Category not found' }, { status: 404 });
 
-	db.prepare(`DELETE FROM categories WHERE id = ?`).run(id);
+	// Soft delete — row stays so the next delta sync can tell the gateway to remove it
+	db.prepare(`UPDATE categories SET deleted_at = datetime('now'), is_synced = 0 WHERE id = ?`).run(id);
 	return new Response(null, { status: 204 });
 };

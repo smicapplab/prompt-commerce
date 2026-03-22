@@ -19,6 +19,7 @@ const STORE_KEYS = [
   'claude_api_key',
   'gemini_api_key',
   'serper_api_key',
+  'ai_provider',
   'ai_model',
   'ai_enabled',
   'ai_system_prompt',
@@ -103,5 +104,59 @@ export const PATCH: RequestHandler = async (event) => {
   });
 
   updateMany(entries);
+
+  // ── Fire-and-forget: push AI config to gateway when store AI settings change ──
+  if (slug) {
+    const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model']);
+    const hasAiChange = entries.some(([key]) => AI_KEYS.has(key));
+
+    if (hasAiChange) {
+      void (async () => {
+        try {
+          const registry = getDb();
+
+          const gatewayUrlRow = registry
+            .prepare('SELECT value FROM settings WHERE key = ?')
+            .get('gateway_url') as { value: string } | undefined;
+          const gatewayUrl = gatewayUrlRow?.value?.replace(/\/$/, '');
+          if (!gatewayUrl) return;
+
+          const storeRow = registry
+            .prepare('SELECT gateway_key FROM stores WHERE slug = ? AND active = 1')
+            .get(slug) as { gateway_key: string | null } | undefined;
+          if (!storeRow?.gateway_key) return;
+
+          // Read all current AI settings from the store DB (post-save)
+          const storeDb = getStoreDb(slug);
+          const settingRows = storeDb
+            .prepare(`SELECT key, value FROM settings WHERE key IN ('ai_provider','gemini_api_key','claude_api_key','ai_model')`)
+            .all() as { key: string; value: string }[];
+          const s: Record<string, string> = {};
+          for (const r of settingRows) s[r.key] = r.value;
+
+          const provider = s['ai_provider'] || 'claude';
+          const apiKey   = provider === 'gemini' ? s['gemini_api_key'] : s['claude_api_key'];
+          if (!apiKey) return; // nothing useful to push yet
+
+          await fetch(`${gatewayUrl}/api/stores/${slug}/ai-config`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-gateway-key': storeRow.gateway_key,
+            },
+            body: JSON.stringify({
+              aiProvider: provider,
+              aiApiKey:   apiKey,
+              aiModel:    s['ai_model'] || null,
+            }),
+          });
+        } catch {
+          // Non-blocking — log but don't fail the response
+          console.error('[settings] Failed to push AI config to gateway');
+        }
+      })();
+    }
+  }
+
   return json(readSettings(db, !!slug));
 };

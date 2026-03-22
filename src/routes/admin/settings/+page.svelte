@@ -8,9 +8,9 @@
   // Server settings (always available)
   let serverSettings = $state<Record<string, string>>({});
 
-  let saving = $state(false);
-  let saved  = $state('');   // key of tab that just saved
-  let error  = $state('');
+  let saving  = $state(false);
+  let saved   = $state('');   // key of tab that just saved
+  let error   = $state('');
   let activeTab = $state<'store' | 'ai' | 'telegram' | 'server'>('store');
 
   let showClaudeKey   = $state(false);
@@ -69,6 +69,7 @@
     if (geminiKeyInput)   payload.gemini_api_key   = geminiKeyInput;
     if (serperKeyInput)   payload.serper_api_key   = serperKeyInput;
     payload.ai_enabled      = String(storeSettings.ai_enabled ?? '0');
+    payload.ai_provider     = val('ai_provider', 'claude');
     payload.ai_model        = String(storeSettings.ai_model ?? '');
     payload.ai_system_prompt = String(storeSettings.ai_system_prompt ?? '');
 
@@ -207,6 +208,35 @@
       <p class="text-sm text-gray-400">Select a store first.</p>
     {:else}
       <div class="space-y-6">
+
+        <!-- Provider selector -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Active AI Provider</label>
+          <div class="flex gap-3">
+            {#each [['claude','🤖 Claude'],['gemini','✨ Gemini']] as [pid, label]}
+              <button
+                onclick={() => set('ai_provider', pid)}
+                class="flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors
+                  {val('ai_provider','claude') === pid
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}"
+              >{label}</button>
+            {/each}
+          </div>
+          <p class="mt-1 text-xs text-gray-500">The Telegram bot will use this provider for AI chat responses.</p>
+        </div>
+
+        <!-- AI Model override -->
+        <div>
+          <label for="ai-model" class="block text-sm font-medium text-gray-700 mb-1">Model <span class="font-normal text-gray-400">(optional override)</span></label>
+          <input id="ai-model" type="text"
+            value={val('ai_model')}
+            oninput={(e) => set('ai_model', (e.target as HTMLInputElement).value)}
+            placeholder={val('ai_provider','claude') === 'gemini' ? 'gemini-1.5-flash' : 'claude-haiku-4-5-20251001'}
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <p class="mt-1 text-xs text-gray-500">Leave blank to use the default model for the selected provider.</p>
+        </div>
 
         <!-- Claude -->
         <div class="rounded-xl border border-gray-200 p-4 space-y-3">
