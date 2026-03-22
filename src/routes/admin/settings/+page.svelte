@@ -11,21 +11,25 @@
   let saving  = $state(false);
   let saved   = $state('');   // key of tab that just saved
   let error   = $state('');
-  let activeTab = $state<'store' | 'ai' | 'telegram' | 'server'>('store');
+  let activeTab = $state<'store' | 'ai' | 'telegram' | 'payments' | 'server'>('store');
 
   // Gateway sync status for AI config
   let aiGatewayStatus = $state<'idle' | 'synced' | 'failed'>('idle');
 
-  let showClaudeKey   = $state(false);
-  let showGeminiKey   = $state(false);
-  let showSerperKey   = $state(false);
-  let showTelegramKey = $state(false);
+  let showClaudeKey          = $state(false);
+  let showGeminiKey          = $state(false);
+  let showSerperKey          = $state(false);
+  let showTelegramKey        = $state(false);
+  let showPaymentApiKey      = $state(false);
+  let showPaymentWebhookSecret = $state(false);
 
   // Inputs for sensitive fields (not in storeSettings since server masks them)
-  let claudeKeyInput   = $state('');
-  let geminiKeyInput   = $state('');
-  let serperKeyInput   = $state('');
-  let telegramKeyInput = $state('');
+  let claudeKeyInput          = $state('');
+  let geminiKeyInput          = $state('');
+  let serperKeyInput          = $state('');
+  let telegramKeyInput        = $state('');
+  let paymentApiKeyInput      = $state('');
+  let paymentWebhookSecretInput = $state('');
 
   const token = () => localStorage.getItem('pc_token') ?? '';
 
@@ -126,6 +130,29 @@
     } else { const d = await res.json(); error = d.error ?? 'Save failed'; }
   }
 
+  async function savePayments() {
+    if (!activeStore.slug) return;
+    saving = true; saved = ''; error = '';
+    const payload: Record<string, string> = {
+      payment_provider:   val('payment_provider', 'mock'),
+      payment_public_key: String(storeSettings.payment_public_key ?? ''),
+    };
+    if (paymentApiKeyInput)          payload.payment_api_key          = paymentApiKeyInput;
+    if (paymentWebhookSecretInput)   payload.payment_webhook_secret   = paymentWebhookSecretInput;
+
+    const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+      body: JSON.stringify(payload)
+    });
+    saving = false;
+    if (res.ok) {
+      storeSettings = await res.json();
+      paymentApiKeyInput = ''; paymentWebhookSecretInput = '';
+      saved = 'payments'; setTimeout(() => (saved = ''), 3000);
+    } else { const d = await res.json(); error = d.error ?? 'Save failed'; }
+  }
+
   async function saveServer() {
     saving = true; saved = ''; error = '';
     const res = await fetch('/api/settings', {
@@ -168,7 +195,7 @@
   <!-- Tabs -->
   <div class="border-b border-gray-200 mb-6">
     <nav class="-mb-px flex gap-6">
-      {#each [['store','Store'],['ai','AI / LLM'],['telegram','Telegram'],['server','Server']] as [tab, label]}
+      {#each [['store','Store'],['ai','AI / LLM'],['telegram','Telegram'],['payments','Payments'],['server','Server']] as [tab, label]}
         <button
           onclick={() => (activeTab = tab as any)}
           class="pb-3 text-sm font-medium border-b-2 transition-colors {activeTab === tab ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
@@ -443,6 +470,107 @@
         <button onclick={saveTelegram} disabled={saving}
           class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
           {#if saving}Saving…{:else if saved === 'telegram'}<Check class="w-4 h-4" /> Saved{:else}Save Telegram settings{/if}
+        </button>
+      </div>
+    {/if}
+  {/if}
+
+  <!-- ── Payments Tab ───────────────────────────────────────────────────────── -->
+  {#if activeTab === 'payments'}
+    {#if !activeStore.slug}
+      <p class="text-sm text-gray-400">Select a store first.</p>
+    {:else}
+      <div class="space-y-6">
+
+        <!-- Provider selector -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-2">Payment Provider</p>
+          <div class="flex gap-3">
+            {#each [['mock','🧪 Mock (Demo)'],['paymongo','🇵🇭 PayMongo'],['stripe','💳 Stripe']] as [pid, label]}
+              <button
+                onclick={() => set('payment_provider', pid)}
+                class="flex-1 rounded-lg border-2 px-3 py-3 text-sm font-medium transition-colors
+                  {val('payment_provider','mock') === pid
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}"
+              >{label}</button>
+            {/each}
+          </div>
+          {#if val('payment_provider','mock') === 'mock'}
+            <p class="mt-2 text-xs text-gray-500">Mock confirms payments instantly without any API call. Perfect for demos and testing.</p>
+          {:else if val('payment_provider','mock') === 'paymongo'}
+            <p class="mt-2 text-xs text-gray-500">PayMongo supports GCash, Maya, cards and more. Get your keys at <a href="https://dashboard.paymongo.com" target="_blank" class="underline">dashboard.paymongo.com</a>.</p>
+          {:else}
+            <p class="mt-2 text-xs text-gray-500">Stripe supports cards worldwide. Get your keys at <a href="https://dashboard.stripe.com" target="_blank" class="underline">dashboard.stripe.com</a>.</p>
+          {/if}
+        </div>
+
+        {#if val('payment_provider','mock') !== 'mock'}
+          <!-- API / Secret Key -->
+          <div class="rounded-xl border border-gray-200 p-4 space-y-3">
+            <p class="text-sm font-medium text-gray-800">API Credentials</p>
+
+            <div>
+              <label for="pay-apikey" class="block text-xs font-medium text-gray-600 mb-1">
+                {val('payment_provider','mock') === 'paymongo' ? 'Secret Key (sk_…)' : 'Secret Key (sk_live_… / sk_test_…)'}
+                {#if storeSettings.payment_api_key_set}<span class="text-green-600 ml-1">✓ Set</span>{/if}
+              </label>
+              <div class="relative">
+                <input id="pay-apikey"
+                  type={showPaymentApiKey ? 'text' : 'password'}
+                  bind:value={paymentApiKeyInput}
+                  placeholder={storeSettings.payment_api_key_set ? 'Paste new key to replace…' : 'sk_…'}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 pr-16 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button type="button" onclick={() => (showPaymentApiKey = !showPaymentApiKey)}
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {#if showPaymentApiKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+                </button>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Used server-side only. Never exposed to buyers.</p>
+            </div>
+
+            <div>
+              <label for="pay-pubkey" class="block text-xs font-medium text-gray-600 mb-1">
+                {val('payment_provider','mock') === 'paymongo' ? 'Public Key (pk_…)' : 'Publishable Key (pk_live_… / pk_test_…)'}
+              </label>
+              <input id="pay-pubkey" type="text"
+                value={val('payment_public_key')}
+                oninput={(e) => set('payment_public_key', (e.target as HTMLInputElement).value)}
+                placeholder="pk_…"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p class="mt-1 text-xs text-gray-500">Safe to share; used for client-side SDK if needed.</p>
+            </div>
+
+            <div>
+              <label for="pay-webhook" class="block text-xs font-medium text-gray-600 mb-1">
+                Webhook Secret
+                {#if storeSettings.payment_webhook_secret_set}<span class="text-green-600 ml-1">✓ Set</span>{/if}
+              </label>
+              <div class="relative">
+                <input id="pay-webhook"
+                  type={showPaymentWebhookSecret ? 'text' : 'password'}
+                  bind:value={paymentWebhookSecretInput}
+                  placeholder={storeSettings.payment_webhook_secret_set ? 'Paste new secret to replace…' : 'whsec_…'}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 pr-16 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button type="button" onclick={() => (showPaymentWebhookSecret = !showPaymentWebhookSecret)}
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {#if showPaymentWebhookSecret}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+                </button>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">
+                Register your webhook URL in the provider dashboard:
+                <code class="font-mono bg-gray-100 px-1 rounded text-xs">https://&lt;your-gateway&gt;/webhooks/payment/{activeStore.slug}</code>
+              </p>
+            </div>
+          </div>
+        {/if}
+
+        <button onclick={savePayments} disabled={saving}
+          class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+          {#if saving}Saving…{:else if saved === 'payments'}<Check class="w-4 h-4" /> Saved{:else}Save payment settings{/if}
         </button>
       </div>
     {/if}

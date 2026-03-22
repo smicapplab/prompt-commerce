@@ -26,6 +26,11 @@ const STORE_KEYS = [
   // Telegram
   'telegram_bot_token',
   'telegram_webhook_url',
+  // Payments
+  'payment_provider',
+  'payment_api_key',
+  'payment_public_key',
+  'payment_webhook_secret',
 ] as const;
 
 type ServerKey = typeof SERVER_KEYS[number];
@@ -49,7 +54,10 @@ function readSettings(db: ReturnType<typeof getDb>, isStore: boolean): Record<st
 
   if (isStore) {
     // Mask sensitive keys — return _set boolean instead of value
-    const sensitive = new Set<StoreKey>(['claude_api_key', 'gemini_api_key', 'serper_api_key', 'telegram_bot_token']);
+    const sensitive = new Set<StoreKey>([
+      'claude_api_key', 'gemini_api_key', 'serper_api_key', 'telegram_bot_token',
+      'payment_api_key', 'payment_webhook_secret',
+    ]);
     for (const key of STORE_KEYS) {
       if (sensitive.has(key)) {
         out[`${key}_set`] = !!raw[key];
@@ -105,12 +113,15 @@ export const PATCH: RequestHandler = async (event) => {
 
   updateMany(entries);
 
-  // ── Fire-and-forget: push AI config to gateway when store AI settings change ──
+  // ── Fire-and-forget: push config changes to gateway ─────────────────────────
   if (slug) {
-    const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model', 'ai_system_prompt']);
-    const hasAiChange = entries.some(([key]) => AI_KEYS.has(key));
+    const AI_KEYS      = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model', 'ai_system_prompt']);
+    const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
 
-    if (hasAiChange) {
+    const hasAiChange      = entries.some(([key]) => AI_KEYS.has(key));
+    const hasPaymentChange = entries.some(([key]) => PAYMENT_KEYS.has(key));
+
+    if (hasAiChange || hasPaymentChange) {
       void (async () => {
         try {
           const registry = getDb();
@@ -126,34 +137,57 @@ export const PATCH: RequestHandler = async (event) => {
             .get(slug) as { gateway_key: string | null } | undefined;
           if (!storeRow?.gateway_key) return;
 
-          // Read all current AI settings from the store DB (post-save)
+          // Read all relevant settings from the store DB (post-save)
           const storeDb = getStoreDb(slug);
+          const allKeys = [
+            'ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model', 'ai_system_prompt',
+            'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret',
+          ];
           const settingRows = storeDb
-            .prepare(`SELECT key, value FROM settings WHERE key IN ('ai_provider','gemini_api_key','claude_api_key','ai_model','ai_system_prompt')`)
-            .all() as { key: string; value: string }[];
+            .prepare(`SELECT key, value FROM settings WHERE key IN (${allKeys.map(() => '?').join(',')})`)
+            .all(...allKeys) as { key: string; value: string }[];
           const s: Record<string, string> = {};
           for (const r of settingRows) s[r.key] = r.value;
 
-          const provider = s['ai_provider'] || 'claude';
-          const apiKey   = provider === 'gemini' ? s['gemini_api_key'] : s['claude_api_key'];
-          if (!apiKey) return; // nothing useful to push yet
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'x-gateway-key': storeRow.gateway_key,
+          };
 
-          await fetch(`${gatewayUrl}/api/stores/${slug}/ai-config`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-gateway-key': storeRow.gateway_key,
-            },
-            body: JSON.stringify({
-              aiProvider:     provider,
-              aiApiKey:       apiKey,
-              aiModel:        s['ai_model']        || null,
-              aiSystemPrompt: s['ai_system_prompt'] || null,
-            }),
-          });
+          // ── Push AI config ─────────────────────────────────────────────────
+          if (hasAiChange) {
+            const provider = s['ai_provider'] || 'claude';
+            const apiKey   = provider === 'gemini' ? s['gemini_api_key'] : s['claude_api_key'];
+            if (apiKey) {
+              await fetch(`${gatewayUrl}/api/stores/${slug}/ai-config`, {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify({
+                  aiProvider:     provider,
+                  aiApiKey:       apiKey,
+                  aiModel:        s['ai_model']        || null,
+                  aiSystemPrompt: s['ai_system_prompt'] || null,
+                }),
+              });
+            }
+          }
+
+          // ── Push payment config ────────────────────────────────────────────
+          if (hasPaymentChange) {
+            await fetch(`${gatewayUrl}/api/stores/${slug}/payment-config`, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({
+                paymentProvider:      s['payment_provider']       || 'mock',
+                paymentApiKey:        s['payment_api_key']        || null,
+                paymentPublicKey:     s['payment_public_key']     || null,
+                paymentWebhookSecret: s['payment_webhook_secret'] || null,
+              }),
+            });
+          }
         } catch {
           // Non-blocking — log but don't fail the response
-          console.error('[settings] Failed to push AI config to gateway');
+          console.error('[settings] Failed to push config to gateway');
         }
       })();
     }
