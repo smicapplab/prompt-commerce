@@ -13,6 +13,9 @@
   let error   = $state('');
   let activeTab = $state<'store' | 'ai' | 'telegram' | 'server'>('store');
 
+  // Gateway sync status for AI config
+  let aiGatewayStatus = $state<'idle' | 'synced' | 'failed'>('idle');
+
   let showClaudeKey   = $state(false);
   let showGeminiKey   = $state(false);
   let showSerperKey   = $state(false);
@@ -63,7 +66,7 @@
 
   async function saveAi() {
     if (!activeStore.slug) return;
-    saving = true; saved = ''; error = '';
+    saving = true; saved = ''; error = ''; aiGatewayStatus = 'idle';
     const payload: Record<string, string> = {};
     if (claudeKeyInput)   payload.claude_api_key   = claudeKeyInput;
     if (geminiKeyInput)   payload.gemini_api_key   = geminiKeyInput;
@@ -82,7 +85,23 @@
     if (res.ok) {
       storeSettings = await res.json();
       claudeKeyInput = ''; geminiKeyInput = ''; serperKeyInput = '';
-      saved = 'ai'; setTimeout(() => (saved = ''), 3000);
+      saved = 'ai';
+      // Poll gateway sync status — the server push is fire-and-forget, give it 1.5s
+      setTimeout(async () => {
+        try {
+          const slug = activeStore.slug;
+          const gwRes = await fetch(`/api/settings/ai-sync-status?store=${slug}`, {
+            headers: { Authorization: `Bearer ${token()}` }
+          });
+          if (gwRes.ok) {
+            const { synced } = await gwRes.json();
+            aiGatewayStatus = synced ? 'synced' : 'failed';
+          } else {
+            aiGatewayStatus = 'failed';
+          }
+        } catch { aiGatewayStatus = 'failed'; }
+      }, 1500);
+      setTimeout(() => (saved = ''), 3000);
     } else { const d = await res.json(); error = d.error ?? 'Save failed'; }
   }
 
@@ -365,10 +384,21 @@
           </div>
         </div>
 
-        <button onclick={saveAi} disabled={saving}
-          class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
-          {#if saving}Saving…{:else if saved === 'ai'}<Check class="w-4 h-4" /> Saved{:else}Save AI settings{/if}
-        </button>
+        <div class="flex items-center gap-3">
+          <button onclick={saveAi} disabled={saving}
+            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+            {#if saving}Saving…{:else if saved === 'ai'}<Check class="w-4 h-4" /> Saved{:else}Save AI settings{/if}
+          </button>
+          {#if aiGatewayStatus === 'synced'}
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Synced to gateway
+            </span>
+          {:else if aiGatewayStatus === 'failed'}
+            <span class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Gateway unreachable — saved locally
+            </span>
+          {/if}
+        </div>
       </div>
     {/if}
   {/if}

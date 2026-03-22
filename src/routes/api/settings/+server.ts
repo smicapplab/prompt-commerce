@@ -107,7 +107,7 @@ export const PATCH: RequestHandler = async (event) => {
 
   // ── Fire-and-forget: push AI config to gateway when store AI settings change ──
   if (slug) {
-    const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model']);
+    const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'ai_model', 'ai_system_prompt']);
     const hasAiChange = entries.some(([key]) => AI_KEYS.has(key));
 
     if (hasAiChange) {
@@ -129,7 +129,7 @@ export const PATCH: RequestHandler = async (event) => {
           // Read all current AI settings from the store DB (post-save)
           const storeDb = getStoreDb(slug);
           const settingRows = storeDb
-            .prepare(`SELECT key, value FROM settings WHERE key IN ('ai_provider','gemini_api_key','claude_api_key','ai_model')`)
+            .prepare(`SELECT key, value FROM settings WHERE key IN ('ai_provider','gemini_api_key','claude_api_key','ai_model','ai_system_prompt')`)
             .all() as { key: string; value: string }[];
           const s: Record<string, string> = {};
           for (const r of settingRows) s[r.key] = r.value;
@@ -145,9 +145,10 @@ export const PATCH: RequestHandler = async (event) => {
               'x-gateway-key': storeRow.gateway_key,
             },
             body: JSON.stringify({
-              aiProvider: provider,
-              aiApiKey:   apiKey,
-              aiModel:    s['ai_model'] || null,
+              aiProvider:     provider,
+              aiApiKey:       apiKey,
+              aiModel:        s['ai_model']        || null,
+              aiSystemPrompt: s['ai_system_prompt'] || null,
             }),
           });
         } catch {
