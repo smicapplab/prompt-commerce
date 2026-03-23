@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestHandler } from './$types.js';
 import { getRegistryDb, getStoreDb } from '$lib/server/db.js';
 import { requireAuth } from '$lib/server/auth.js';
 
-export async function GET(event: RequestEvent) {
+export const GET: RequestHandler = async (event) => {
   const user = requireAuth(event);
   if (user instanceof Response) return user;
 
@@ -12,6 +12,12 @@ export async function GET(event: RequestEvent) {
 
   const store = registry.prepare('SELECT slug FROM stores WHERE id = ?').get(id) as { slug: string } | undefined;
   if (!store) return json({ error: 'Store not found' }, { status: 404 });
+
+  // Only global admins or users assigned to this store can see stats
+  if (user.role !== 'super_admin' && user.role !== 'admin') {
+     const assigned = registry.prepare('SELECT role FROM user_stores WHERE user_id = ? AND store_slug = ?').get(user.sub, store.slug);
+     if (!assigned) return json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const db = getStoreDb(store.slug);
   const count = (table: string) =>
@@ -25,4 +31,4 @@ export async function GET(event: RequestEvent) {
     orders:        count('orders'),
     conversations: count('conversations'),
   });
-}
+};

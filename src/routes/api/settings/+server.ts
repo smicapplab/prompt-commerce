@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireAuth, requireStoreRole } from '$lib/server/auth.js';
 import { getDb, getStoreDb } from '$lib/server/db.js';
 
 // ─── Server-level settings (registry DB) ─────────────────────────────────────
@@ -76,19 +76,21 @@ function readSettings(db: ReturnType<typeof getDb>, isStore: boolean): Record<st
 }
 
 export const GET: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
   const slug = event.url.searchParams.get('store') || null;
+  // If store is set, require store_admin. If not (server wide), require global admin.
+  const auth = await requireStoreRole(event, slug, slug ? ['store_admin'] : []);
+  if (auth instanceof Response) return auth;
+
   const db = getSettingsDb(slug);
   return json(readSettings(db, !!slug));
 };
 
 export const PATCH: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
   const slug = event.url.searchParams.get('store') || null;
+  // If store is set, require store_admin. If not (server wide), require global admin.
+  const auth = await requireStoreRole(event, slug, slug ? ['store_admin'] : []);
+  if (auth instanceof Response) return auth;
+
   const db = getSettingsDb(slug);
   const body = await event.request.json();
   const allowed = allowedKeys(slug);

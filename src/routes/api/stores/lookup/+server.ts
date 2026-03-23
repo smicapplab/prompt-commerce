@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestHandler } from './$types.js';
 import { requireAuth } from '$lib/server/auth.js';
 
 /**
@@ -9,7 +9,7 @@ import { requireAuth } from '$lib/server/auth.js';
  * Returns { slug, name, mcpServerUrl } for a valid key,
  * or 404 if the key is invalid / revoked / store not active.
  */
-export async function GET(event: RequestEvent) {
+export const GET: RequestHandler = async (event) => {
   const user = requireAuth(event);
   if (user instanceof Response) return user;
 

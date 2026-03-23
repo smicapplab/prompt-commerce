@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireAuth, requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb, getUploadDir } from '$lib/server/db.js';
 import { writeFileSync, mkdirSync } from 'fs';
 import { randomBytes } from 'crypto';
@@ -23,10 +23,10 @@ async function saveUploadedFile(file: File): Promise<string> {
 }
 
 export const GET: RequestHandler = async (event) => {
-	const authResult = await requireAuth(event);
-	if (authResult instanceof Response) return authResult;
-
 	const store = event.url.searchParams.get('store');
+	const auth = await requireStoreRole(event, store, ['merchandising']);
+	if (auth instanceof Response) return auth;
+
 	if (!store) return json({ error: 'store is required' }, { status: 400 });
 
 	const page = parseInt(event.url.searchParams.get('page') ?? '1');
@@ -82,10 +82,10 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-	const authResult = await requireAuth(event);
-	if (authResult instanceof Response) return authResult;
-
 	const store = event.url.searchParams.get('store');
+	const auth = await requireStoreRole(event, store, ['merchandising']);
+	if (auth instanceof Response) return auth;
+
 	if (!store) return json({ error: 'store is required' }, { status: 400 });
 
 	const formData = await event.request.formData();

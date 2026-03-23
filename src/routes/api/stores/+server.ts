@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestHandler } from './$types.js';
 import { getDb } from '$lib/server/db.js';
 import { requireAuth } from '$lib/server/auth.js';
+import { randomBytes } from 'crypto';
 
 export interface Store {
   id: number;
@@ -15,17 +16,32 @@ export interface Store {
 }
 
 /** GET /api/stores — list all stores */
-export async function GET(event: RequestEvent) {
+export const GET: RequestHandler = async (event) => {
   const user = requireAuth(event);
   if (user instanceof Response) return user;
 
   const db = getDb();
-  const stores = db.prepare('SELECT * FROM stores ORDER BY name ASC').all();
+  
+  // Global admins see all stores
+  if (user.role === 'super_admin' || user.role === 'admin') {
+    const stores = db.prepare('SELECT * FROM stores ORDER BY name ASC').all();
+    return json(stores);
+  }
+
+  // Others only see stores they are mapped to
+  const stores = db.prepare(`
+    SELECT s.* 
+    FROM stores s
+    JOIN user_stores us ON us.store_slug = s.slug
+    WHERE us.user_id = ? 
+    ORDER BY s.name ASC
+  `).all(user.sub);
+  
   return json(stores);
 }
 
 /** POST /api/stores — create a new store */
-export async function POST(event: RequestEvent) {
+export const POST: RequestHandler = async (event) => {
   const user = requireAuth(event);
   if (user instanceof Response) return user;
 
@@ -38,12 +54,14 @@ export async function POST(event: RequestEvent) {
   const slug = String(body.slug).toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
   try {
+    const gatewayKey = body.gateway_key || randomBytes(32).toString('hex');
+
     const result = db
       .prepare(`
         INSERT INTO stores (slug, name, description, gateway_key, active)
         VALUES (?, ?, ?, ?, 1)
       `)
-      .run(slug, body.name, body.description ?? null, body.gateway_key ?? null);
+      .run(slug, body.name, body.description ?? null, gatewayKey);
 
     const store = db.prepare('SELECT * FROM stores WHERE id = ?').get(result.lastInsertRowid);
     return json(store, { status: 201 });

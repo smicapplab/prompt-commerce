@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
 export const GET: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
   const id = parseInt(event.params.id);
   const store = event.url.searchParams.get('store');
+  const auth = await requireStoreRole(event, store, ['ops']);
+  if (auth instanceof Response) return auth;
+
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
   const db = getStoreDb(store);
@@ -23,11 +23,11 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const PATCH: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
   const id = parseInt(event.params.id);
   const store = event.url.searchParams.get('store');
+  const auth = await requireStoreRole(event, store, ['ops']);
+  if (auth instanceof Response) return auth;
+
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
   const db = getStoreDb(store);

@@ -1,16 +1,14 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
 // ─── GET /api/sync/status?store=<slug> ────────────────────────────────────────
-// Returns count of dirty (unsynced) products and categories.
-// Used by the Products page to show the badge on the Sync button.
 export const GET: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
   const slug = event.url.searchParams.get('store');
+  const auth = await requireStoreRole(event, slug, ['merchandising', 'ops']);
+  if (auth instanceof Response) return auth;
+
   if (!slug) return json({ error: 'store query parameter required' }, { status: 400 });
 
   const db = getStoreDb(slug);

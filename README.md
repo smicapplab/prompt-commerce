@@ -76,10 +76,26 @@ Products and categories track whether they have been pushed to the gateway:
 
 - AI config (provider, key, model) is automatically pushed to the gateway whenever you save Settings, so the Telegram bot picks up the change immediately.
 
+### User Management & RBAC
+
+The system features a robust Role-Based Access Control (RBAC) model:
+
+- **Global Roles**:
+    - `super_admin`: Full system access, manage all stores and users.
+    - `admin`: Full access except managing other high-level admins.
+- **Store Roles**:
+    - `store_admin`: Full access to specific stores.
+    - `merchandising`: Manage catalog, products, and promotions.
+    - `ops`: Manage orders and reviews.
+
+User management is accessible via the **Users** tab in Settings. Global admins can manage all users, while Store Admins can manage users within their assigned stores.
+
 ### MCP Server (for external AI agents)
 
 - Each store gets its own SSE endpoint: `GET /sse/<slug>`
-- The `x-gateway-key` header is validated against the store's gateway key. If `NULL`, all connections are allowed (setup mode).
+- **Mandatory Authentication**: The `x-gateway-key` header is strictly required. Access is blocked if missing.
+- **Static Key**: The store's primary `gateway_key` (Platform Key).
+- **Temporary User Tokens**: Users can generate expiring tokens (1–24h) from the **Settings → AI** tab. These tokens identify the specific user and enforce their RBAC permissions over the MCP connection.
 - Old single `/sse` endpoint 301-redirects to `/sse/main-store` for backward compatibility.
 
 ---
@@ -197,7 +213,7 @@ Default credentials: `admin` / `admin123`
     "my-store": {
       "url": "http://localhost:3000/sse/my-store-slug",
       "headers": {
-        "x-gateway-key": "<your-gateway-key>"
+        "x-gateway-key": "<your-gateway-key-or-temp-token>"
       }
     }
   }

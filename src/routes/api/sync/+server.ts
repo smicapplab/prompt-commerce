@@ -1,24 +1,14 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireStoreRole } from '$lib/server/auth.js';
 import { getDb, getStoreDb } from '$lib/server/db.js';
 
 // ─── POST /api/sync?store=<slug> ──────────────────────────────────────────────
-// Pushes only dirty records (is_synced = 0) to the gateway as a delta payload.
-//
-// Delta payload format:
-//   {
-//     upsert: { categories: [...], products: [...] },   ← new / updated rows
-//     delete: { categoryIds: [...], productIds: [...] } ← soft-deleted rows
-//   }
-//
-// On gateway 2xx: marks all pushed rows as is_synced = 1.
-// Auth: seller admin JWT (this endpoint), gateway platform key (to gateway).
 export const POST: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
   const slug = event.url.searchParams.get('store');
+  const auth = await requireStoreRole(event, slug, ['merchandising']);
+  if (auth instanceof Response) return auth;
+
   if (!slug) return json({ error: 'store query parameter required' }, { status: 400 });
 
   // ── 1. Get gateway URL + platform key from registry ────────────────────────

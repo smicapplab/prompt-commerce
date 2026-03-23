@@ -1,17 +1,20 @@
 <script>
-	import { onMount } from 'svelte';
-	import { Plus, Edit2, Trash2, X, RefreshCw } from 'lucide-svelte';
-	import { activeStore } from '$lib/stores/activeStore.svelte.js';
-	import { fetchSyncStatus, syncToGateway as doSync } from '$lib/syncGateway.js';
+	import { onMount } from "svelte";
+	import { Plus, Edit2, Trash2, X, RefreshCw } from "@lucide/svelte";
+	import { activeStore } from "$lib/stores/activeStore.svelte.js";
+	import {
+		fetchSyncStatus,
+		syncToGateway as doSync,
+	} from "$lib/syncGateway.js";
 
 	let categories = $state([]);
 	let loading = $state(true);
 
 	// ── Sync banner state ──────────────────────────────────────────────────────
-	let dirtyCount  = $state(0);
-	let syncing     = $state(false);
-	let syncSuccess = $state('');
-	let syncError   = $state('');
+	let dirtyCount = $state(0);
+	let syncing = $state(false);
+	let syncSuccess = $state("");
+	let syncError = $state("");
 
 	async function loadDirtyCount() {
 		if (!activeStore.slug) return;
@@ -21,14 +24,16 @@
 
 	async function runSync() {
 		if (!activeStore.slug || syncing) return;
-		syncing = true; syncSuccess = ''; syncError = '';
+		syncing = true;
+		syncSuccess = "";
+		syncError = "";
 		try {
 			syncSuccess = await doSync(activeStore.slug);
 			dirtyCount = 0;
-			setTimeout(() => (syncSuccess = ''), 5000);
+			setTimeout(() => (syncSuccess = ""), 5000);
 		} catch (e) {
-			syncError = e?.message ?? 'Sync failed';
-			setTimeout(() => (syncError = ''), 6000);
+			syncError = e?.message ?? "Sync failed";
+			setTimeout(() => (syncError = ""), 6000);
 		}
 		syncing = false;
 	}
@@ -38,14 +43,14 @@
 	let editingCategoryId = $state(null);
 
 	let formData = $state({
-		name: '',
-		parent_id: ''
+		name: "",
+		parent_id: "",
 	});
 
 	let productCounts = $state({});
 	let toasts = $state([]);
 
-	const showToast = (message, type = 'success') => {
+	const showToast = (message, type = "success") => {
 		const id = Date.now();
 		toasts = [...toasts, { id, message, type }];
 		setTimeout(() => {
@@ -54,26 +59,29 @@
 	};
 
 	const getAuthHeaders = () => {
-		const token = localStorage.getItem('pc_token');
+		const token = localStorage.getItem("pc_token");
 		return {
-			'Authorization': `Bearer ${token}`
+			Authorization: `Bearer ${token}`,
 		};
 	};
 
 	const loadCategories = async () => {
 		loading = true;
 		try {
-			const response = await fetch(`/api/categories?store=${activeStore.slug}`, {
-				headers: getAuthHeaders()
-			});
+			const response = await fetch(
+				`/api/categories?store=${activeStore.slug}`,
+				{
+					headers: getAuthHeaders(),
+				},
+			);
 
 			if (response.ok) {
 				categories = await response.json();
 				loadProductCounts();
 			}
 		} catch (error) {
-			console.error('Failed to load categories:', error);
-			showToast('Failed to load categories', 'error');
+			console.error("Failed to load categories:", error);
+			showToast("Failed to load categories", "error");
 		} finally {
 			loading = false;
 		}
@@ -81,9 +89,12 @@
 
 	const loadProductCounts = async () => {
 		try {
-			const response = await fetch(`/api/products?store=${activeStore.slug}&limit=1000`, {
-				headers: getAuthHeaders()
-			});
+			const response = await fetch(
+				`/api/products?store=${activeStore.slug}&limit=1000`,
+				{
+					headers: getAuthHeaders(),
+				},
+			);
 
 			if (response.ok) {
 				const data = await response.json();
@@ -91,13 +102,15 @@
 
 				const counts = {};
 				categories.forEach((cat) => {
-					counts[cat.id] = products.filter((p) => p.category_id === cat.id).length;
+					counts[cat.id] = products.filter(
+						(p) => p.category_id === cat.id,
+					).length;
 				});
 
 				productCounts = counts;
 			}
 		} catch (error) {
-			console.error('Failed to load product counts:', error);
+			console.error("Failed to load product counts:", error);
 		}
 	};
 
@@ -105,8 +118,8 @@
 		isEditing = false;
 		editingCategoryId = null;
 		formData = {
-			name: '',
-			parent_id: ''
+			name: "",
+			parent_id: "",
 		};
 		showModal = true;
 	};
@@ -116,14 +129,14 @@
 		editingCategoryId = category.id;
 		formData = {
 			name: category.name,
-			parent_id: category.parent_id || ''
+			parent_id: category.parent_id || "",
 		};
 		showModal = true;
 	};
 
 	const saveCategory = async () => {
 		if (!formData.name.trim()) {
-			showToast('Category name is required', 'error');
+			showToast("Category name is required", "error");
 			return;
 		}
 
@@ -136,57 +149,63 @@
 			const url = isEditing
 				? `/api/categories/${editingCategoryId}?store=${activeStore.slug}`
 				: `/api/categories?store=${activeStore.slug}`;
-			const method = isEditing ? 'PATCH' : 'POST';
+			const method = isEditing ? "PATCH" : "POST";
 
 			const response = await fetch(url, {
 				method,
 				headers: {
 					...getAuthHeaders(),
-					'Content-Type': 'application/json'
+					"Content-Type": "application/json",
 				},
-				body: JSON.stringify(data)
+				body: JSON.stringify(data),
 			});
 
 			if (response.ok) {
-				showToast(isEditing ? 'Category updated' : 'Category created', 'success');
+				showToast(
+					isEditing ? "Category updated" : "Category created",
+					"success",
+				);
 				showModal = false;
 				loadCategories();
 				loadDirtyCount();
 			} else {
-				showToast('Failed to save category', 'error');
+				showToast("Failed to save category", "error");
 			}
 		} catch (error) {
-			console.error('Save error:', error);
-			showToast('Failed to save category', 'error');
+			console.error("Save error:", error);
+			showToast("Failed to save category", "error");
 		}
 	};
 
 	const deleteCategory = async (categoryId) => {
 		const count = productCounts[categoryId] || 0;
 
-		let message = 'Are you sure you want to delete this category?';
+		let message = "Are you sure you want to delete this category?";
 		if (count > 0) {
-			message += ` ${count} product${count !== 1 ? 's' : ''} will lose their category.`;
+			message += ` ${count} product${count !== 1 ? "s" : ""} will lose their category.`;
 		}
 
 		if (!confirm(message)) return;
 
 		try {
-			const response = await fetch(`/api/categories/${categoryId}?store=${activeStore.slug}`, {
-				method: 'DELETE',
-				headers: getAuthHeaders()
-			});
+			const response = await fetch(
+				`/api/categories/${categoryId}?store=${activeStore.slug}`,
+				{
+					method: "DELETE",
+					headers: getAuthHeaders(),
+				},
+			);
 
 			if (response.ok) {
-				showToast('Category deleted', 'success');
+				showToast("Category deleted", "success");
 				loadCategories();
 				loadDirtyCount();
 			} else {
-				showToast('Failed to delete category', 'error');
+				showToast("Failed to delete category", "error");
 			}
 		} catch (error) {
-			console.error('Delete error:', error);
-			showToast('Failed to delete category', 'error');
+			console.error("Delete error:", error);
+			showToast("Failed to delete category", "error");
 		}
 	};
 
@@ -202,13 +221,13 @@
 	});
 
 	const getCategoryParentName = (parentId) => {
-		if (!parentId) return '—';
+		if (!parentId) return "—";
 		const parent = categories.find((c) => c.id === parentId);
-		return parent ? parent.name : '—';
+		return parent ? parent.name : "—";
 	};
 
 	const getSelectableCategories = $derived(
-		categories.filter((c) => !isEditing || c.id !== editingCategoryId)
+		categories.filter((c) => !isEditing || c.id !== editingCategoryId),
 	);
 </script>
 
@@ -229,25 +248,36 @@
 
 		<!-- Sync banner -->
 		{#if syncing}
-			<div class="flex items-center gap-3 mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+			<div
+				class="flex items-center gap-3 mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+			>
 				<RefreshCw size={15} class="animate-spin shrink-0" />
 				<span>Syncing changes to gateway…</span>
 			</div>
 		{:else if syncSuccess}
-			<div class="flex items-center gap-3 mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+			<div
+				class="flex items-center gap-3 mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+			>
 				<span class="shrink-0">✓</span>
 				<span>{syncSuccess}</span>
 			</div>
 		{:else if syncError}
-			<div class="flex items-center gap-3 mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+			<div
+				class="flex items-center gap-3 mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+			>
 				<span class="shrink-0">⚠</span>
 				<span>{syncError}</span>
 			</div>
 		{:else if dirtyCount > 0}
-			<div class="flex items-center justify-between mb-6 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm">
+			<div
+				class="flex items-center justify-between mb-6 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm"
+			>
 				<span class="text-orange-800">
-					<strong>{dirtyCount}</strong> unsaved change{dirtyCount !== 1 ? 's' : ''} not yet synced to the gateway.
-					Customers won't see them until you sync.
+					<strong>{dirtyCount}</strong> unsaved change{dirtyCount !==
+					1
+						? "s"
+						: ""} not yet synced to the gateway. Customers won't see
+					them until you sync.
 				</span>
 				<button
 					onclick={runSync}
@@ -262,41 +292,71 @@
 		{#if loading}
 			<div class="space-y-3">
 				{#each Array(5) as _}
-					<div class="bg-white rounded-lg h-16 animate-pulse border border-gray-200"></div>
+					<div
+						class="bg-white rounded-lg h-16 animate-pulse border border-gray-200"
+					></div>
 				{/each}
 			</div>
 		{:else if categories.length === 0}
-			<div class="bg-white rounded-xl border border-gray-200 p-12 text-center">
-				<p class="text-gray-500">No categories found. Create one to get started.</p>
+			<div
+				class="bg-white rounded-xl border border-gray-200 p-12 text-center"
+			>
+				<p class="text-gray-500">
+					No categories found. Create one to get started.
+				</p>
 			</div>
 		{:else}
-			<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+			<div
+				class="bg-white rounded-xl border border-gray-200 overflow-hidden"
+			>
 				<table class="w-full text-sm">
 					<thead class="bg-gray-50 border-b border-gray-200">
 						<tr>
-							<th class="px-6 py-3 text-left font-medium text-gray-700">Name</th>
-							<th class="px-6 py-3 text-left font-medium text-gray-700">Parent Category</th>
-							<th class="px-6 py-3 text-left font-medium text-gray-700">Products</th>
-							<th class="px-6 py-3 text-left font-medium text-gray-700">Actions</th>
+							<th
+								class="px-6 py-3 text-left font-medium text-gray-700"
+								>Name</th
+							>
+							<th
+								class="px-6 py-3 text-left font-medium text-gray-700"
+								>Parent Category</th
+							>
+							<th
+								class="px-6 py-3 text-left font-medium text-gray-700"
+								>Products</th
+							>
+							<th
+								class="px-6 py-3 text-left font-medium text-gray-700"
+								>Actions</th
+							>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-gray-100">
 						{#each categories as category (category.id)}
 							<tr class="hover:bg-gray-50">
-								<td class="px-6 py-4 font-medium text-gray-900">{category.name}</td>
-								<td class="px-6 py-4 text-gray-700">{getCategoryParentName(category.parent_id)}</td>
-								<td class="px-6 py-4 text-gray-700">{productCounts[category.id] || 0}</td>
+								<td class="px-6 py-4 font-medium text-gray-900"
+									>{category.name}</td
+								>
+								<td class="px-6 py-4 text-gray-700"
+									>{getCategoryParentName(
+										category.parent_id,
+									)}</td
+								>
+								<td class="px-6 py-4 text-gray-700"
+									>{productCounts[category.id] || 0}</td
+								>
 								<td class="px-6 py-4">
 									<div class="flex items-center gap-2">
 										<button
-											onclick={() => openEditModal(category)}
+											onclick={() =>
+												openEditModal(category)}
 											class="p-1.5 hover:bg-gray-100 rounded text-gray-600"
 											title="Edit"
 										>
 											<Edit2 size={16} />
 										</button>
 										<button
-											onclick={() => deleteCategory(category.id)}
+											onclick={() =>
+												deleteCategory(category.id)}
 											class="p-1.5 hover:bg-red-50 rounded text-red-600"
 											title="Delete"
 										>
@@ -313,11 +373,15 @@
 	</div>
 
 	{#if showModal}
-		<div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+		<div
+			class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
+		>
 			<div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-				<div class="flex items-center justify-between p-6 border-b border-gray-200">
+				<div
+					class="flex items-center justify-between p-6 border-b border-gray-200"
+				>
 					<h2 class="text-xl font-bold text-gray-900">
-						{isEditing ? 'Edit Category' : 'Add Category'}
+						{isEditing ? "Edit Category" : "Add Category"}
 					</h2>
 					<button
 						onclick={closeModal}
@@ -329,7 +393,11 @@
 
 				<div class="p-6 space-y-4">
 					<div>
-						<label for="category-name" class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+						<label
+							for="category-name"
+							class="block text-sm font-medium text-gray-700 mb-1"
+							>Name *</label
+						>
 						<input
 							id="category-name"
 							type="text"
@@ -340,7 +408,11 @@
 					</div>
 
 					<div>
-						<label for="category-parent" class="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+						<label
+							for="category-parent"
+							class="block text-sm font-medium text-gray-700 mb-1"
+							>Parent Category</label
+						>
 						<select
 							id="category-parent"
 							bind:value={formData.parent_id}
@@ -365,7 +437,7 @@
 						onclick={saveCategory}
 						class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
 					>
-						{isEditing ? 'Update' : 'Create'}
+						{isEditing ? "Update" : "Create"}
 					</button>
 				</div>
 			</div>
@@ -376,7 +448,7 @@
 		{#each toasts as toast (toast.id)}
 			<div
 				class={`px-4 py-3 rounded-lg text-sm font-medium shadow-lg text-white ${
-					toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+					toast.type === "success" ? "bg-green-600" : "bg-red-600"
 				}`}
 			>
 				{toast.message}

@@ -7,6 +7,7 @@ import { registerPromotionTools } from './tools/promotions.js';
 import { registerReviewTools } from './tools/reviews.js';
 import { registerOrderTools } from './tools/orders.js';
 import { getRegistryDb, getStoreDb } from './db/client.js';
+import { validateTempKey } from '../lib/server/auth.js';
 import type Database from 'better-sqlite3';
 
 // ─── MCP Server factory ───────────────────────────────────────────────────────
@@ -47,17 +48,46 @@ function makeGatewayKeyMiddleware(slug: string) {
       return;
     }
 
-    // No key configured → open access (setup mode)
-    if (!store.gateway_key) {
+    const provided = req.headers['x-gateway-key'] as string;
+    if (!provided) {
+      res.status(401).json({ error: 'Missing x-gateway-key header.' });
+      return;
+    }
+
+    // 1. Check if it's the static store gateway key
+    if (store.gateway_key && provided === store.gateway_key) {
       next();
       return;
     }
 
-    const provided = req.headers['x-gateway-key'];
-    if (provided !== store.gateway_key) {
-      res.status(401).json({ error: 'Invalid or missing x-gateway-key header.' });
+    // 2. Check if it's a valid temporary user key
+    const user = validateTempKey(provided);
+    if (user) {
+      // 1. Global admins have access to all stores
+      if (user.role === 'super_admin' || user.role === 'admin') {
+        (req as any).user = { ...user, storeRole: 'admin' };
+        next();
+        return;
+      }
+
+      // 2. Otherwise check specific store mapping
+      const db = getRegistryDb();
+      const mapping = db
+        .prepare('SELECT role FROM user_stores WHERE user_id = ? AND store_slug = ?')
+        .get(user.sub, slug) as { role: string } | undefined;
+
+      if (mapping) {
+        (req as any).user = { ...user, storeRole: mapping.role };
+        next();
+        return;
+      }
+      
+      res.status(403).json({ error: 'User does not have access to this store.' });
       return;
     }
+
+    res.status(401).json({ error: 'Invalid x-gateway-key.' });
+    return;
 
     next();
   };

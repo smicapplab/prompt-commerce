@@ -13,6 +13,10 @@ export function initRegistrySchema(db: Database.Database): void {
       username      TEXT    NOT NULL UNIQUE,
       password_hash TEXT    NOT NULL,
       role          TEXT    NOT NULL DEFAULT 'admin',
+      first_name    TEXT    NOT NULL DEFAULT '',
+      last_name     TEXT    NOT NULL DEFAULT '',
+      email         TEXT    NOT NULL DEFAULT '',
+      mobile        TEXT,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -34,6 +38,25 @@ export function initRegistrySchema(db: Database.Database): void {
       active       INTEGER NOT NULL DEFAULT 1,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- ─── User-Store mappings (RBAC) ──────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS user_stores (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      store_slug    TEXT    NOT NULL REFERENCES stores(slug) ON DELETE CASCADE,
+      role          TEXT    NOT NULL, -- store_admin, merchandising, ops
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, store_slug)
+    );
+
+    -- ─── Temporary LLM Keys for MCP ──────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS user_temp_keys (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token         TEXT    NOT NULL UNIQUE,
+      expires_at    TEXT    NOT NULL,
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
   `);
 }

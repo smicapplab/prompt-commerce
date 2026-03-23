@@ -1,16 +1,16 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireAuth, requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
 export const GET: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
-  const id = parseInt(event.params.id);
   const store = event.url.searchParams.get('store');
+  const auth = await requireStoreRole(event, store, ['ops']);
+  if (auth instanceof Response) return auth;
+
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
+  const id = parseInt(event.params.id);
   const db = getStoreDb(store);
   const order = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(id);
   if (!order) return json({ error: 'Order not found' }, { status: 404 });
@@ -31,12 +31,13 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const PATCH: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
-  const id = parseInt(event.params.id);
   const store = event.url.searchParams.get('store');
   if (!store) return json({ error: 'store is required' }, { status: 400 });
+
+  const auth = await requireStoreRole(event, store, ['ops']);
+  if (auth instanceof Response) return auth;
+
+  const id = parseInt(event.params.id);
 
   const db = getStoreDb(store);
   const existing = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(id);
@@ -74,13 +75,13 @@ export const PATCH: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
-  const id = parseInt(event.params.id);
   const store = event.url.searchParams.get('store');
+  const auth = await requireStoreRole(event, store, ['ops']);
+  if (auth instanceof Response) return auth;
+
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
+  const id = parseInt(event.params.id);
   const db = getStoreDb(store);
   const existing = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(id);
   if (!existing) return json({ error: 'Order not found' }, { status: 404 });

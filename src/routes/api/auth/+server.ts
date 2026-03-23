@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestHandler } from './$types.js';
 import { getDb } from '$lib/server/db.js';
 import { checkPassword, signToken, requireAuth } from '$lib/server/auth.js';
 
 /** POST /api/auth — login, returns JWT */
-export async function POST(event: RequestEvent) {
+export const POST: RequestHandler = async (event) => {
   const body = await event.request.json().catch(() => null);
   if (!body?.username || !body?.password) {
     return json({ error: 'username and password required' }, { status: 400 });
@@ -24,7 +24,7 @@ export async function POST(event: RequestEvent) {
 }
 
 /** GET /api/auth — verify current token */
-export async function GET(event: RequestEvent) {
+export const GET: RequestHandler = async (event) => {
   const user = requireAuth(event);
   if (user instanceof Response) return user;
   return json({ username: user.username, role: user.role });

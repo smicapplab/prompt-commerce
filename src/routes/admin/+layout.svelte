@@ -1,16 +1,26 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import {
-    Zap, LayoutDashboard, Package, Tag, Gift, Star,
-    Bot, Settings, LogOut, MessageSquare, ShoppingCart,
-    ChevronDown, Store
-  } from 'lucide-svelte';
-  import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
-  import { activeStore } from '$lib/stores/activeStore.svelte.js';
+    Zap,
+    LayoutDashboard,
+    Package,
+    Tag,
+    Gift,
+    Star,
+    Bot,
+    Settings,
+    LogOut,
+    MessageSquare,
+    ShoppingCart,
+    Store,
+  } from "@lucide/svelte";
+  import { onMount } from "svelte";
+  import { browser } from "$app/environment";
+  import { activeStore } from "$lib/stores/activeStore.svelte.js";
 
   let { children } = $props();
+  let userRole = $state("");
 
   // Reactive current path for sidebar highlighting
   const currentPath = $derived($page.url.pathname);
@@ -18,18 +28,28 @@
   // Hydrate as early as possible on the client
   if (browser) {
     activeStore.hydrate();
+    const token = localStorage.getItem("pc_token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        userRole = payload.role;
+      } catch (e) {}
+    }
   }
 
   onMount(() => {
-    if (!localStorage.getItem('pc_token')) {
-      goto('/login');
+    if (!localStorage.getItem("pc_token")) {
+      goto("/login");
       return;
     }
-    
+
     // Redirect to last known path if at root admin and a store is selected
     // We do this in onMount to ensure goto works correctly with the router
-    if (activeStore.slug && activeStore.lastPath && currentPath === '/admin') {
-      if (activeStore.lastPath !== '/admin' && activeStore.lastPath !== '/admin/') {
+    if (activeStore.slug && activeStore.lastPath && currentPath === "/admin") {
+      if (
+        activeStore.lastPath !== "/admin" &&
+        activeStore.lastPath !== "/admin/"
+      ) {
         goto(activeStore.lastPath, { replaceState: true });
       }
     }
@@ -39,48 +59,96 @@
   $effect(() => {
     // Only persist if it's a specific admin sub-page, not the store selector
     // We check that it starts with /admin/ and has something after it
-    if (activeStore.slug && currentPath.length > 7 && currentPath.startsWith('/admin/') && currentPath !== '/admin/') {
+    if (
+      activeStore.slug &&
+      currentPath.length > 7 &&
+      currentPath.startsWith("/admin/") &&
+      currentPath !== "/admin/"
+    ) {
       activeStore.setPath(currentPath);
     }
   });
 
   function logout() {
-    localStorage.removeItem('pc_token');
+    localStorage.removeItem("pc_token");
     activeStore.clear();
-    goto('/login');
+    goto("/login");
   }
 
   function switchStore() {
     activeStore.clear();
-    goto('/admin?switch=1');
+    goto("/admin?switch=1");
   }
 
   // Store-scoped nav (only shown when a store is active)
-  const storeNav = [
-    { href: '/admin/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
-    { href: '/admin/products',   label: 'Products',    icon: Package },
-    { href: '/admin/categories', label: 'Categories',  icon: Tag },
-    { href: '/admin/promotions', label: 'Promotions',  icon: Gift },
-    { href: '/admin/reviews',    label: 'Reviews',     icon: Star },
-    { href: '/admin/orders',     label: 'Orders',      icon: ShoppingCart },
-    { href: '/admin/chat',       label: 'Inbox',       icon: MessageSquare },
-    { href: '/admin/ai',         label: 'AI Assistant',icon: Bot },
+  const allStoreNav = [
+    {
+      href: "/admin/dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      roles: ["admin", "super_admin", "store_admin"],
+    },
+    {
+      href: "/admin/products",
+      label: "Products",
+      icon: Package,
+      roles: ["admin", "super_admin", "store_admin", "merchandising"],
+    },
+    {
+      href: "/admin/categories",
+      label: "Categories",
+      icon: Tag,
+      roles: ["admin", "super_admin", "store_admin", "merchandising"],
+    },
+    {
+      href: "/admin/promotions",
+      label: "Promotions",
+      icon: Gift,
+      roles: ["admin", "super_admin", "store_admin", "merchandising"],
+    },
+    {
+      href: "/admin/reviews",
+      label: "Reviews",
+      icon: Star,
+      roles: ["admin", "super_admin", "store_admin", "merchandising"],
+    },
+    {
+      href: "/admin/orders",
+      label: "Orders",
+      icon: ShoppingCart,
+      roles: ["admin", "super_admin", "store_admin", "ops"],
+    },
+    {
+      href: "/admin/chat",
+      label: "Inbox",
+      icon: MessageSquare,
+      roles: ["admin", "super_admin", "store_admin", "ops"],
+    },
+    {
+      href: "/admin/ai",
+      label: "AI Assistant",
+      icon: Bot,
+      roles: ["admin", "super_admin", "store_admin"],
+    },
   ];
+
+  const storeNav = $derived(
+    allStoreNav.filter((n) => !n.roles || n.roles.includes(userRole)),
+  );
 
   // Always-visible bottom nav
   const globalNav = [
-    { href: '/admin/settings', label: 'Settings', icon: Settings },
+    { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
 
   function isActive(href: string) {
-    return currentPath === href || currentPath.startsWith(href + '/');
+    return currentPath === href || currentPath.startsWith(href + "/");
   }
 </script>
 
 <div class="flex h-screen bg-gray-50 overflow-hidden">
   <!-- Sidebar -->
-  <aside class="w-56 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
-
+  <aside class="w-56 shrink-0 bg-white border-r border-gray-200 flex flex-col">
     <!-- Brand -->
     <div class="flex items-center gap-2 px-4 py-4 border-b border-gray-100">
       <Zap class="w-4 h-4 text-yellow-400" />
@@ -94,10 +162,14 @@
         class="mx-3 mt-3 flex items-center justify-between gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-left hover:bg-blue-100 transition-colors group"
       >
         <div class="flex items-center gap-2 min-w-0">
-          <Store class="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-          <span class="text-xs font-medium text-blue-800 truncate">{activeStore.name || activeStore.slug}</span>
+          <Store class="w-3.5 h-3.5 text-blue-500 shrink-0" />
+          <span class="text-xs font-medium text-blue-800 truncate"
+            >{activeStore.name || activeStore.slug}</span
+          >
         </div>
-        <span class="text-xs text-blue-400 group-hover:text-blue-600 flex-shrink-0">Switch</span>
+        <span class="text-xs text-blue-400 group-hover:text-blue-600 shrink-0"
+          >Switch</span
+        >
       </button>
     {:else}
       <a
@@ -116,10 +188,10 @@
             href={item.href}
             class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors
               {isActive(item.href)
-                ? 'bg-blue-50 text-blue-700 font-medium'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
+              ? 'bg-blue-50 text-blue-700 font-medium'
+              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
           >
-            <item.icon class="w-4 h-4 flex-shrink-0" />
+            <item.icon class="w-4 h-4 shrink-0" />
             {item.label}
           </a>
         {/each}
@@ -131,10 +203,10 @@
           href={item.href}
           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors
             {isActive(item.href)
-              ? 'bg-blue-50 text-blue-700 font-medium'
-              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
+            ? 'bg-blue-50 text-blue-700 font-medium'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
         >
-          <item.icon class="w-4 h-4 flex-shrink-0" />
+          <item.icon class="w-4 h-4 shrink-0" />
           {item.label}
         </a>
       {/each}

@@ -40,6 +40,21 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 console.log(`📦  Registry DB: ${DB_PATH}`);
 const db = new Database(DB_PATH);
 initRegistrySchema(db);
+
+// Add profile columns to existing users table if they don't exist
+for (const stmt of [
+  "ALTER TABLE users ADD COLUMN first_name TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN last_name  TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN email      TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN mobile     TEXT",
+]) {
+  try {
+    db.exec(stmt);
+  } catch {
+    /* column already exists */
+  }
+}
+
 console.log('✔  Registry schema applied (users, settings, stores)');
 
 // ── Seed default admin user ───────────────────────────────────────────────────

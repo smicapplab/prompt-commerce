@@ -1,16 +1,16 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
 export const PATCH: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
-  const id = parseInt(event.params.id);
   const store = event.url.searchParams.get('store');
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
+  const auth = await requireStoreRole(event, store, ['merchandising']);
+  if (auth instanceof Response) return auth;
+
+  const id = parseInt(event.params.id);
   const db = getStoreDb(store);
   const existing = db.prepare(`SELECT * FROM promotions WHERE id = ?`).get(id);
   if (!existing) return json({ error: 'Promotion not found' }, { status: 404 });
@@ -50,13 +50,13 @@ export const PATCH: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-  const authResult = await requireAuth(event);
-  if (authResult instanceof Response) return authResult;
-
-  const id = parseInt(event.params.id);
   const store = event.url.searchParams.get('store');
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
+  const auth = await requireStoreRole(event, store, ['merchandising']);
+  if (auth instanceof Response) return auth;
+
+  const id = parseInt(event.params.id);
   const db = getStoreDb(store);
   const existing = db.prepare(`SELECT * FROM promotions WHERE id = ?`).get(id);
   if (!existing) return json({ error: 'Promotion not found' }, { status: 404 });

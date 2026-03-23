@@ -7,7 +7,7 @@
  * https://platform.openai.com/docs/models
  */
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from './$types.js';
 import { requireAuth } from '$lib/server/auth.js';
 
 const OPENAI_MODELS = [

@@ -1,16 +1,16 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { requireAuth } from '$lib/server/auth.js';
+import type { RequestHandler } from './$types.js';
+import { requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
 export const PATCH: RequestHandler = async (event) => {
-	const authResult = await requireAuth(event);
-	if (authResult instanceof Response) return authResult;
-
-	const id = event.params.id;
 	const store = event.url.searchParams.get('store');
 	if (!store) return json({ error: 'store is required' }, { status: 400 });
 
+	const auth = await requireStoreRole(event, store, ['merchandising']);
+	if (auth instanceof Response) return auth;
+
+	const id = event.params.id;
 	const db = getStoreDb(store);
 	const existing = db.prepare(`SELECT * FROM categories WHERE id = ?`).get(id);
 	if (!existing) return json({ error: 'Category not found' }, { status: 404 });
@@ -40,18 +40,18 @@ export const PATCH: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	const authResult = await requireAuth(event);
-	if (authResult instanceof Response) return authResult;
-
-	const id = event.params.id;
 	const store = event.url.searchParams.get('store');
 	if (!store) return json({ error: 'store is required' }, { status: 400 });
 
+	const auth = await requireStoreRole(event, store, ['merchandising']);
+	if (auth instanceof Response) return auth;
+
+	const id = event.params.id;
 	const db = getStoreDb(store);
 	const existing = db.prepare(`SELECT * FROM categories WHERE id = ?`).get(id);
 	if (!existing) return json({ error: 'Category not found' }, { status: 404 });
 
-	// Soft delete — row stays so the next delta sync can tell the gateway to remove it
+	// Soft delete
 	db.prepare(`UPDATE categories SET deleted_at = datetime('now'), is_synced = 0 WHERE id = ?`).run(id);
 	return new Response(null, { status: 204 });
 };
