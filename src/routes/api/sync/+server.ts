@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { requireStoreRole } from '$lib/server/auth.js';
+import { apiError } from '$lib/server/response.js';
 import { getDb, getStoreDb } from '$lib/server/db.js';
+import { filterSecureImageUrls } from '$lib/server/images.js';
 
 // ─── POST /api/sync?store=<slug> ──────────────────────────────────────────────
 export const POST: RequestHandler = async (event) => {
@@ -9,39 +11,49 @@ export const POST: RequestHandler = async (event) => {
   const auth = await requireStoreRole(event, slug, ['merchandising']);
   if (auth instanceof Response) return auth;
 
-  if (!slug) return json({ error: 'store query parameter required' }, { status: 400 });
+  if (!slug) return apiError(400, 'store query parameter required');
 
   // ── 1. Get gateway URL + platform key from registry ────────────────────────
   const registry = getDb();
 
-  // Resolve seller public base URL (for absolute image URLs).
-  // Priority: SELLER_PUBLIC_URL env → seller_public_url setting → request origin
+  // SEC-4: Validate seller public base URL to prevent Host header spoofing.
   const publicUrlSetting = (registry
     .prepare('SELECT value FROM settings WHERE key = ?')
     .get('seller_public_url') as { value: string } | undefined)?.value;
-  const sellerPublicUrl = (
-    process.env.SELLER_PUBLIC_URL ??
-    publicUrlSetting ??
-    `${event.url.protocol}//${event.url.host}`
-  ).replace(/\/$/, '');
+
+  let sellerPublicUrl = process.env.SELLER_PUBLIC_URL ?? publicUrlSetting;
+
+  // SEC-4 Fix: Verify if it's a valid URL, otherwise fallback to null (images won't be prefixed)
+  if (sellerPublicUrl) {
+    try {
+      const url = new URL(sellerPublicUrl);
+      sellerPublicUrl = url.origin;
+    } catch {
+      sellerPublicUrl = undefined;
+    }
+  } else {
+    // If no config, don't fallback to spoofable Host header
+    sellerPublicUrl = undefined;
+  }
+
   const store = registry
     .prepare('SELECT gateway_key FROM stores WHERE slug = ? AND active = 1')
     .get(slug) as { gateway_key: string | null } | undefined;
 
-  if (!store)             return json({ error: `Store "${slug}" not found` }, { status: 404 });
-  if (!store.gateway_key) return json({ error: 'Store has no gateway key — verify the store first' }, { status: 400 });
+  if (!store) return apiError(404, `Store "${slug}" not found`);
+  if (!store.gateway_key) return apiError(400, 'Store has no gateway key — verify the store first');
 
   const gatewayUrlRow = registry
     .prepare('SELECT value FROM settings WHERE key = ?')
     .get('gateway_url') as { value: string } | undefined;
   const gatewayUrl = gatewayUrlRow?.value?.replace(/\/$/, '');
-  if (!gatewayUrl) return json({ error: 'gateway_url not configured in server settings' }, { status: 400 });
+  if (!gatewayUrl) return apiError(400, 'gateway_url not configured in server settings');
 
   // ── 2. Fetch dirty rows from store SQLite ──────────────────────────────────
   const storeDb = getStoreDb(slug);
 
   type RawCategory = { id: number; name: string; parent_id: number | null; deleted_at: string | null };
-  type RawProduct  = {
+  type RawProduct = {
     id: number; title: string; description: string | null; sku: string | null;
     price: number | null; stock_quantity: number; category_id: number | null;
     tags: string | null; images: string | null; active: number; deleted_at: string | null;
@@ -76,23 +88,38 @@ export const POST: RequestHandler = async (event) => {
   const upsertProducts = dirtyProducts
     .filter(p => p.deleted_at === null)
     .map(p => {
-      const rawImages: string[] = p.images ? JSON.parse(p.images) : [];
-      // Absolutize relative /uploads/ paths so gateway consumers (Telegram, etc.)
-      // can fetch images without knowing the seller's internal host.
-      const images = rawImages.map(img =>
-        img.startsWith('/') ? `${sellerPublicUrl}${img}` : img,
+      // SEC-2: Wrap JSON.parse in try-catch blocks.
+      let rawImages: string[] = [];
+      try {
+        rawImages = p.images ? JSON.parse(p.images) : [];
+      } catch (e) {
+        console.warn(`[Sync] Failed to parse images for product ${p.id}:`, e);
+      }
+
+      // Absolutize relative /uploads/ paths
+      const imagesPrefix = rawImages.map(img =>
+        (img.startsWith('/') && sellerPublicUrl) ? `${sellerPublicUrl}${img}` : img
       );
+
+      // SEC-5: Filter to secure URLs only
+      const images = filterSecureImageUrls(imagesPrefix);
       return {
-        id:             p.id,
-        title:          p.title,
-        description:    p.description,
-        sku:            p.sku,
-        price:          p.price,
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        sku: p.sku,
+        price: p.price,
         stock_quantity: p.stock_quantity,
-        category_id:    p.category_id,
-        tags:           p.tags ? JSON.parse(p.tags) : [],
+        category_id: p.category_id,
+        tags: (() => {
+          try {
+            return p.tags ? JSON.parse(p.tags) : [];
+          } catch {
+            return [];
+          }
+        })(),
         images,
-        active:         Boolean(p.active),
+        active: Boolean(p.active),
       };
     });
 
@@ -117,25 +144,30 @@ export const POST: RequestHandler = async (event) => {
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');
-    return json(
-      { error: `Gateway sync failed (${response.status}): ${errorText}` },
-      { status: 502 },
-    );
+    return apiError(502, `Gateway sync failed (${response.status}): ${errorText}`);
   }
 
   // ── 5. Mark all pushed rows as synced ─────────────────────────────────────
+  // GAP-2: Use chunked updates to avoid SQLite parameter limits (default ~999)
+  const CHUNK_SIZE = 500;
   const markSynced = storeDb.transaction(() => {
     if (dirtyCategories.length > 0) {
       const ids = dirtyCategories.map(c => c.id);
-      storeDb
-        .prepare(`UPDATE categories SET is_synced = 1 WHERE id IN (${ids.map(() => '?').join(',')})`)
-        .run(...ids);
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE);
+        storeDb
+          .prepare(`UPDATE categories SET is_synced = 1 WHERE id IN (${chunk.map(() => '?').join(',')})`)
+          .run(...chunk);
+      }
     }
     if (dirtyProducts.length > 0) {
       const ids = dirtyProducts.map(p => p.id);
-      storeDb
-        .prepare(`UPDATE products SET is_synced = 1 WHERE id IN (${ids.map(() => '?').join(',')})`)
-        .run(...ids);
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE);
+        storeDb
+          .prepare(`UPDATE products SET is_synced = 1 WHERE id IN (${chunk.map(() => '?').join(',')})`)
+          .run(...chunk);
+      }
     }
   });
   markSynced();
@@ -145,11 +177,11 @@ export const POST: RequestHandler = async (event) => {
     success: true,
     synced: {
       categories: (upsertCategories.length + deleteCategoryIds.length),
-      products:   (upsertProducts.length   + deleteProductIds.length),
+      products: (upsertProducts.length + deleteProductIds.length),
     },
     detail: {
       upserted: { categories: upsertCategories.length, products: upsertProducts.length },
-      deleted:  { categories: deleteCategoryIds.length, products: deleteProductIds.length },
+      deleted: { categories: deleteCategoryIds.length, products: deleteProductIds.length },
     },
     message: result.message,
   });

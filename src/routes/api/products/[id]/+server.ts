@@ -1,47 +1,18 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
-import { requireStoreRole } from '$lib/server/auth.js';
-import { getStoreDb, getUploadDir } from '$lib/server/db.js';
-import { writeFileSync, mkdirSync } from 'fs';
-import { randomBytes } from 'crypto';
-import { join } from 'path';
+import { getStoreDb } from '../../../../lib/server/db.js';
+import { apiError } from '../../../../lib/server/response.js';
+import { filterSecureImageUrls } from '../../../../lib/server/images.js';
+import { validateImageFile, saveUploadedFile } from '../../../../lib/server/uploads.js';
+import { requireStoreRole } from '../../../../lib/server/auth.js';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_PREFIXES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
-const ALLOWED_EXTENSIONS    = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']);
-
-function getFileExtension(filename: string): string {
-	const parts = filename.split('.');
-	return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : 'bin';
-}
-
-function validateImageFile(file: File): string | null {
-	if (file.size > MAX_UPLOAD_BYTES) {
-		return `File "${file.name}" exceeds the 10 MB size limit.`;
-	}
-	const mimeOk = ALLOWED_MIME_PREFIXES.some(p => file.type.startsWith(p));
-	const ext    = getFileExtension(file.name);
-	const extOk  = ALLOWED_EXTENSIONS.has(ext);
-	if (!mimeOk || !extOk) {
-		return `File "${file.name}" is not an allowed image type (jpeg, png, webp, gif, avif).`;
-	}
-	return null;
-}
-
-async function saveUploadedFile(file: File): Promise<string> {
-	const uploadDir = getUploadDir();
-	mkdirSync(uploadDir, { recursive: true });
-	const buffer = Buffer.from(await file.arrayBuffer());
-	const ext      = getFileExtension(file.name);
-	const filename = `${Date.now()}-${randomBytes(8).toString('hex')}.${ext}`;
-	const filepath = join(uploadDir, filename);
-	writeFileSync(filepath, buffer);
-	return `/uploads/${filename}`;
-}
+const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']);
 
 export const GET: RequestHandler = async (event) => {
 	const store = event.url.searchParams.get('store');
-	if (!store) return json({ error: 'store is required' }, { status: 400 });
+	if (!store) return apiError(400, 'store is required');
 
 	const auth = await requireStoreRole(event, store, ['merchandising']);
 	if (auth instanceof Response) return auth;
@@ -55,7 +26,7 @@ export const GET: RequestHandler = async (event) => {
 		WHERE p.id = ?
 	`).get(id) as any;
 
-	if (!product) return json({ error: 'Product not found' }, { status: 404 });
+	if (!product) return apiError(404, 'Product not found');
 
 	return json({
 		...product,
@@ -66,7 +37,7 @@ export const GET: RequestHandler = async (event) => {
 
 export const PATCH: RequestHandler = async (event) => {
 	const store = event.url.searchParams.get('store');
-	if (!store) return json({ error: 'store is required' }, { status: 400 });
+	if (!store) return apiError(400, 'store is required');
 
 	const auth = await requireStoreRole(event, store, ['merchandising']);
 	if (auth instanceof Response) return auth;
@@ -98,13 +69,15 @@ export const PATCH: RequestHandler = async (event) => {
 	for (const file of imageFiles) {
 		if (file.size === 0) continue;
 		const validationError = validateImageFile(file);
-		if (validationError) return json({ error: validationError }, { status: 422 });
+		if (validationError) return apiError(422, validationError);
 		const imgPath = await saveUploadedFile(file);
 		uploadedImages.push(imgPath);
 	}
 
 	const existingImages = imageUrls.split(',').map((u) => u.trim()).filter(Boolean);
-	const allImages = [...existingImages, ...uploadedImages];
+	const validatedExistingImages = filterSecureImageUrls(existingImages);
+
+	const allImages = [...validatedExistingImages, ...uploadedImages];
 	const tags = tagsStr ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean) : null;
 
 	const updates: string[] = [];
@@ -120,12 +93,13 @@ export const PATCH: RequestHandler = async (event) => {
 	if (allImages.length > 0 || imageUrls !== '') { updates.push('images = ?'); values.push(JSON.stringify(allImages)); }
 	if (active !== null) { updates.push('active = ?'); values.push(active); }
 
-	updates.push('is_synced = 0');   // mark dirty — will be picked up by next sync
-	updates.push('updated_at = ?');
-	values.push(new Date().toISOString());
-	values.push(id);
-
-	db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+	if (updates.length > 0) {
+		updates.push('is_synced = 0');
+		updates.push('updated_at = ?');
+		values.push(new Date().toISOString());
+		values.push(id);
+		db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+	}
 
 	const product = db.prepare(`
 		SELECT p.*, c.name AS category_name
@@ -151,7 +125,7 @@ export const DELETE: RequestHandler = async (event) => {
 	const id = event.params.id;
 	const db = getStoreDb(store);
 	const existing = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id);
-	if (!existing) return json({ error: 'Product not found' }, { status: 404 });
+	if (!existing) return apiError(404, 'Product not found');
 
 	// Soft delete — preserves the row so the next delta sync can tell the gateway to remove it
 	db.prepare(`

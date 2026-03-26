@@ -1,55 +1,23 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
-import { requireAuth, requireStoreRole } from '$lib/server/auth.js';
-import { getStoreDb, getUploadDir } from '$lib/server/db.js';
-import { writeFileSync, mkdirSync } from 'fs';
-import { randomBytes } from 'crypto';
-import { join } from 'path';
-
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_MIME_PREFIXES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
-const ALLOWED_EXTENSIONS    = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']);
-
-function getFileExtension(filename: string): string {
-	const parts = filename.split('.');
-	return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : 'bin';
-}
-
-/** Returns an error string if the file is invalid, or null if OK. */
-function validateImageFile(file: File): string | null {
-	if (file.size > MAX_UPLOAD_BYTES) {
-		return `File "${file.name}" exceeds the 10 MB size limit.`;
-	}
-	const mimeOk = ALLOWED_MIME_PREFIXES.some(p => file.type.startsWith(p));
-	const ext    = getFileExtension(file.name);
-	const extOk  = ALLOWED_EXTENSIONS.has(ext);
-	if (!mimeOk || !extOk) {
-		return `File "${file.name}" is not an allowed image type (jpeg, png, webp, gif, avif).`;
-	}
-	return null;
-}
-
-async function saveUploadedFile(file: File): Promise<string> {
-	const uploadDir = getUploadDir();
-	mkdirSync(uploadDir, { recursive: true });
-	const buffer = Buffer.from(await file.arrayBuffer());
-	// Use a safe, random filename — never use the original name to avoid path injection
-	const ext      = getFileExtension(file.name);
-	const filename = `${Date.now()}-${randomBytes(8).toString('hex')}.${ext}`;
-	const filepath = join(uploadDir, filename);
-	writeFileSync(filepath, buffer);
-	return `/uploads/${filename}`;
-}
+import { getStoreDb } from '../../../lib/server/db.js';
+import { apiError } from '../../../lib/server/response.js';
+import { filterSecureImageUrls } from '../../../lib/server/images.js';
+import { validateImageFile, saveUploadedFile } from '../../../lib/server/uploads.js';
+import { requireStoreRole } from '../../../lib/server/auth.js';
 
 export const GET: RequestHandler = async (event) => {
 	const store = event.url.searchParams.get('store');
 	const auth = await requireStoreRole(event, store, ['merchandising']);
 	if (auth instanceof Response) return auth;
 
-	if (!store) return json({ error: 'store is required' }, { status: 400 });
+	if (!store) return apiError(400, 'store is required');
 
-	const page = parseInt(event.url.searchParams.get('page') ?? '1');
-	const limit = parseInt(event.url.searchParams.get('limit') ?? '20');
+	// SEC-8: Clamp pagination parameters
+	const rawPage = parseInt(event.url.searchParams.get('page') ?? '1');
+	const rawLimit = parseInt(event.url.searchParams.get('limit') ?? '20');
+	const page = Math.min(Math.max(1, isNaN(rawPage) ? 1 : rawPage), 10000);
+	const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 200);
 	const q = event.url.searchParams.get('q') ?? '';
 	const active = event.url.searchParams.get('active') ?? '';
 	const offset = (page - 1) * limit;
@@ -105,24 +73,36 @@ export const POST: RequestHandler = async (event) => {
 	const auth = await requireStoreRole(event, store, ['merchandising']);
 	if (auth instanceof Response) return auth;
 
-	if (!store) return json({ error: 'store is required' }, { status: 400 });
+	if (!store) return apiError(400, 'store is required');
 
 	const formData = await event.request.formData();
 
 	const title = formData.get('title') as string;
 	const sku = formData.get('sku') as string;
 	const description = formData.get('description') as string;
-	const price = formData.get('price') ? parseFloat(formData.get('price') as string) : null;
-	const stock_quantity = formData.get('stock_quantity')
-		? parseInt(formData.get('stock_quantity') as string)
-		: 0;
-	const category_id = formData.get('category_id')
-		? parseInt(formData.get('category_id') as string)
-		: null;
+
+	// SEC-7: Numeric bounds and NaN checks
+	const priceRaw = formData.get('price') as string;
+	const price = priceRaw ? parseFloat(priceRaw) : null;
+	if (priceRaw && (price === null || isNaN(price) || price < 0)) {
+		return apiError(400, 'Invalid price: must be a non-negative number');
+	}
+
+	const stockRaw = formData.get('stock_quantity') as string;
+	const stock_quantity = stockRaw ? parseInt(stockRaw) : 0;
+	if (stockRaw && (isNaN(stock_quantity) || stock_quantity < 0)) {
+		return apiError(400, 'Invalid stock_quantity: must be a non-negative integer');
+	}
+
+	const catIdRaw = formData.get('category_id') as string;
+	const category_id = catIdRaw ? parseInt(catIdRaw) : null;
+	if (catIdRaw && (category_id === null || isNaN(category_id) || category_id < 0)) {
+		return apiError(400, 'Invalid category_id');
+	}
 	const tagsStr = formData.get('tags') as string;
 	const active = (formData.get('active') as string) === '1' ? 1 : 0;
 
-	if (!title) return json({ error: 'title is required' }, { status: 400 });
+	if (!title) return apiError(400, 'title is required');
 
 	const imageFiles = formData.getAll('images[]') as File[];
 	const imageUrls = (formData.get('images_urls') as string) ?? '';
@@ -131,32 +111,32 @@ export const POST: RequestHandler = async (event) => {
 	for (const file of imageFiles) {
 		if (file.size === 0) continue;
 		const validationError = validateImageFile(file);
-		if (validationError) return json({ error: validationError }, { status: 422 });
+		if (validationError) return apiError(422, validationError);
 		const imgPath = await saveUploadedFile(file);
 		uploadedImages.push(imgPath);
 	}
 
 	const existingImages = imageUrls.split(',').map((u) => u.trim()).filter(Boolean);
-	const allImages = [...existingImages, ...uploadedImages];
+	const validatedExistingImages = filterSecureImageUrls(existingImages);
+
+	const allImages = [...validatedExistingImages, ...uploadedImages];
 	const tags = tagsStr ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
 	const db = getStoreDb(store);
-	const now = new Date().toISOString();
 
 	const result = db.prepare(`
-		INSERT INTO products (title, sku, description, price, stock_quantity, category_id, images, tags, active, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO products (title, sku, description, price, stock_quantity, category_id, images, tags, active)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`).run(
 		title,
 		sku || null,
 		description || null,
-		price,
+		price ?? null,
 		stock_quantity,
-		category_id,
+		category_id ?? null,
 		JSON.stringify(allImages),
 		JSON.stringify(tags),
-		active,
-		now, now
+		active
 	);
 
 	const product = db.prepare(`

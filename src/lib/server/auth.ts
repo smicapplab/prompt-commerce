@@ -74,6 +74,7 @@ export function getAuthUser(event: RequestEvent): JwtPayload | null {
 }
 
 import { getDb } from './db.js';
+import { apiError } from './response.js';
 
 /**
  * Returns a 401 JSON response if the request is not authenticated.
@@ -82,10 +83,7 @@ import { getDb } from './db.js';
 export function requireAuth(event: RequestEvent): JwtPayload | Response {
   const user = getAuthUser(event);
   if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorised' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(401, 'Unauthorised');
   }
   return user;
 }
@@ -108,10 +106,7 @@ export async function requireStoreRole(
   }
 
   if (!slug) {
-    return new Response(JSON.stringify({ error: 'Store context required' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(400, 'Store context required');
   }
 
   const db = getDb();
@@ -120,10 +115,7 @@ export async function requireStoreRole(
     .get(user.sub, slug) as { role: string } | undefined;
 
   if (!mapping || (allowedRoles.length > 0 && !allowedRoles.includes(mapping.role))) {
-    return new Response(JSON.stringify({ error: 'Forbidden: Insufficient permissions for this store' }), {
-      status: 403,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(403, 'Forbidden: Insufficient permissions for this store');
   }
 
   return { user, storeRole: mapping.role };
@@ -132,11 +124,11 @@ export async function requireStoreRole(
 // ─── Role hierarchy ───────────────────────────────────────────────────────────
 // Higher index = more privileged. Enforces scoped keys can't exceed user's role.
 const ROLE_RANK: Record<string, number> = {
-  ops:           1,
+  ops: 1,
   merchandising: 1,
-  store_admin:   2,
-  admin:         3,
-  super_admin:   4,
+  store_admin: 2,
+  admin: 3,
+  super_admin: 4,
 };
 
 export function roleRank(role: string): number {

@@ -17,7 +17,8 @@ export function initRegistrySchema(db: Database.Database): void {
       last_name     TEXT    NOT NULL DEFAULT '',
       email         TEXT    NOT NULL DEFAULT '',
       mobile        TEXT,
-      created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
     -- ─── Server-level key-value settings ────────────────────────────────────
@@ -47,6 +48,7 @@ export function initRegistrySchema(db: Database.Database): void {
       store_slug    TEXT    NOT NULL REFERENCES stores(slug) ON DELETE CASCADE,
       role          TEXT    NOT NULL, -- store_admin, merchandising, ops
       created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT    NOT NULL DEFAULT (datetime('now')),
       UNIQUE(user_id, store_slug)
     );
 
@@ -58,8 +60,26 @@ export function initRegistrySchema(db: Database.Database): void {
       scoped_role   TEXT,           -- narrower role override; NULL = inherit user's full role
       label         TEXT,           -- human-readable name e.g. "Claude Desktop - MacBook"
       expires_at    TEXT    NOT NULL,
-      created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- ─── Triggers ────────────────────────────────────────────────────────────
+    CREATE TRIGGER IF NOT EXISTS users_updated_at AFTER UPDATE ON users FOR EACH ROW BEGIN
+      UPDATE users SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS settings_updated_at AFTER UPDATE ON settings FOR EACH ROW BEGIN
+      UPDATE settings SET updated_at = datetime('now') WHERE key = OLD.key;
+    END;
+    CREATE TRIGGER IF NOT EXISTS stores_updated_at AFTER UPDATE ON stores FOR EACH ROW BEGIN
+      UPDATE stores SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS user_stores_updated_at AFTER UPDATE ON user_stores FOR EACH ROW BEGIN
+      UPDATE user_stores SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS user_temp_keys_updated_at AFTER UPDATE ON user_temp_keys FOR EACH ROW BEGIN
+      UPDATE user_temp_keys SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
   `);
 }
 
@@ -86,7 +106,8 @@ export function initStoreSchema(db: Database.Database): void {
       parent_id  INTEGER REFERENCES categories(id) ON DELETE SET NULL,
       is_synced  INTEGER NOT NULL DEFAULT 0,  -- 0=dirty (needs push), 1=synced
       deleted_at TEXT    DEFAULT NULL,        -- NULL=active; timestamp=soft-deleted
-      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
     -- ─── Products ───────────────────────────────────────────────────────────
@@ -118,7 +139,10 @@ export function initStoreSchema(db: Database.Database): void {
       start_date     TEXT,
       end_date       TEXT,
       active         INTEGER NOT NULL DEFAULT 1,
-      created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+      is_synced      INTEGER NOT NULL DEFAULT 0,
+      deleted_at     TEXT    DEFAULT NULL,
+      created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
     -- ─── Reviews ────────────────────────────────────────────────────────────
@@ -128,7 +152,8 @@ export function initStoreSchema(db: Database.Database): void {
       customer_name TEXT,
       rating        INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
       comment       TEXT,
-      created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
     -- ─── Orders ─────────────────────────────────────────────────────────────
@@ -169,8 +194,54 @@ export function initStoreSchema(db: Database.Database): void {
       conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
       sender          TEXT    NOT NULL,
       body            TEXT    NOT NULL,
-      created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+      created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- ─── Triggers: update_at ─────────────────────────────────────────────────
+    CREATE TRIGGER IF NOT EXISTS settings_updated_at AFTER UPDATE ON settings FOR EACH ROW BEGIN
+      UPDATE settings SET updated_at = datetime('now') WHERE key = OLD.key;
+    END;
+    CREATE TRIGGER IF NOT EXISTS categories_updated_at AFTER UPDATE ON categories FOR EACH ROW BEGIN
+      UPDATE categories SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS products_updated_at AFTER UPDATE ON products FOR EACH ROW BEGIN
+      UPDATE products SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS promotions_updated_at AFTER UPDATE ON promotions FOR EACH ROW BEGIN
+      UPDATE promotions SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS reviews_updated_at AFTER UPDATE ON reviews FOR EACH ROW BEGIN
+      UPDATE reviews SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS orders_updated_at AFTER UPDATE ON orders FOR EACH ROW BEGIN
+      UPDATE orders SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS conversations_updated_at AFTER UPDATE ON conversations FOR EACH ROW BEGIN
+      UPDATE conversations SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS messages_updated_at AFTER UPDATE ON messages FOR EACH ROW BEGIN
+      UPDATE messages SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+
+    -- ─── Triggers: is_synced (Auto-dirty on change) ──────────────────────────
+    CREATE TRIGGER IF NOT EXISTS categories_sync_dirty AFTER UPDATE ON categories FOR EACH ROW
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+    BEGIN
+      UPDATE categories SET is_synced = 0 WHERE id = OLD.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS products_sync_dirty AFTER UPDATE ON products FOR EACH ROW
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+    BEGIN
+      UPDATE products SET is_synced = 0 WHERE id = OLD.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS promotions_sync_dirty AFTER UPDATE ON promotions FOR EACH ROW
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+    BEGIN
+      UPDATE promotions SET is_synced = 0 WHERE id = OLD.id;
+    END;
   `);
 }
 

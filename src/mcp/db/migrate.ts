@@ -23,7 +23,7 @@ import bcrypt from 'bcryptjs';
 // ── .env auto-setup ───────────────────────────────────────────────────────────
 // Non-technical sellers shouldn't need to touch the .env file.
 // If it's missing or has insecure placeholder values we fix it automatically.
-const __dir    = path.dirname(fileURLToPath(import.meta.url));
+const __dir = path.dirname(fileURLToPath(import.meta.url));
 const ENV_PATH = path.resolve(__dir, '../../../.env');          // prompt-commerce/.env
 const EXAMPLE_PATH = path.resolve(__dir, '../../../.env.example');
 
@@ -72,7 +72,7 @@ if (!currentSecret || currentSecret.length < 32 || KNOWN_WEAK_SECRETS.has(curren
 // non-technical sellers to configure their deployment — no terminal needed.
 // env vars always take precedence over the config file.
 interface SellerConfig {
-  gatewayUrl?:     string;
+  gatewayUrl?: string;
   sellerPublicUrl?: string;
   [key: string]: unknown; // allow _readme / _comment fields
 }
@@ -118,6 +118,7 @@ for (const stmt of [
   "ALTER TABLE users ADD COLUMN last_name  TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE users ADD COLUMN email      TEXT NOT NULL DEFAULT ''",
   "ALTER TABLE users ADD COLUMN mobile     TEXT",
+  "ALTER TABLE users ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
 ]) {
   try {
     db.exec(stmt);
@@ -134,10 +135,36 @@ for (const stmt of [
   try { db.exec(stmt); } catch { /* column already exists */ }
 }
 
-// Add needs_password_change flag to users (0 = ok, 1 = warn to change)
 try {
   db.exec('ALTER TABLE users ADD COLUMN needs_password_change INTEGER NOT NULL DEFAULT 0');
 } catch { /* column already exists */ }
+
+// Add updated_at to other registry tables if missing
+for (const stmt of [
+  "ALTER TABLE user_stores    ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+  "ALTER TABLE user_temp_keys ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+]) {
+  try { db.exec(stmt); } catch { /* already exists */ }
+}
+
+// Ensure triggers exist in registry DB
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS users_updated_at AFTER UPDATE ON users FOR EACH ROW BEGIN
+    UPDATE users SET updated_at = datetime('now') WHERE id = OLD.id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS settings_updated_at AFTER UPDATE ON settings FOR EACH ROW BEGIN
+    UPDATE settings SET updated_at = datetime('now') WHERE key = OLD.key;
+  END;
+  CREATE TRIGGER IF NOT EXISTS stores_updated_at AFTER UPDATE ON stores FOR EACH ROW BEGIN
+    UPDATE stores SET updated_at = datetime('now') WHERE id = OLD.id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS user_stores_updated_at AFTER UPDATE ON user_stores FOR EACH ROW BEGIN
+    UPDATE user_stores SET updated_at = datetime('now') WHERE id = OLD.id;
+  END;
+  CREATE TRIGGER IF NOT EXISTS user_temp_keys_updated_at AFTER UPDATE ON user_temp_keys FOR EACH ROW BEGIN
+    UPDATE user_temp_keys SET updated_at = datetime('now') WHERE id = OLD.id;
+  END;
+`);
 
 console.log('✔  Registry schema applied (users, settings, stores, user_temp_keys)');
 
@@ -196,11 +223,65 @@ if (fs.existsSync(storesDir)) {
     for (const stmt of [
       'ALTER TABLE products   ADD COLUMN is_synced  INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE products   ADD COLUMN deleted_at TEXT    DEFAULT NULL',
+      'ALTER TABLE products   ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
       'ALTER TABLE categories ADD COLUMN is_synced  INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE categories ADD COLUMN deleted_at TEXT    DEFAULT NULL',
+      'ALTER TABLE categories ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
+      'ALTER TABLE promotions ADD COLUMN is_synced  INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE promotions ADD COLUMN deleted_at TEXT    DEFAULT NULL',
+      'ALTER TABLE promotions ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
+      'ALTER TABLE reviews    ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
+      'ALTER TABLE messages   ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
     ]) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
     }
+
+    // Ensure triggers exist in store DB
+    sdb.exec(`
+      CREATE TRIGGER IF NOT EXISTS settings_updated_at AFTER UPDATE ON settings FOR EACH ROW BEGIN
+        UPDATE settings SET updated_at = datetime('now') WHERE key = OLD.key;
+      END;
+      CREATE TRIGGER IF NOT EXISTS categories_updated_at AFTER UPDATE ON categories FOR EACH ROW BEGIN
+        UPDATE categories SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS products_updated_at AFTER UPDATE ON products FOR EACH ROW BEGIN
+        UPDATE products SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS promotions_updated_at AFTER UPDATE ON promotions FOR EACH ROW BEGIN
+        UPDATE promotions SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS reviews_updated_at AFTER UPDATE ON reviews FOR EACH ROW BEGIN
+        UPDATE reviews SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS orders_updated_at AFTER UPDATE ON orders FOR EACH ROW BEGIN
+        UPDATE orders SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS conversations_updated_at AFTER UPDATE ON conversations FOR EACH ROW BEGIN
+        UPDATE conversations SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS messages_updated_at AFTER UPDATE ON messages FOR EACH ROW BEGIN
+        UPDATE messages SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+
+      -- Sync dirty triggers
+      CREATE TRIGGER IF NOT EXISTS categories_sync_dirty AFTER UPDATE ON categories FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+      BEGIN
+        UPDATE categories SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS products_sync_dirty AFTER UPDATE ON products FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+      BEGIN
+        UPDATE products SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS promotions_sync_dirty AFTER UPDATE ON promotions FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+      BEGIN
+        UPDATE promotions SET is_synced = 0 WHERE id = OLD.id;
+      END;
+    `);
     sdb.close();
     console.log(`✔  Migrated store DB: ${file}`);
   }

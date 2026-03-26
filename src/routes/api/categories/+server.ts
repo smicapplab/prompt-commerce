@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { requireAuth, requireStoreRole } from '$lib/server/auth.js';
+import { apiError } from '$lib/server/response.js';
 import { getStoreDb } from '$lib/server/db.js';
 
 export const GET: RequestHandler = async (event) => {
@@ -31,12 +32,17 @@ export const POST: RequestHandler = async (event) => {
 
 	const body = await event.request.json();
 	const { name, parent_id } = body;
-	if (!name) return json({ error: 'name is required' }, { status: 400 });
+	if (!name) return apiError(400, 'name is required');
+
+	// SEC-7: Numeric validation for parent_id
+	if (parent_id != null && (!Number.isFinite(parent_id) || parent_id < 0)) {
+		return apiError(400, 'Invalid parent_id');
+	}
 
 	const db = getStoreDb(store);
 
 	const existing = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(name);
-	if (existing) return json({ error: 'Category with this name already exists' }, { status: 400 });
+	if (existing) return apiError(400, 'Category with this name already exists');
 
 	const now = new Date().toISOString();
 	const result = db.prepare(`INSERT INTO categories (name, parent_id, created_at) VALUES (?, ?, ?)`).run(

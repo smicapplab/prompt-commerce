@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { RefreshCw } from '@lucide/svelte';
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
 
   interface Promotion {
@@ -32,6 +33,7 @@
   let showModal = $state(false);
   let editingId = $state<number | null>(null);
   let saving = $state(false);
+  let syncError = $state("");
   let formError = $state('');
 
   // Form fields
@@ -268,15 +270,19 @@
 <!-- Add / Edit Modal -->
 {#if showModal}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
     role="presentation"
-    onclick={(e) => e.target === e.currentTarget && (showModal = false)}
     onkeydown={(e) => e.key === 'Escape' && (showModal = false)}
   >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 class="text-base font-semibold text-gray-900">{editingId ? 'Edit Promotion' : 'New Promotion'}</h2>
-        <button onclick={() => (showModal = false)} class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+    <div 
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="promo-modal-title"
+    >
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+        <h2 id="promo-modal-title" class="text-base font-semibold text-gray-900">{editingId ? 'Edit Promotion' : 'New Promotion'}</h2>
+        <button onclick={() => (showModal = false)} class="text-gray-400 hover:text-gray-600 text-xl leading-none" aria-label="Close modal">&times;</button>
       </div>
 
       <div class="px-6 py-5 space-y-4">
@@ -286,7 +292,7 @@
 
         <div>
           <label for="promo-title" class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
-          <input id="promo-title" type="text" bind:value={fTitle} placeholder="Summer Sale 20%" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input id="promo-title" type="text" bind:value={fTitle} placeholder="Summer Sale 20%" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1" autofocus />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -346,10 +352,25 @@
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-        <button onclick={() => (showModal = false)} class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900">Cancel</button>
-        <button onclick={savePromotion} disabled={saving} class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
-          {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create Promotion'}
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 mt-auto">
+        <button 
+          onclick={() => (showModal = false)} 
+          class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 focus:ring-2 focus:ring-gray-300 focus:ring-offset-1 outline-none"
+          disabled={saving}
+        >
+          Cancel
+        </button>
+        <button 
+          onclick={savePromotion} 
+          disabled={saving} 
+          class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 outline-none disabled:opacity-50"
+        >
+          {#if saving}
+            <RefreshCw size={16} class="animate-spin" />
+            {editingId ? 'Updating…' : 'Creating…'}
+          {:else}
+            {editingId ? 'Save changes' : 'Create Promotion'}
+          {/if}
         </button>
       </div>
     </div>

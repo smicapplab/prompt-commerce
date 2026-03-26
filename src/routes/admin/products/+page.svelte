@@ -25,6 +25,7 @@
 	let syncing = $state(false);
 	let syncSuccess = $state("");
 	let syncError = $state("");
+	let saving = $state(false);
 
 	async function loadDirtyCount() {
 		if (!activeStore.slug) return;
@@ -250,6 +251,7 @@
 			return;
 		}
 
+		saving = true;
 		const data = new FormData();
 		data.append("title", formData.title);
 		data.append("sku", formData.sku);
@@ -294,6 +296,8 @@
 		} catch (error) {
 			console.error("Save error:", error);
 			showToast("Failed to save product", "error");
+		} finally {
+			saving = false;
 		}
 	};
 
@@ -657,15 +661,20 @@
 
 	{#if showModal}
 		<div
-			class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
+			class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 backdrop-blur-sm"
+			onkeydown={(e) => e.key === "Escape" && closeModal()}
+			role="presentation"
 		>
 			<div
-				class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+				class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="modal-title"
 			>
 				<div
-					class="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white"
+					class="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10"
 				>
-					<h2 class="text-xl font-bold text-gray-900">
+					<h2 id="modal-title" class="text-xl font-bold text-gray-900">
 						{isEditing ? "Edit Product" : "Add Product"}
 					</h2>
 					<button
@@ -687,8 +696,9 @@
 							id="product-title"
 							type="text"
 							bind:value={formData.title}
-							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
 							placeholder="Product name"
+							autofocus
 						/>
 					</div>
 
@@ -894,18 +904,25 @@
 					</div>
 				</div>
 
-				<div class="flex gap-3 p-6 border-t border-gray-200 bg-gray-50">
+				<div class="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 mt-auto">
 					<button
 						onclick={closeModal}
-						class="flex-1 border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium"
+						class="flex-1 border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-gray-300 focus:ring-offset-1 outline-none"
+						disabled={saving}
 					>
 						Cancel
 					</button>
 					<button
 						onclick={saveProduct}
-						class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+						class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+						disabled={saving}
 					>
-						{isEditing ? "Update" : "Create"}
+						{#if saving}
+							<RefreshCw size={16} class="animate-spin" />
+							{isEditing ? "Updating..." : "Creating..."}
+						{:else}
+							{isEditing ? "Update" : "Create"}
+						{/if}
 					</button>
 				</div>
 			</div>
