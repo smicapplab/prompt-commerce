@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="screenshots/logo.png" alt="Prompt Commerce logo" width="100">
+</p>
+
 # Prompt Commerce — Seller
 
 Prompt Commerce is an open-source MCP server that lets small retailers manage their product catalog through AI chat. It is designed for independent retailers and social media sellers who prefer a conversational interface over complex inventory software.
