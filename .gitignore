@@ -11,11 +11,6 @@ build/
 # Environment variables
 .env
 
-# Data directory lives at <repo-root>/_data/ — ignored from the root .gitignore
-
-# Screenshots / demo assets (not part of the application)
-screenshots/
-
 # OS
 .DS_Store
 Thumbs.db
