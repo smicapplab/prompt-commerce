@@ -17,6 +17,16 @@
 	let syncError = $state("");
 	let saving = $state(false);
 
+	let dirtyBreakdown = $derived(() => {
+		const deletedCount = categories.filter(
+			(c) => !c.is_synced && c.deleted_at,
+		).length;
+		const activeDirty = categories.filter(
+			(c) => !c.is_synced && !c.deleted_at,
+		).length;
+		return { deletedCount, activeDirty };
+	});
+
 	async function loadDirtyCount() {
 		if (!activeStore.slug) return;
 		const s = await fetchSyncStatus(activeStore.slug).catch(() => null);
@@ -47,6 +57,7 @@
 		name: "",
 		parent_id: "",
 	});
+	let erroredFields = $state(new Set());
 
 	let productCounts = $state({});
 	let toasts = $state([]);
@@ -137,6 +148,7 @@
 
 	const saveCategory = async () => {
 		if (!formData.name.trim()) {
+			erroredFields.add("name");
 			showToast("Category name is required", "error");
 			return;
 		}
@@ -274,20 +286,25 @@
 			</div>
 		{:else if dirtyCount > 0}
 			<div
-				class="flex items-center justify-between mb-6 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm"
+				class="mb-6 flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800"
 			>
-				<span class="text-orange-800">
-					<strong>{dirtyCount}</strong> unsaved change{dirtyCount !==
-					1
-						? "s"
-						: ""} not yet synced to the gateway. Customers won't see
-					them until you sync.
-				</span>
+				<div class="flex items-center gap-2">
+					<RefreshCw
+						size={16}
+						class="text-orange-600 animate-spin-slow"
+					/>
+					<span class="font-medium">
+						{dirtyCount} item{dirtyCount === 1 ? "" : "s"} not yet synced.
+						<span class="text-orange-600/70 font-normal ml-1">
+							({dirtyBreakdown().activeDirty} new/edited · {dirtyBreakdown()
+								.deletedCount} deleted)
+						</span>
+					</span>
+				</div>
 				<button
 					onclick={runSync}
-					class="ml-4 shrink-0 inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700"
+					class="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700 transition-colors shadow-sm"
 				>
-					<RefreshCw size={12} />
 					Sync now
 				</button>
 			</div>
@@ -391,7 +408,10 @@
 				<div
 					class="flex items-center justify-between p-6 border-b border-gray-200"
 				>
-					<h2 id="modal-title" class="text-xl font-bold text-gray-900">
+					<h2
+						id="modal-title"
+						class="text-xl font-bold text-gray-900"
+					>
 						{isEditing ? "Edit Category" : "Add Category"}
 					</h2>
 					<button
@@ -413,10 +433,20 @@
 							id="category-name"
 							type="text"
 							bind:value={formData.name}
-							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+							oninput={() => erroredFields.delete("name")}
+							class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 {erroredFields.has(
+								'name',
+							)
+								? 'border-red-500 bg-red-50'
+								: 'border-gray-300'}"
 							placeholder="Category name"
 							autofocus
 						/>
+						{#if erroredFields.has("name")}
+							<p class="text-xs text-red-600 mt-1">
+								Name is required
+							</p>
+						{/if}
 					</div>
 
 					<div>

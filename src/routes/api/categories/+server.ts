@@ -35,8 +35,8 @@ export const POST: RequestHandler = async (event) => {
 	if (!name) return apiError(400, 'name is required');
 
 	// SEC-7: Numeric validation for parent_id
-	if (parent_id != null && (!Number.isFinite(parent_id) || parent_id < 0)) {
-		return apiError(400, 'Invalid parent_id');
+	if (parent_id !== null && (!Number.isFinite(parent_id) || parent_id <= 0)) {
+		return json({ error: 'Invalid parent_id' }, { status: 400 });
 	}
 
 	const db = getStoreDb(store);
