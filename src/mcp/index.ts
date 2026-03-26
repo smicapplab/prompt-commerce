@@ -83,15 +83,13 @@ function makeGatewayKeyMiddleware(slug: string) {
         next();
         return;
       }
-      
+
       res.status(403).json({ error: 'User does not have access to this store.' });
       return;
     }
 
     res.status(401).json({ error: 'Invalid x-gateway-key.' });
     return;
-
-    next();
   };
 }
 
@@ -115,6 +113,7 @@ export function mountMcp(app: Application): void {
   }, async (req, res) => {
     const slug = req.params.slug;
     const transport = new SSEServerTransport(`/messages/${slug}`, res);
+    (transport as any).slug = slug; // Attach slug to transport for POST validation
     transports.set(transport.sessionId, transport);
 
     res.on('close', () => {
@@ -127,7 +126,9 @@ export function mountMcp(app: Application): void {
   });
 
   // Message endpoint — MCP clients POST tool calls here
-  app.post('/messages/:slug', async (req, res) => {
+  app.post('/messages/:slug', (req, res, next) => {
+    makeGatewayKeyMiddleware(req.params.slug)(req, res, next);
+  }, async (req, res) => {
     const sessionId = req.query['sessionId'] as string | undefined;
     if (!sessionId) {
       res.status(400).json({ error: 'Missing sessionId query parameter.' });
@@ -137,6 +138,12 @@ export function mountMcp(app: Application): void {
     const transport = transports.get(sessionId);
     if (!transport) {
       res.status(404).json({ error: `Session "${sessionId}" not found or expired.` });
+      return;
+    }
+
+    // SEC-R2-1: Validate that the sessionId belongs to the requested store slug
+    if ((transport as any).slug !== req.params.slug) {
+      res.status(403).json({ error: 'Forbidden: Session does not match store slug.' });
       return;
     }
 

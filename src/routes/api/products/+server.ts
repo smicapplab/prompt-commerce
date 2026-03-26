@@ -104,6 +104,12 @@ export const POST: RequestHandler = async (event) => {
 
 	if (!title) return apiError(400, 'title is required');
 
+	const db = getStoreDb(store);
+	if (category_id !== null) {
+		const cat = db.prepare('SELECT id FROM categories WHERE id = ? AND deleted_at IS NULL').get(category_id);
+		if (!cat) return apiError(422, 'Category not found');
+	}
+
 	const imageFiles = formData.getAll('images[]') as File[];
 	const imageUrls = (formData.get('images_urls') as string) ?? '';
 	const uploadedImages: string[] = [];
