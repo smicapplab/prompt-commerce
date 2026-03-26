@@ -22,6 +22,9 @@ export const PATCH: RequestHandler = async (event) => {
   const allowed = ['title', 'product_id', 'voucher_code', 'discount_type', 'discount_value', 'start_date', 'end_date', 'active'];
   for (const key of allowed) {
     if (key in body) {
+      if (key === 'discount_type' && !['percentage', 'fixed'].includes(body[key])) {
+        return json({ error: 'Invalid discount_type' }, { status: 400 });
+      }
       fields.push(`${key} = ?`);
       values.push(body[key] === '' ? null : body[key]);
     }
