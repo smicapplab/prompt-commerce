@@ -10,8 +10,10 @@ export const GET: RequestHandler = async (event) => {
 
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
-  const page = parseInt(event.url.searchParams.get('page') ?? '1');
-  const limit = parseInt(event.url.searchParams.get('limit') ?? '20');
+  const rawPage = parseInt(event.url.searchParams.get('page') ?? '1');
+  const rawLimit = parseInt(event.url.searchParams.get('limit') ?? '20');
+  const page = Math.min(Math.max(1, isNaN(rawPage) ? 1 : rawPage), 10000);
+  const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 200);
   const q = event.url.searchParams.get('q') ?? '';
   const status = event.url.searchParams.get('status') ?? '';
   const offset = (page - 1) * limit;
@@ -69,6 +71,11 @@ export const POST: RequestHandler = async (event) => {
 
   const body = await event.request.json();
   const { items, ...orderBody } = body;
+
+  const VALID_STATUSES = ['pending', 'paid', 'picking', 'packing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled', 'refunded'];
+  if (orderBody.status && !VALID_STATUSES.includes(orderBody.status)) {
+    return json({ error: 'Invalid status' }, { status: 400 });
+  }
 
   const db = getStoreDb(store);
   const now = new Date().toISOString();

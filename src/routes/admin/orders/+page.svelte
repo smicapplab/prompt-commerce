@@ -105,6 +105,13 @@
   }
 
   onMount(() => {
+    // UX-R2-7: Validate status from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const s = urlParams.get("status");
+    if (s && STATUS_OPTIONS.includes(s)) {
+      filterStatus = s;
+    }
+
     if (activeStore.slug) {
       load(activeStore.slug);
     }
