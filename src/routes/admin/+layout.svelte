@@ -150,7 +150,7 @@
   <aside class="w-56 shrink-0 bg-white border-r border-gray-200 flex flex-col">
     <!-- Brand -->
     <div class="flex items-center gap-2 px-4 py-4 border-b border-gray-100">
-      <img src="/logo.png" alt="Prompt Commerce" class="h-8" />
+      <img src="/logo-2.png" alt="Prompt Commerce" class="h-8" />
       <span class="font-semibold text-sm text-cyan-800 pt-2">Store Admin</span>
     </div>
 

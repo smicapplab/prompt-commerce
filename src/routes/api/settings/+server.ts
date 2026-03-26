@@ -38,7 +38,7 @@ const STORE_KEYS = [
 ] as const;
 
 type ServerKey = typeof SERVER_KEYS[number];
-type StoreKey  = typeof STORE_KEYS[number];
+type StoreKey = typeof STORE_KEYS[number];
 
 function getSettingsDb(slug?: string | null) {
   return slug ? getStoreDb(slug) : getDb();
@@ -108,7 +108,7 @@ export const PATCH: RequestHandler = async (event) => {
 
   // null → delete the key (clear it); '' → skip (no-op); string → upsert
   const entries = Object.entries(body).filter(
-    ([key, value]) => allowed.includes(key) && value !== '' && value !== undefined
+    ([key, value]) => allowed.includes(key) && value !== undefined
   ) as [string, string | null][];
 
   if (entries.length === 0) {
@@ -126,14 +126,14 @@ export const PATCH: RequestHandler = async (event) => {
 
   // ── Fire-and-forget: push config changes to gateway ─────────────────────────
   if (slug) {
-    const AI_KEYS       = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
-    const PAYMENT_KEYS  = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
-    const TELEGRAM_KEYS      = new Set(['telegram_notify_chat_id']);
-    const TELEGRAM_BOT_KEYS  = new Set(['telegram_webhook_url']);
+    const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
+    const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
+    const TELEGRAM_KEYS = new Set(['telegram_notify_chat_id']);
+    const TELEGRAM_BOT_KEYS = new Set(['telegram_webhook_url']);
 
-    const hasAiChange          = entries.some(([key]) => AI_KEYS.has(key));
-    const hasPaymentChange     = entries.some(([key]) => PAYMENT_KEYS.has(key));
-    const hasTelegramChange    = entries.some(([key]) => TELEGRAM_KEYS.has(key));
+    const hasAiChange = entries.some(([key]) => AI_KEYS.has(key));
+    const hasPaymentChange = entries.some(([key]) => PAYMENT_KEYS.has(key));
+    const hasTelegramChange = entries.some(([key]) => TELEGRAM_KEYS.has(key));
     const hasTelegramBotChange = entries.some(([key]) => TELEGRAM_BOT_KEYS.has(key));
 
     if (hasAiChange || hasPaymentChange || hasTelegramChange || hasTelegramBotChange) {
@@ -173,7 +173,7 @@ export const PATCH: RequestHandler = async (event) => {
           // ── Push AI config ─────────────────────────────────────────────────
           if (hasAiChange) {
             const provider = s['ai_provider'] || 'claude';
-            const apiKey   = provider === 'gemini'
+            const apiKey = provider === 'gemini'
               ? s['gemini_api_key']
               : provider === 'openai'
                 ? s['openai_api_key']
@@ -183,11 +183,11 @@ export const PATCH: RequestHandler = async (event) => {
                 method: 'PATCH',
                 headers,
                 body: JSON.stringify({
-                  aiProvider:     provider,
-                  aiApiKey:       apiKey,
-                  aiModel:        s['ai_model']        || null,
+                  aiProvider: provider,
+                  aiApiKey: apiKey,
+                  aiModel: s['ai_model'] || null,
                   aiSystemPrompt: s['ai_system_prompt'] || null,
-                  serperApiKey:   s['serper_api_key']  || null,
+                  serperApiKey: s['serper_api_key'] || null,
                 }),
               });
             }
@@ -199,9 +199,9 @@ export const PATCH: RequestHandler = async (event) => {
               method: 'PATCH',
               headers,
               body: JSON.stringify({
-                paymentProvider:      s['payment_provider']       || 'mock',
-                paymentApiKey:        s['payment_api_key']        || null,
-                paymentPublicKey:     s['payment_public_key']     || null,
+                paymentProvider: s['payment_provider'] || 'mock',
+                paymentApiKey: s['payment_api_key'] || null,
+                paymentPublicKey: s['payment_public_key'] || null,
                 paymentWebhookSecret: s['payment_webhook_secret'] || null,
               }),
             });

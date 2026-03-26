@@ -10,6 +10,25 @@ This repo is the **seller service** — the admin panel, MCP server, and per-sto
 
 ---
 
+## Screenshots
+
+### Seller Dashboard
+<img src="screenshots/dashboard.png" alt="Seller Dashboard" width="800">
+
+*Central overview of store performance and onboarding checklist.*
+
+### Product & Category Management
+| ![Category Page](screenshots/category.png) | ![Product Page](screenshots/products.png) |
+| :---: | :---: |
+| *Category Taxonomy* | *Product Listings & Sync Status* |
+
+### AI Assistant Chat
+| ![AI Assistant Chat](screenshots/ai-assitant.png) | ![AI Settings](screenshots/ai-settings.png) |
+| :---: | :---: |
+| *Conversational interface for managing the store via MCP tools.* | *Fine-tune your LLM provider, model, and system prompt.* |
+
+---
+
 ## Architecture
 
 ```

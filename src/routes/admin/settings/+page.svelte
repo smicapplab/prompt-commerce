@@ -320,6 +320,7 @@
   }
 
   $effect(() => {
+    if (activeStore.slug) loadStore();
     if (activeTab === "users") loadUsers();
   });
 
