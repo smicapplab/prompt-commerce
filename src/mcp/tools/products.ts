@@ -6,10 +6,52 @@ import * as xlsx from 'xlsx';
 import fs from 'fs';
 import crypto from 'crypto';
 import path from 'path';
+import dns from 'dns/promises';
 import { getUploadDir } from '../db/client.js';
 
 // Upload dir lives in _data/uploads/ (outside the seller package)
 const UPLOAD_DIR = getUploadDir();
+
+// ─── SSRF protection ─────────────────────────────────────────────────────────
+// Returns true if the IPv4 address falls in a private / link-local / loopback range.
+function isPrivateIp(ip: string): boolean {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) {
+    return true; // treat malformed IPs as unsafe
+  }
+  const [a, b] = parts;
+  return (
+    a === 127 ||                           // 127.0.0.0/8   loopback
+    a === 10 ||                            // 10.0.0.0/8    private
+    a === 0 ||                             // 0.0.0.0/8     "this" network
+    (a === 172 && b >= 16 && b <= 31) ||   // 172.16.0.0/12 private
+    (a === 192 && b === 168) ||            // 192.168.0.0/16 private
+    (a === 169 && b === 254) ||            // 169.254.0.0/16 link-local
+    (a === 100 && b >= 64 && b <= 127) ||  // 100.64.0.0/10  CGNAT
+    a === 198 && b === 51 && parts[2] === 100 || // 198.51.100.0/24 TEST-NET-2
+    a === 203 && b === 0   && parts[2] === 113   // 203.0.113.0/24  TEST-NET-3
+  );
+}
+
+async function isSsrfSafe(url: string): Promise<boolean> {
+  try {
+    const parsed = new URL(url);
+    // Only allow http/https schemes
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    // Block numeric IP hostnames that are private
+    const host = parsed.hostname;
+    // If it's already a dotted-decimal IPv4, check directly
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+      return !isPrivateIp(host);
+    }
+    // Resolve the hostname and check all returned IPs
+    const addresses = await dns.resolve4(host).catch(() => [] as string[]);
+    if (!addresses.length) return false; // unresolvable — block
+    return addresses.every(ip => !isPrivateIp(ip));
+  } catch {
+    return false;
+  }
+}
 
 export async function downloadAndCacheImages(urls: string[]): Promise<string[]> {
   const finalUrls: string[] = [];
@@ -19,6 +61,12 @@ export async function downloadAndCacheImages(urls: string[]): Promise<string[]> 
       continue;
     }
     try {
+      // SSRF guard: reject requests to internal/private addresses
+      if (!(await isSsrfSafe(url))) {
+        console.error(`SSRF blocked: refusing to fetch private/internal URL: ${url}`);
+        finalUrls.push(url);
+        continue;
+      }
       const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
       if (!response.ok) throw new Error(`Failed to fetch ${url}`);
 
@@ -397,16 +445,38 @@ export function registerProductTools(
       confirm: z.boolean().default(false).describe('Set to true to actually save. When false (default), returns a preview for review.'),
     },
     async ({ file_path, confirm }) => {
-      if (!fs.existsSync(file_path)) {
+      // ── Security: validate path before touching the filesystem ─────────────
+      const resolvedPath = path.resolve(file_path);
+
+      // Only allow .xlsx or .csv files
+      const ext = path.extname(resolvedPath).toLowerCase();
+      if (ext !== '.xlsx' && ext !== '.csv') {
         return {
-          content: [{ type: 'text', text: `Error: file not found at path "${file_path}".` }],
+          content: [{ type: 'text', text: `Error: file must be an .xlsx or .csv file (got "${ext || 'no extension'}").` }],
+          isError: true,
+        };
+      }
+
+      // Block path traversal — the resolved path must not escape to sensitive dirs
+      const allowedDirs = ['/home', '/tmp', '/var/tmp', process.cwd()];
+      const pathIsSafe = allowedDirs.some(dir => resolvedPath.startsWith(dir + path.sep) || resolvedPath.startsWith(dir));
+      if (!pathIsSafe) {
+        return {
+          content: [{ type: 'text', text: `Error: file path is outside allowed directories. Please place your file in a home or temp directory.` }],
+          isError: true,
+        };
+      }
+
+      if (!fs.existsSync(resolvedPath)) {
+        return {
+          content: [{ type: 'text', text: `Error: file not found at path "${resolvedPath}".` }],
           isError: true,
         };
       }
 
       let workbook;
       try {
-        workbook = xlsx.readFile(file_path);
+        workbook = xlsx.readFile(resolvedPath);
       } catch (e: any) {
         return {
           content: [{ type: 'text', text: `Error reading file: ${e.message}` }],

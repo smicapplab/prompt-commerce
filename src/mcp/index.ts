@@ -54,8 +54,10 @@ function makeGatewayKeyMiddleware(slug: string) {
       return;
     }
 
-    // 1. Check if it's the static store gateway key
+    // 1. Check if it's the static store gateway key (used by the Telegram gateway)
     if (store.gateway_key && provided === store.gateway_key) {
+      // Attach a gateway identity so req.user is always defined downstream
+      (req as any).user = { sub: 0, username: 'gateway', role: 'admin', storeRole: 'admin' };
       next();
       return;
     }

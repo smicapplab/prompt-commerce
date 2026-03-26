@@ -36,6 +36,7 @@ export const PATCH: RequestHandler = async (event) => {
   }
   if (body.password) {
     updates.push('password_hash = ?');
+    updates.push('needs_password_change = 0');
     params.push(hashPassword(body.password));
   }
   if (body.role) {

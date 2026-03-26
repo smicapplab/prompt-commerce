@@ -55,6 +55,8 @@ export function initRegistrySchema(db: Database.Database): void {
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       token         TEXT    NOT NULL UNIQUE,
+      scoped_role   TEXT,           -- narrower role override; NULL = inherit user's full role
+      label         TEXT,           -- human-readable name e.g. "Claude Desktop - MacBook"
       expires_at    TEXT    NOT NULL,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
     );

@@ -6,6 +6,7 @@ import { getDb, getStoreDb } from '$lib/server/db.js';
 // ─── Server-level settings (registry DB) ─────────────────────────────────────
 const SERVER_KEYS = [
   'gateway_url',
+  'seller_public_url',
   'admin_base_url',
 ] as const;
 
@@ -32,6 +33,8 @@ const STORE_KEYS = [
   'payment_api_key',
   'payment_public_key',
   'payment_webhook_secret',
+  // Telegram seller notifications
+  'telegram_notify_chat_id',
 ] as const;
 
 type ServerKey = typeof SERVER_KEYS[number];
@@ -118,13 +121,15 @@ export const PATCH: RequestHandler = async (event) => {
 
   // ── Fire-and-forget: push config changes to gateway ─────────────────────────
   if (slug) {
-    const AI_KEYS      = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
-    const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
+    const AI_KEYS       = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
+    const PAYMENT_KEYS  = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
+    const TELEGRAM_KEYS = new Set(['telegram_notify_chat_id']);
 
-    const hasAiChange      = entries.some(([key]) => AI_KEYS.has(key));
-    const hasPaymentChange = entries.some(([key]) => PAYMENT_KEYS.has(key));
+    const hasAiChange       = entries.some(([key]) => AI_KEYS.has(key));
+    const hasPaymentChange  = entries.some(([key]) => PAYMENT_KEYS.has(key));
+    const hasTelegramChange = entries.some(([key]) => TELEGRAM_KEYS.has(key));
 
-    if (hasAiChange || hasPaymentChange) {
+    if (hasAiChange || hasPaymentChange || hasTelegramChange) {
       void (async () => {
         try {
           const registry = getDb();
@@ -145,6 +150,7 @@ export const PATCH: RequestHandler = async (event) => {
           const allKeys = [
             'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
             'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret',
+            'telegram_notify_chat_id',
           ];
           const settingRows = storeDb
             .prepare(`SELECT key, value FROM settings WHERE key IN (${allKeys.map(() => '?').join(',')})`)
@@ -190,6 +196,17 @@ export const PATCH: RequestHandler = async (event) => {
                 paymentApiKey:        s['payment_api_key']        || null,
                 paymentPublicKey:     s['payment_public_key']     || null,
                 paymentWebhookSecret: s['payment_webhook_secret'] || null,
+              }),
+            });
+          }
+
+          // ── Push Telegram config ───────────────────────────────────────────
+          if (hasTelegramChange) {
+            await fetch(`${gatewayUrl}/api/stores/${slug}/telegram-config`, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({
+                notifyChatId: s['telegram_notify_chat_id'] || null,
               }),
             });
           }

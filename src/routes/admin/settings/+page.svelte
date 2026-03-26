@@ -25,6 +25,7 @@
 
   let userRole = $state("");
   let currentUserId = $state<number | null>(null);
+  let needsPasswordChange = $state(false);
 
   const visibleTabs = $derived(() => {
     const tabs: [string, string][] = [];
@@ -212,6 +213,10 @@
     saving = false;
     if (res.ok) {
       showEditUserModal = false;
+      // If the current user just changed their own password, clear the warning banner
+      if (editingUser.id === currentUserId && editingUser.newPassword) {
+        needsPasswordChange = false;
+      }
       editingUser = null;
       loadUsers();
     } else {
@@ -356,7 +361,8 @@
     saved = "";
     error = "";
     const payload: Record<string, string> = {
-      telegram_webhook_url: String(storeSettings.telegram_webhook_url ?? ""),
+      telegram_webhook_url:    String(storeSettings.telegram_webhook_url ?? ""),
+      telegram_notify_chat_id: String(storeSettings.telegram_notify_chat_id ?? ""),
     };
     if (telegramKeyInput) payload.telegram_bot_token = telegramKeyInput;
 
@@ -495,7 +501,7 @@
   // isn't in the preset list (e.g. a custom model name was saved previously).
   let customModelMode = $state(false);
 
-  onMount(() => {
+  onMount(async () => {
     const t = token();
     if (t) {
       try {
@@ -509,6 +515,17 @@
       } catch (e) {
         console.error("Failed to parse token", e);
       }
+
+      // Check if the current user still has the default password
+      try {
+        const authRes = await fetch("/api/auth", {
+          headers: { Authorization: `Bearer ${t}` },
+        });
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          needsPasswordChange = authData.needsPasswordChange === true;
+        }
+      } catch { /* non-critical */ }
     }
     loadStore();
     loadServer();
@@ -527,6 +544,24 @@
     <p class="text-sm text-amber-600 mb-6">
       Select a store to manage store settings.
     </p>
+  {/if}
+
+  {#if needsPasswordChange}
+    <div class="mb-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+      <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+      <div class="text-sm">
+        <p class="font-semibold text-amber-800">You're using the default password</p>
+        <p class="mt-0.5 text-amber-700">
+          Please change your password before going live.
+          Go to <button
+            class="underline font-medium"
+            onclick={() => { activeTab = 'users'; }}
+          >Users → edit your account</button> to update it.
+        </p>
+      </div>
+    </div>
   {/if}
 
   {#if error}
@@ -1105,6 +1140,34 @@
           </p>
         </div>
 
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+          <div>
+            <h4 class="text-sm font-medium text-gray-800 mb-0.5">Order Notifications</h4>
+            <p class="text-xs text-gray-500">
+              Receive a Telegram message whenever a buyer places an order in this store.
+            </p>
+          </div>
+          <div>
+            <label
+              for="t-notify-id"
+              class="block text-xs font-medium text-gray-700 mb-1"
+              >Your Telegram Chat ID</label
+            >
+            <input
+              id="t-notify-id"
+              type="text"
+              value={val("telegram_notify_chat_id")}
+              oninput={(e) =>
+                set("telegram_notify_chat_id", (e.target as HTMLInputElement).value)}
+              placeholder="e.g. 123456789"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              Send <code class="bg-gray-100 px-1 rounded">/myid</code> to your Telegram bot to get this number.
+            </p>
+          </div>
+        </div>
+
         <button
           onclick={() => saveTelegram()}
           disabled={saving}
@@ -1562,7 +1625,25 @@
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <p class="mt-1 text-xs text-gray-500">
-              Internal address of the Prompt Commerce Gateway service.
+              Internal address of the Prompt Commerce Gateway service. Can also be set via <code class="bg-gray-100 px-1 rounded">GATEWAY_URL</code> in <code class="bg-gray-100 px-1 rounded">seller.config.json</code>.
+            </p>
+          </div>
+
+          <div>
+            <label
+              for="v-public-url"
+              class="block text-xs font-medium text-gray-700 mb-1"
+              >Seller Public URL</label
+            >
+            <input
+              id="v-public-url"
+              type="text"
+              bind:value={serverSettings.seller_public_url}
+              placeholder="https://shop.example.com  (auto-detected when blank)"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              The public web address of this store. Used to build absolute product image URLs for Telegram and other integrations. Leave blank for local development — it will be detected automatically. Can also be set via <code class="bg-gray-100 px-1 rounded">sellerPublicUrl</code> in <code class="bg-gray-100 px-1 rounded">seller.config.json</code>.
             </p>
           </div>
         </div>

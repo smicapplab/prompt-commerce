@@ -3,8 +3,82 @@ import type { RequestHandler } from './$types.js';
 import { getDb } from '$lib/server/db.js';
 import { checkPassword, signToken, requireAuth } from '$lib/server/auth.js';
 
+// ─── Brute-force protection ───────────────────────────────────────────────────
+// In-memory per-IP tracking. Resets on server restart, which is fine — restarts
+// also invalidate all JWTs, so an attacker would need to restart too.
+const MAX_ATTEMPTS  = 5;
+const WINDOW_MS     = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_MS    = 15 * 60 * 1000; // 15 minutes
+
+interface Attempt { count: number; firstAt: number; lockedUntil?: number }
+const attempts = new Map<string, Attempt>();
+
+function getClientIp(event: Parameters<RequestHandler>[0]): string {
+  // SvelteKit exposes the real IP when the platform adapter sets it.
+  // Fall back to the X-Forwarded-For header (set by reverse proxies).
+  return (
+    (event.request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
+    '0.0.0.0'
+  );
+}
+
+function checkRateLimit(ip: string): { blocked: boolean; retryAfterSec?: number } {
+  const now   = Date.now();
+  const entry = attempts.get(ip);
+
+  if (!entry) return { blocked: false };
+
+  // Currently locked out
+  if (entry.lockedUntil && now < entry.lockedUntil) {
+    return { blocked: true, retryAfterSec: Math.ceil((entry.lockedUntil - now) / 1000) };
+  }
+
+  // Window expired — reset
+  if (now - entry.firstAt > WINDOW_MS) {
+    attempts.delete(ip);
+    return { blocked: false };
+  }
+
+  return { blocked: false };
+}
+
+function recordFailure(ip: string): void {
+  const now   = Date.now();
+  const entry = attempts.get(ip);
+
+  if (!entry || now - entry.firstAt > WINDOW_MS) {
+    attempts.set(ip, { count: 1, firstAt: now });
+    return;
+  }
+
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) {
+    entry.lockedUntil = now + LOCKOUT_MS;
+  }
+  attempts.set(ip, entry);
+}
+
+function recordSuccess(ip: string): void {
+  attempts.delete(ip);
+}
+
+// ─── Handlers ─────────────────────────────────────────────────────────────────
+
 /** POST /api/auth — login, returns JWT */
 export const POST: RequestHandler = async (event) => {
+  const ip = getClientIp(event);
+  const limit = checkRateLimit(ip);
+
+  if (limit.blocked) {
+    return json(
+      { error: `Too many failed attempts. Try again in ${limit.retryAfterSec}s.` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(limit.retryAfterSec) },
+      },
+    );
+  }
+
   const body = await event.request.json().catch(() => null);
   if (!body?.username || !body?.password) {
     return json({ error: 'username and password required' }, { status: 400 });
@@ -12,20 +86,39 @@ export const POST: RequestHandler = async (event) => {
 
   const db = getDb();
   const user = db
-    .prepare('SELECT id, username, password_hash, role FROM users WHERE username = ?')
-    .get(body.username) as { id: number; username: string; password_hash: string; role: string } | undefined;
+    .prepare('SELECT id, username, password_hash, role, needs_password_change FROM users WHERE username = ?')
+    .get(body.username) as { id: number; username: string; password_hash: string; role: string; needs_password_change: number } | undefined;
 
   if (!user || !checkPassword(body.password, user.password_hash)) {
+    recordFailure(ip);
+    // Use the same error message regardless of whether the user exists
     return json({ error: 'Invalid credentials' }, { status: 401 });
   }
 
+  recordSuccess(ip);
   const token = signToken({ sub: user.id, username: user.username, role: user.role });
-  return json({ token, username: user.username, role: user.role });
-}
+  return json({
+    token,
+    username:            user.username,
+    role:                user.role,
+    needsPasswordChange: user.needs_password_change === 1,
+  });
+};
 
 /** GET /api/auth — verify current token */
 export const GET: RequestHandler = async (event) => {
   const user = requireAuth(event);
   if (user instanceof Response) return user;
-  return json({ username: user.username, role: user.role });
-}
+
+  // Include the needs_password_change flag so the UI can show a warning banner
+  const db   = getDb();
+  const row  = db
+    .prepare('SELECT needs_password_change FROM users WHERE id = ?')
+    .get(user.sub) as { needs_password_change: number } | undefined;
+
+  return json({
+    username:              user.username,
+    role:                  user.role,
+    needsPasswordChange:   row?.needs_password_change === 1,
+  });
+};

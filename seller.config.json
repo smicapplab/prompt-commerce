@@ -1,0 +1,9 @@
+{
+  "_readme": "Edit this file to configure your store. No technical knowledge needed.",
+
+  "gatewayUrl": "http://localhost:3002",
+  "_gatewayUrl": "The address of the Prompt Commerce gateway server. For local use, leave this as-is. In production, change it to your gateway's public address, e.g. https://gateway.example.com",
+
+  "sellerPublicUrl": "",
+  "_sellerPublicUrl": "The public web address of THIS seller server. Leave blank for local use (it will be detected automatically). In production, set it to your domain, e.g. https://shop.example.com — this is used so product images show up correctly in Telegram."
+}

@@ -13,6 +13,17 @@ export const POST: RequestHandler = async (event) => {
 
   // ── 1. Get gateway URL + platform key from registry ────────────────────────
   const registry = getDb();
+
+  // Resolve seller public base URL (for absolute image URLs).
+  // Priority: SELLER_PUBLIC_URL env → seller_public_url setting → request origin
+  const publicUrlSetting = (registry
+    .prepare('SELECT value FROM settings WHERE key = ?')
+    .get('seller_public_url') as { value: string } | undefined)?.value;
+  const sellerPublicUrl = (
+    process.env.SELLER_PUBLIC_URL ??
+    publicUrlSetting ??
+    `${event.url.protocol}//${event.url.host}`
+  ).replace(/\/$/, '');
   const store = registry
     .prepare('SELECT gateway_key FROM stores WHERE slug = ? AND active = 1')
     .get(slug) as { gateway_key: string | null } | undefined;
@@ -64,18 +75,26 @@ export const POST: RequestHandler = async (event) => {
 
   const upsertProducts = dirtyProducts
     .filter(p => p.deleted_at === null)
-    .map(p => ({
-      id:             p.id,
-      title:          p.title,
-      description:    p.description,
-      sku:            p.sku,
-      price:          p.price,
-      stock_quantity: p.stock_quantity,
-      category_id:    p.category_id,
-      tags:           p.tags   ? JSON.parse(p.tags)   : [],
-      images:         p.images ? JSON.parse(p.images) : [],
-      active:         Boolean(p.active),
-    }));
+    .map(p => {
+      const rawImages: string[] = p.images ? JSON.parse(p.images) : [];
+      // Absolutize relative /uploads/ paths so gateway consumers (Telegram, etc.)
+      // can fetch images without knowing the seller's internal host.
+      const images = rawImages.map(img =>
+        img.startsWith('/') ? `${sellerPublicUrl}${img}` : img,
+      );
+      return {
+        id:             p.id,
+        title:          p.title,
+        description:    p.description,
+        sku:            p.sku,
+        price:          p.price,
+        stock_quantity: p.stock_quantity,
+        category_id:    p.category_id,
+        tags:           p.tags ? JSON.parse(p.tags) : [],
+        images,
+        active:         Boolean(p.active),
+      };
+    });
 
   const deleteProductIds = dirtyProducts
     .filter(p => p.deleted_at !== null)

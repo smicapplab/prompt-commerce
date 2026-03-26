@@ -2,7 +2,6 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import {
-    Zap,
     LayoutDashboard,
     Package,
     Tag,
@@ -151,8 +150,8 @@
   <aside class="w-56 shrink-0 bg-white border-r border-gray-200 flex flex-col">
     <!-- Brand -->
     <div class="flex items-center gap-2 px-4 py-4 border-b border-gray-100">
-      <Zap class="w-4 h-4 text-yellow-400" />
-      <span class="font-semibold text-sm text-gray-900">Store Admin</span>
+      <img src="/logo.png" alt="Prompt Commerce" class="h-8" />
+      <span class="font-semibold text-sm text-cyan-800 pt-2">Store Admin</span>
     </div>
 
     <!-- Active store chip -->

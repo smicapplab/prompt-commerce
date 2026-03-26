@@ -3,8 +3,35 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import type { RequestEvent } from '@sveltejs/kit';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'change-me-in-production';
+// ── JWT secret ────────────────────────────────────────────────────────────────
+// migrate.ts auto-generates a strong secret into .env on first run, so sellers
+// never need to touch this. If the server somehow starts without migrations
+// having run, we throw at request time rather than at module import time.
+// (Throwing at import time breaks the SvelteKit build analyser, which imports
+// every server module without the runtime env vars being set.)
+const KNOWN_WEAK_SECRETS = new Set([
+  'change-me-in-production',
+  'change-me-to-a-long-random-string',
+  'replace_with_generated_secret',
+  'secret',
+  'jwt_secret',
+  'your_secret',
+]);
+
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1d';
+
+/** Lazily resolved at call time — never at module load / build-analysis time. */
+function getJwtSecret(): string {
+  const raw = process.env.JWT_SECRET ?? '';
+  if (!raw || raw.length < 32 || KNOWN_WEAK_SECRETS.has(raw.toLowerCase())) {
+    throw new Error(
+      '[auth] JWT_SECRET is missing or insecure. ' +
+      'Run "npm run db:migrate" once — it will auto-generate a secure secret. ' +
+      'Then restart the server.',
+    );
+  }
+  return raw;
+}
 
 export interface JwtPayload {
   sub: number;   // user id
@@ -13,12 +40,12 @@ export interface JwtPayload {
 }
 
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 }
 
 export function verifyToken(token: string): JwtPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as unknown as JwtPayload;
+    return jwt.verify(token, getJwtSecret()) as unknown as JwtPayload;
   } catch {
     return null;
   }
@@ -102,43 +129,106 @@ export async function requireStoreRole(
   return { user, storeRole: mapping.role };
 }
 
+// ─── Role hierarchy ───────────────────────────────────────────────────────────
+// Higher index = more privileged. Enforces scoped keys can't exceed user's role.
+const ROLE_RANK: Record<string, number> = {
+  ops:           1,
+  merchandising: 1,
+  store_admin:   2,
+  admin:         3,
+  super_admin:   4,
+};
+
+export function roleRank(role: string): number {
+  return ROLE_RANK[role] ?? 0;
+}
+
 /**
  * Generates a temporary, random key for a user and stores it in the DB.
+ *
+ * @param userId           - ID of the user who owns this key.
+ * @param expiresInMinutes - How long until the key expires (default 60 min).
+ * @param scopedRole       - Optional narrower role. Must be ≤ user's actual role.
+ *                           Pass null/undefined to inherit the user's full role.
+ * @param label            - Human-readable label, e.g. "Claude Desktop – MacBook".
  */
-export function generateTempKey(userId: number, expiresInMinutes: number = 60): string {
+export function generateTempKey(
+  userId: number,
+  expiresInMinutes: number = 60,
+  scopedRole?: string | null,
+  label?: string | null,
+): string {
   const token = `pc_tmp_${randomBytes(24).toString('hex')}`;
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60000).toISOString();
-  
+
   const db = getDb();
-  db.prepare('INSERT INTO user_temp_keys (user_id, token, expires_at) VALUES (?, ?, ?)')
-    .run(userId, token, expiresAt);
-    
+  db.prepare(
+    'INSERT INTO user_temp_keys (user_id, token, scoped_role, label, expires_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(userId, token, scopedRole ?? null, label ?? null, expiresAt);
+
   return token;
 }
 
 /**
  * Validates a temporary token and returns the associated user payload.
+ * The returned role is the scoped_role if set, otherwise the user's global role.
  * Also cleans up expired tokens for this user.
  */
 export function validateTempKey(token: string): JwtPayload | null {
   const db = getDb();
   const now = new Date().toISOString();
-  
+
   const row = db.prepare(`
-    SELECT t.*, u.username, u.role
+    SELECT t.user_id, t.scoped_role, u.username, u.role AS user_role
     FROM user_temp_keys t
     JOIN users u ON t.user_id = u.id
     WHERE t.token = ? AND t.expires_at > ?
-  `).get(token, now) as { user_id: number; username: string; role: string } | undefined;
-  
+  `).get(token, now) as {
+    user_id: number;
+    username: string;
+    user_role: string;
+    scoped_role: string | null;
+  } | undefined;
+
   if (!row) return null;
-  
-  // Cleanup expired tokens for this specific user to keep the table lean
-  db.prepare('DELETE FROM user_temp_keys WHERE user_id = ? AND expires_at <= ?').run(row.user_id, now);
-  
-  return {
-    sub: row.user_id,
-    username: row.username,
-    role: row.role
-  };
+
+  // Cleanup expired tokens for this user
+  db.prepare('DELETE FROM user_temp_keys WHERE user_id = ? AND expires_at <= ?')
+    .run(row.user_id, now);
+
+  // Effective role: use scoped_role only if it doesn't exceed the user's own rank
+  const effectiveRole =
+    row.scoped_role && roleRank(row.scoped_role) <= roleRank(row.user_role)
+      ? row.scoped_role
+      : row.user_role;
+
+  return { sub: row.user_id, username: row.username, role: effectiveRole };
+}
+
+/**
+ * Lists all active (non-expired) temp keys for a user.
+ * Does NOT return the token value itself.
+ */
+export function listTempKeys(userId: number): Array<{
+  id: number; label: string | null; scoped_role: string | null;
+  expires_at: string; created_at: string;
+}> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  return db.prepare(
+    `SELECT id, label, scoped_role, expires_at, created_at
+     FROM user_temp_keys WHERE user_id = ? AND expires_at > ?
+     ORDER BY created_at DESC`,
+  ).all(userId, now) as any[];
+}
+
+/**
+ * Revokes a specific temp key by ID (only if it belongs to the requesting user).
+ */
+export function revokeTempKey(keyId: number, userId: number): boolean {
+  const db = getDb();
+  const result = db.prepare(
+    'DELETE FROM user_temp_keys WHERE id = ? AND user_id = ?',
+  ).run(keyId, userId);
+  return result.changes > 0;
 }
