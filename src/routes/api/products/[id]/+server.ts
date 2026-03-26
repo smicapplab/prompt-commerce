@@ -62,6 +62,18 @@ export const PATCH: RequestHandler = async (event) => {
 	const tagsStr = formData.get('tags') as string;
 	const active = formData.get('active') ? (formData.get('active') as string) === '1' ? 1 : 0 : null;
 
+	if (price !== null && (!Number.isFinite(price) || price < 0)) {
+		return apiError(422, 'price must be a non-negative number');
+	}
+	if (stock_quantity !== null && (!Number.isInteger(stock_quantity) || stock_quantity < 0)) {
+		return apiError(422, 'stock_quantity must be a non-negative integer');
+	}
+	if (category_id !== null) {
+		if (isNaN(category_id) || category_id < 0) return apiError(422, 'Invalid category_id');
+		const cat = db.prepare('SELECT id FROM categories WHERE id = ? AND deleted_at IS NULL').get(category_id);
+		if (!cat) return apiError(422, 'Category not found');
+	}
+
 	const imageFiles = formData.getAll('images[]') as File[];
 	const imageUrls = (formData.get('images_urls') as string) ?? '';
 	const uploadedImages: string[] = [];
