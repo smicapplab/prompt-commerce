@@ -85,6 +85,20 @@ export function requireAuth(event: RequestEvent): JwtPayload | Response {
   if (!user) {
     return apiError(401, 'Unauthorised');
   }
+
+  // SEC-R2-6: Enforce password change if flagged.
+  // Exempt password update (PATCH /api/users/[id]) and logout (DELETE /api/auth).
+  const isPasswordUpdate = event.url.pathname.startsWith('/api/users/') && event.request.method === 'PATCH';
+  const isLogout = event.url.pathname === '/api/auth' && event.request.method === 'DELETE';
+
+  if (!isPasswordUpdate && !isLogout) {
+    const db = getDb();
+    const row = db.prepare('SELECT needs_password_change FROM users WHERE id = ?').get(user.sub) as { needs_password_change: number } | undefined;
+    if (row?.needs_password_change === 1) {
+      return apiError(403, 'Password change required', 'PASSWORD_CHANGE_REQUIRED');
+    }
+  }
+
   return user;
 }
 

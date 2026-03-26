@@ -10,8 +10,10 @@ export const GET: RequestHandler = async (event) => {
 
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
-  const page = parseInt(event.url.searchParams.get('page') ?? '1');
-  const limit = parseInt(event.url.searchParams.get('limit') ?? '20');
+  const rawPage = parseInt(event.url.searchParams.get('page') ?? '1');
+  const rawLimit = parseInt(event.url.searchParams.get('limit') ?? '20');
+  const page = Math.min(Math.max(1, isNaN(rawPage) ? 1 : rawPage), 10000);
+  const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 200);
   const q = event.url.searchParams.get('q') ?? '';
   const rating = event.url.searchParams.get('rating') ?? '';
   const offset = (page - 1) * limit;
@@ -65,7 +67,9 @@ export const POST: RequestHandler = async (event) => {
   const { product_id, customer_name, rating, comment } = body;
 
   if (!product_id) return json({ error: 'product_id is required' }, { status: 400 });
-  if (!rating || rating < 1 || rating > 5) return json({ error: 'rating must be 1–5' }, { status: 400 });
+  if (!rating || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return json({ error: 'rating must be an integer between 1 and 5' }, { status: 400 });
+  }
 
   const db = getStoreDb(store);
   const now = new Date().toISOString();

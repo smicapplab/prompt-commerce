@@ -27,6 +27,52 @@
   let currentUserId = $state<number | null>(null);
   let needsPasswordChange = $state(false);
 
+  // UX-R2-2: Unsaved changes tracking
+  let initialSnap = $state<string>("");
+  function getSnap(): string {
+    if (activeTab === "store") return JSON.stringify(storeSettings);
+    if (activeTab === "ai")
+      return JSON.stringify({
+        ...storeSettings,
+        k1: claudeKeyInput,
+        k2: geminiKeyInput,
+        k3: openaiKeyInput,
+        k4: serperKeyInput,
+      });
+    if (activeTab === "telegram")
+      return JSON.stringify({
+        ...storeSettings,
+        k: telegramKeyInput,
+        m: telegramMode,
+        u: telegramCustomUrl,
+      });
+    if (activeTab === "payments")
+      return JSON.stringify({
+        ...storeSettings,
+        k1: paymentApiKeyInput,
+        k2: paymentWebhookSecretInput,
+      });
+    if (activeTab === "server") return JSON.stringify(serverSettings);
+    return "";
+  }
+  function updateSnap() {
+    initialSnap = getSnap();
+  }
+  function isDirty(): boolean {
+    if (activeTab === "users") return false; // Users tab has its own modals
+    return getSnap() !== initialSnap;
+  }
+
+  function switchTab(tab: string) {
+    if (tab === activeTab) return;
+    if (isDirty()) {
+      if (!confirm("You have unsaved changes on this tab. Leave anyway?"))
+        return;
+    }
+    activeTab = tab;
+    updateSnap();
+  }
+
   const visibleTabs = $derived(() => {
     const tabs: [string, string][] = [];
     if (activeStore.slug) {
@@ -64,14 +110,20 @@
   // Telegram bot mode + status
   let telegramMode = $state<"polling" | "webhook">("polling");
   let telegramCustomUrl = $state(""); // custom override URL; empty = use default
-  let telegramBotStatus = $state<"idle" | "checking" | "active" | "failed">("idle");
-  let telegramBotStatusInfo = $state<{ mode?: string; webhookUrl?: string | null; configuredUrl?: string | null } | null>(null);
+  let telegramBotStatus = $state<"idle" | "checking" | "active" | "failed">(
+    "idle",
+  );
+  let telegramBotStatusInfo = $state<{
+    mode?: string;
+    webhookUrl?: string | null;
+    configuredUrl?: string | null;
+  } | null>(null);
   let telegramWebhookUrlCopied = $state(false);
 
   const defaultTelegramWebhookUrl = $derived(
     serverSettings.gateway_url
       ? serverSettings.gateway_url.replace(/\/$/, "") + "/webhooks/telegram"
-      : ""
+      : "",
   );
 
   // Sync telegramMode from loaded storeSettings
@@ -102,13 +154,17 @@
   let telegramKeyInput = $state("");
   let paymentApiKeyInput = $state("");
   let paymentWebhookSecretInput = $state("");
-  
+
   // Temp MCP Key state
   let tempMcpKey = $state("");
   let tempMcpExpiry = $state("");
   let tempKeyLoading = $state(false);
   let tempKeyDuration = $state(60);
   let alerted = $state("");
+
+  // UX-R2-5: Password visibility toggles
+  let showNewUserPass = $state(false);
+  let showEditUserPass = $state(false);
 
   async function generateMcpKey() {
     tempKeyLoading = true;
@@ -214,7 +270,7 @@
     if (!editingUser) return;
     saving = true;
     error = "";
-    
+
     const payload: any = {
       username: editingUser.username,
       role: editingUser.role,
@@ -276,6 +332,7 @@
       storeSettings = await res.json();
       // If a custom model name was previously saved (not in any preset list), open custom mode.
       customModelMode = savedModelIsCustom();
+      updateSnap();
     }
   }
 
@@ -283,7 +340,10 @@
     const res = await fetch("/api/settings", {
       headers: { Authorization: `Bearer ${token()}` },
     });
-    if (res.ok) serverSettings = await res.json();
+    if (res.ok) {
+      serverSettings = await res.json();
+      updateSnap();
+    }
   }
 
   async function saveStore(extra: Record<string, string> = {}) {
@@ -310,6 +370,7 @@
     if (res.ok) {
       storeSettings = await res.json();
       saved = "store";
+      updateSnap();
       setTimeout(() => (saved = ""), 3000);
     } else {
       const d = await res.json();
@@ -390,12 +451,14 @@
     // Resolve the webhook URL to persist. null means "delete this key" (polling mode).
     const webhookUrl =
       telegramMode === "webhook"
-        ? (telegramCustomUrl.trim() || defaultTelegramWebhookUrl) || null
+        ? telegramCustomUrl.trim() || defaultTelegramWebhookUrl || null
         : null;
 
     const payload: Record<string, string | null> = {
-      telegram_webhook_url:    webhookUrl,
-      telegram_notify_chat_id: String(storeSettings.telegram_notify_chat_id ?? ""),
+      telegram_webhook_url: webhookUrl,
+      telegram_notify_chat_id: String(
+        storeSettings.telegram_notify_chat_id ?? "",
+      ),
     };
     if (telegramKeyInput) payload.telegram_bot_token = telegramKeyInput;
 
@@ -412,6 +475,7 @@
       storeSettings = await res.json();
       telegramKeyInput = "";
       saved = "telegram";
+      updateSnap();
 
       // Poll gateway to confirm bot mode is live
       telegramBotStatus = "checking";
@@ -419,7 +483,7 @@
         try {
           const statusRes = await fetch(
             `/api/settings/telegram-bot-status?store=${activeStore.slug}`,
-            { headers: { Authorization: `Bearer ${token()}` } }
+            { headers: { Authorization: `Bearer ${token()}` } },
           );
           if (statusRes.ok) {
             telegramBotStatusInfo = await statusRes.json();
@@ -489,6 +553,7 @@
     if (res.ok) {
       serverSettings = await res.json();
       saved = "server";
+      updateSnap();
       setTimeout(() => (saved = ""), 3000);
     } else {
       const d = await res.json();
@@ -578,10 +643,27 @@
           const authData = await authRes.json();
           needsPasswordChange = authData.needsPasswordChange === true;
         }
-      } catch { /* non-critical */ }
+      } catch {
+        /* non-critical */
+      }
     }
-    loadStore();
     loadServer();
+
+    // UX-R2-3: Restore active tab from localStorage
+    const savedTab = localStorage.getItem("settings_active_tab");
+    if (savedTab) {
+      const tabs = visibleTabs();
+      if (tabs.some((t) => t[0] === savedTab)) {
+        activeTab = savedTab;
+      }
+    }
+  });
+
+  // UX-R2-3: Persist active tab
+  $effect(() => {
+    if (activeTab) {
+      localStorage.setItem("settings_active_tab", activeTab);
+    }
   });
 </script>
 
@@ -600,18 +682,33 @@
   {/if}
 
   {#if needsPasswordChange}
-    <div class="mb-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
-      <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+    <div
+      class="mb-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3"
+    >
+      <svg
+        class="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+        />
       </svg>
       <div class="text-sm">
-        <p class="font-semibold text-amber-800">You're using the default password</p>
+        <p class="font-semibold text-amber-800">
+          You're using the default password
+        </p>
         <p class="mt-0.5 text-amber-700">
-          Please change your password before going live.
-          Go to <button
+          Please change your password before going live. Go to <button
             class="underline font-medium"
-            onclick={() => { activeTab = 'users'; }}
-          >Users → edit your account</button> to update it.
+            onclick={() => {
+              activeTab = "users";
+            }}>Users → edit your account</button
+          > to update it.
         </p>
       </div>
     </div>
@@ -630,7 +727,7 @@
     <nav class="-mb-px flex gap-6">
       {#each visibleTabs() as [tab, label]}
         <button
-          onclick={() => (activeTab = tab)}
+          onclick={() => switchTab(tab)}
           class="pb-3 text-sm font-medium border-b-2 transition-colors {activeTab ===
           tab
             ? 'border-indigo-600 text-indigo-600'
@@ -1035,14 +1132,23 @@
             Define the AI's personality and knowledge about your store.
           </p>
         </div>
-        <div class="rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 space-y-4">
+        <div
+          class="rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 space-y-4"
+        >
           <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+            <div
+              class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600"
+            >
               <Lock class="w-4 h-4" />
             </div>
             <div>
-              <h3 class="text-sm font-medium text-indigo-900">Temporary LLM Client Access</h3>
-              <p class="text-xs text-indigo-700">Generate an expiring key for Claude Desktop or other external LLMs.</p>
+              <h3 class="text-sm font-medium text-indigo-900">
+                Temporary LLM Client Access
+              </h3>
+              <p class="text-xs text-indigo-700">
+                Generate an expiring key for Claude Desktop or other external
+                LLMs.
+              </p>
             </div>
           </div>
 
@@ -1055,27 +1161,37 @@
                   value={tempMcpKey}
                   class="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-mono text-indigo-900 pr-10"
                 />
-                <button 
-                  onclick={() => { navigator.clipboard.writeText(tempMcpKey); alerted = "Copied!"; setTimeout(() => alerted="", 2000); }}
+                <button
+                  onclick={() => {
+                    navigator.clipboard.writeText(tempMcpKey);
+                    alerted = "Copied!";
+                    setTimeout(() => (alerted = ""), 2000);
+                  }}
                   aria-label="Copy to clipboard"
                   class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-indigo-400 hover:text-indigo-600"
                   title="Copy to clipboard"
                 >
-                  <Check class={alerted ? "w-4 h-4 text-green-500" : "w-4 h-4"} />
+                  <Check
+                    class={alerted ? "w-4 h-4 text-green-500" : "w-4 h-4"}
+                  />
                 </button>
               </div>
-              <div class="flex items-center justify-between text-[10px] uppercase tracking-wider font-bold text-indigo-500">
+              <div
+                class="flex items-center justify-between text-[10px] uppercase tracking-wider font-bold text-indigo-500"
+              >
                 <span>Expires: {new Date(tempMcpExpiry).toLocaleString()}</span>
                 {#if alerted}<span class="text-green-600">{alerted}</span>{/if}
               </div>
               <p class="text-xs text-indigo-600 leading-relaxed">
-                Use this as the <code class="bg-indigo-100 px-1 rounded">x-gateway-key</code> in your client.
-                It will expire automatically and only grants access to this session's stores.
+                Use this as the <code class="bg-indigo-100 px-1 rounded"
+                  >x-gateway-key</code
+                > in your client. It will expire automatically and only grants access
+                to this session's stores.
               </p>
             </div>
           {:else}
             <div class="flex items-center gap-3">
-              <select 
+              <select
                 bind:value={tempKeyDuration}
                 class="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
@@ -1089,7 +1205,7 @@
                 disabled={tempKeyLoading}
                 class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
               >
-                {tempKeyLoading ? 'Generating...' : 'Generate Temp Key'}
+                {tempKeyLoading ? "Generating..." : "Generate Temp Key"}
               </button>
             </div>
           {/if}
@@ -1137,10 +1253,13 @@
       <p class="text-sm text-gray-400">Select a store first.</p>
     {:else}
       <div class="space-y-5">
-
         <!-- Bot Token -->
         <div>
-          <label for="t-token" class="block text-sm font-medium text-gray-700 mb-1">Bot Token</label>
+          <label
+            for="t-token"
+            class="block text-sm font-medium text-gray-700 mb-1"
+            >Bot Token</label
+          >
           <div class="relative">
             <input
               id="t-token"
@@ -1157,11 +1276,17 @@
               aria-label={showTelegramKey ? "Hide token" : "Show token"}
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              {#if showTelegramKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
+              {#if showTelegramKey}<EyeOff class="w-4 h-4" />{:else}<Eye
+                  class="w-4 h-4"
+                />{/if}
             </button>
           </div>
           <p class="mt-1 text-xs text-gray-500">
-            From <a href="https://t.me/BotFather" target="_blank" class="text-indigo-600 hover:underline">@BotFather</a>.
+            From <a
+              href="https://t.me/BotFather"
+              target="_blank"
+              class="text-indigo-600 hover:underline">@BotFather</a
+            >.
           </p>
         </div>
 
@@ -1169,18 +1294,24 @@
         <div>
           <p class="block text-sm font-medium text-gray-700 mb-2">Bot Mode</p>
           <div class="flex gap-3">
-            {#each [["polling", "🔄 Long Polling", "Simple, works anywhere. Gateway repeatedly asks Telegram for updates."],
-                    ["webhook", "🔗 Webhook", "Recommended for production. Telegram pushes updates instantly to your HTTPS URL."]] as [modeId, label, desc]}
+            {#each [["polling", "🔄 Long Polling", "Simple, works anywhere. Gateway repeatedly asks Telegram for updates."], ["webhook", "🔗 Webhook", "Recommended for production. Telegram pushes updates instantly to your HTTPS URL."]] as [modeId, label, desc]}
               <button
                 type="button"
-                onclick={() => { telegramMode = modeId as "polling" | "webhook"; telegramBotStatus = "idle"; }}
+                onclick={() => {
+                  telegramMode = modeId as "polling" | "webhook";
+                  telegramBotStatus = "idle";
+                }}
                 class="flex-1 rounded-lg border-2 px-4 py-3 text-left text-sm transition-colors
                   {telegramMode === modeId
                   ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                   : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}"
               >
                 <span class="font-medium block">{label}</span>
-                <span class="text-xs mt-0.5 block {telegramMode === modeId ? 'text-indigo-600/80' : 'text-gray-400'}">{desc}</span>
+                <span
+                  class="text-xs mt-0.5 block {telegramMode === modeId
+                    ? 'text-indigo-600/80'
+                    : 'text-gray-400'}">{desc}</span
+                >
               </button>
             {/each}
           </div>
@@ -1188,26 +1319,42 @@
 
         <!-- Webhook URL (only when webhook mode selected) -->
         {#if telegramMode === "webhook"}
-          <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+          <div
+            class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3"
+          >
             <div>
-              <p class="text-sm font-medium text-gray-800 mb-0.5">Webhook Endpoint</p>
-              <p class="text-xs text-gray-500">Register this URL in your Telegram bot settings. Must be publicly reachable over HTTPS.</p>
+              <p class="text-sm font-medium text-gray-800 mb-0.5">
+                Webhook Endpoint
+              </p>
+              <p class="text-xs text-gray-500">
+                Register this URL in your Telegram bot settings. Must be
+                publicly reachable over HTTPS.
+              </p>
             </div>
 
             <!-- Auto-URL display -->
             {#if defaultTelegramWebhookUrl}
               <div>
-                <p class="block text-xs font-medium text-gray-600 mb-1">Default URL (from Gateway URL setting)</p>
+                <p class="block text-xs font-medium text-gray-600 mb-1">
+                  Default URL (from Gateway URL setting)
+                </p>
                 <div class="flex items-center gap-2">
-                  <code class="flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-mono text-gray-700 truncate">
+                  <code
+                    class="flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-mono text-gray-700 truncate"
+                  >
                     {defaultTelegramWebhookUrl}
                   </code>
                   <button
                     type="button"
                     onclick={async () => {
-                      await navigator.clipboard.writeText(defaultTelegramWebhookUrl);
+                      await navigator.clipboard.writeText(
+                        defaultTelegramWebhookUrl,
+                      );
                       telegramWebhookUrlCopied = true;
-                      setTimeout(() => (telegramWebhookUrlCopied = false), 2000);
+                      setTimeout(
+                        () => (telegramWebhookUrlCopied = false),
+                        2000,
+                      );
                     }}
                     class="shrink-0 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 transition-colors"
                   >
@@ -1219,8 +1366,13 @@
 
             <!-- Custom URL override -->
             <div>
-              <label for="t-webhook-custom" class="block text-xs font-medium text-gray-600 mb-1">
-                Custom URL override <span class="text-gray-400 font-normal">(optional — leave blank to use default above)</span>
+              <label
+                for="t-webhook-custom"
+                class="block text-xs font-medium text-gray-600 mb-1"
+              >
+                Custom URL override <span class="text-gray-400 font-normal"
+                  >(optional — leave blank to use default above)</span
+                >
               </label>
               <input
                 id="t-webhook-custom"
@@ -1237,23 +1389,34 @@
         <!-- Order Notifications -->
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
           <div>
-            <h4 class="text-sm font-medium text-gray-800 mb-0.5">Order Notifications</h4>
+            <h4 class="text-sm font-medium text-gray-800 mb-0.5">
+              Order Notifications
+            </h4>
             <p class="text-xs text-gray-500">
-              Receive a Telegram message whenever a buyer places an order in this store.
+              Receive a Telegram message whenever a buyer places an order in
+              this store.
             </p>
           </div>
           <div>
-            <label for="t-notify-id" class="block text-xs font-medium text-gray-700 mb-1">Your Telegram Chat ID</label>
+            <label
+              for="t-notify-id"
+              class="block text-xs font-medium text-gray-700 mb-1"
+              >Your Telegram Chat ID</label
+            >
             <input
-              id="t-notify-id"
+              id="tg-chat"
               type="text"
               value={val("telegram_notify_chat_id")}
-              oninput={(e) => set("telegram_notify_chat_id", (e.target as HTMLInputElement).value)}
+              oninput={(e) =>
+                set(
+                  "telegram_notify_chat_id",
+                  (e.target as HTMLInputElement).value,
+                )}
               placeholder="e.g. 123456789"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <p class="mt-1 text-xs text-gray-500">
-              Send <code class="bg-gray-100 px-1 rounded">/myid</code> to your bot to get this number.
+              Open a chat with your bot and send <code>/myid</code> to get this number.
             </p>
           </div>
         </div>
@@ -1265,35 +1428,46 @@
             disabled={saving}
             class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {#if saving}Saving…{:else if saved === "telegram"}<Check class="w-4 h-4" /> Saved{:else}Save Telegram settings{/if}
+            {#if saving}Saving…{:else if saved === "telegram"}<Check
+                class="w-4 h-4"
+              /> Saved{:else}Save Telegram settings{/if}
           </button>
 
           <!-- Live gateway badge -->
           {#if telegramBotStatus === "checking"}
-            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200">
-              <div class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse"></div>
+            <div
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200"
+            >
+              <div
+                class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse"
+              ></div>
               <span class="text-xs font-medium">Checking bot status…</span>
             </div>
           {:else if telegramBotStatus === "active"}
             {#if telegramBotStatusInfo?.mode === "webhook"}
-              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
+              <div
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100"
+              >
                 <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
                 <span class="text-xs font-medium">Webhook active</span>
               </div>
             {:else}
-              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+              <div
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100"
+              >
                 <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                 <span class="text-xs font-medium">Long-polling active</span>
               </div>
             {/if}
           {:else if telegramBotStatus === "failed"}
-            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-100">
+            <div
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-100"
+            >
               <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
               <span class="text-xs font-medium">Could not reach gateway</span>
             </div>
           {/if}
         </div>
-
       </div>
     {/if}
   {/if}
@@ -1390,7 +1564,9 @@
                 type="button"
                 onclick={() =>
                   (showPaymentWebhookSecret = !showPaymentWebhookSecret)}
-                aria-label={showPaymentWebhookSecret ? "Hide secret" : "Show secret"}
+                aria-label={showPaymentWebhookSecret
+                  ? "Hide secret"
+                  : "Show secret"}
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {#if showPaymentWebhookSecret}<EyeOff
@@ -1478,7 +1654,10 @@
                   </div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{user.first_name} {user.last_name}</div>
+                  <div class="text-sm text-gray-900">
+                    {user.first_name}
+                    {user.last_name}
+                  </div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                   <div class="text-sm text-gray-500">{user.email}</div>
@@ -1540,39 +1719,105 @@
         role="button"
         tabindex="0"
       >
-        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div
+          class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+        >
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Add New User</h3>
           <div class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="n-fname" class="block text-xs font-medium text-gray-500 mb-1">First Name</label>
-                <input id="n-fname" type="text" bind:value={newUserFirstName} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label
+                  for="n-fname"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >First Name</label
+                >
+                <input
+                  id="n-fname"
+                  type="text"
+                  bind:value={newUserFirstName}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
               <div>
-                <label for="n-lname" class="block text-xs font-medium text-gray-500 mb-1">Last Name</label>
-                <input id="n-lname" type="text" bind:value={newUserLastName} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="n-user" class="block text-xs font-medium text-gray-500 mb-1">Username</label>
-                <input id="n-user" type="text" bind:value={newUserName} placeholder="johndoe" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-              <div>
-                <label for="n-pass" class="block text-xs font-medium text-gray-500 mb-1">Password</label>
-                <input id="n-pass" type="password" bind:value={newUserPass} placeholder="••••••••" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label
+                  for="n-lname"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Last Name</label
+                >
+                <input
+                  id="n-lname"
+                  type="text"
+                  bind:value={newUserLastName}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="n-email" class="block text-xs font-medium text-gray-500 mb-1">Email</label>
-                <input id="n-email" type="email" bind:value={newUserEmail} placeholder="john@example.com" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label
+                  for="n-user"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Username</label
+                >
+                <input
+                  id="n-user"
+                  type="text"
+                  bind:value={newUserName}
+                  placeholder="johndoe"
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
               <div>
-                <label for="n-mobile" class="block text-xs font-medium text-gray-500 mb-1">Mobile (Optional)</label>
-                <input id="n-mobile" type="text" bind:value={newUserMobile} placeholder="+1..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <div class="relative">
+                  <input
+                    id="n-pass"
+                    type={showNewUserPass ? "text" : "password"}
+                    bind:value={newUserPass}
+                    placeholder="••••••••"
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onclick={() => (showNewUserPass = !showNewUserPass)}
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {#if showNewUserPass}<EyeOff class="w-4 h-4" />{:else}<Eye
+                        class="w-4 h-4"
+                      />{/if}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  for="n-email"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Email</label
+                >
+                <input
+                  id="n-email"
+                  type="email"
+                  bind:value={newUserEmail}
+                  placeholder="john@example.com"
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label
+                  for="n-mobile"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Mobile (Optional)</label
+                >
+                <input
+                  id="n-mobile"
+                  type="text"
+                  bind:value={newUserMobile}
+                  placeholder="+1..."
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
             </div>
 
@@ -1605,7 +1850,12 @@
               </button>
               <button
                 onclick={addUser}
-                disabled={saving || !newUserName || !newUserPass || !newUserFirstName || !newUserLastName || !newUserEmail}
+                disabled={saving ||
+                  !newUserName ||
+                  !newUserPass ||
+                  !newUserFirstName ||
+                  !newUserLastName ||
+                  !newUserEmail}
                 class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? "Creating..." : "Create User"}
@@ -1629,42 +1879,107 @@
         role="button"
         tabindex="0"
       >
-        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div
+          class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+        >
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-900">Edit User</h3>
-            <span class="text-xs text-gray-400 font-mono">ID: {editingUser.id}</span>
+            <span class="text-xs text-gray-400 font-mono"
+              >ID: {editingUser.id}</span
+            >
           </div>
           <div class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="e-fname" class="block text-xs font-medium text-gray-500 mb-1">First Name</label>
-                <input id="e-fname" type="text" bind:value={editingUser.first_name} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label
+                  for="e-fname"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >First Name</label
+                >
+                <input
+                  id="e-fname"
+                  type="text"
+                  bind:value={editingUser.first_name}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
               <div>
-                <label for="e-lname" class="block text-xs font-medium text-gray-500 mb-1">Last Name</label>
-                <input id="e-lname" type="text" bind:value={editingUser.last_name} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="e-user" class="block text-xs font-medium text-gray-500 mb-1">Username</label>
-                <input id="e-user" type="text" bind:value={editingUser.username} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-              <div>
-                <label for="e-pass" class="block text-xs font-medium text-gray-500 mb-1">New Password (optional)</label>
-                <input id="e-pass" type="password" bind:value={editingUser.newPassword} placeholder="Leave blank to keep current" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label
+                  for="e-lname"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Last Name</label
+                >
+                <input
+                  id="e-lname"
+                  type="text"
+                  bind:value={editingUser.last_name}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="e-email" class="block text-xs font-medium text-gray-500 mb-1">Email</label>
-                <input id="e-email" type="email" bind:value={editingUser.email} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label
+                  for="e-user"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Username</label
+                >
+                <input
+                  id="e-user"
+                  type="text"
+                  bind:value={editingUser.username}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
               <div>
-                <label for="e-mobile" class="block text-xs font-medium text-gray-500 mb-1">Mobile (Optional)</label>
-                <input id="e-mobile" type="text" bind:value={editingUser.mobile} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <div class="relative">
+                  <input
+                    id="e-pass"
+                    type={showEditUserPass ? "text" : "password"}
+                    bind:value={editingUser.newPassword}
+                    placeholder="Leave blank to keep current"
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onclick={() => (showEditUserPass = !showEditUserPass)}
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {#if showEditUserPass}<EyeOff class="w-4 h-4" />{:else}<Eye
+                        class="w-4 h-4"
+                      />{/if}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  for="e-email"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Email</label
+                >
+                <input
+                  id="e-email"
+                  type="email"
+                  bind:value={editingUser.email}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label
+                  for="e-mobile"
+                  class="block text-xs font-medium text-gray-500 mb-1"
+                  >Mobile (Optional)</label
+                >
+                <input
+                  id="e-mobile"
+                  type="text"
+                  bind:value={editingUser.mobile}
+                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
             </div>
 
@@ -1690,14 +2005,21 @@
             </div>
             <div class="flex gap-3 pt-2">
               <button
-                onclick={() => { showEditUserModal = false; editingUser = null; }}
+                onclick={() => {
+                  showEditUserModal = false;
+                  editingUser = null;
+                }}
                 class="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onclick={updateUser}
-                disabled={saving || !editingUser.username || !editingUser.first_name || !editingUser.last_name || !editingUser.email}
+                disabled={saving ||
+                  !editingUser.username ||
+                  !editingUser.first_name ||
+                  !editingUser.last_name ||
+                  !editingUser.email}
                 class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? "Updating..." : "Update User"}
@@ -1742,7 +2064,12 @@
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <p class="mt-1 text-xs text-gray-500">
-              Internal address of the Prompt Commerce Gateway service. Can also be set via <code class="bg-gray-100 px-1 rounded">GATEWAY_URL</code> in <code class="bg-gray-100 px-1 rounded">seller.config.json</code>.
+              Internal address of the Prompt Commerce Gateway service. Can also
+              be set via <code class="bg-gray-100 px-1 rounded"
+                >GATEWAY_URL</code
+              >
+              in
+              <code class="bg-gray-100 px-1 rounded">seller.config.json</code>.
             </p>
           </div>
 
@@ -1760,7 +2087,14 @@
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <p class="mt-1 text-xs text-gray-500">
-              The public web address of this store. Used to build absolute product image URLs for Telegram and other integrations. Leave blank for local development — it will be detected automatically. Can also be set via <code class="bg-gray-100 px-1 rounded">sellerPublicUrl</code> in <code class="bg-gray-100 px-1 rounded">seller.config.json</code>.
+              The public web address of this store. Used to build absolute
+              product image URLs for Telegram and other integrations. Leave
+              blank for local development — it will be detected automatically.
+              Can also be set via <code class="bg-gray-100 px-1 rounded"
+                >sellerPublicUrl</code
+              >
+              in
+              <code class="bg-gray-100 px-1 rounded">seller.config.json</code>.
             </p>
           </div>
         </div>
