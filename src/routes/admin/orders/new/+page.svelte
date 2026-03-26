@@ -23,9 +23,19 @@
   let channel = $state('manual');
   let items = $state<OrderItem[]>([]);
   let products = $state<Product[]>([]);
+  let productSearch = $state('');
   let loadingProducts = $state(false);
   let submitting = $state(false);
   let error = $state('');
+
+  const filteredProducts = $derived(
+    productSearch.trim()
+      ? products.filter(p =>
+          p.title.toLowerCase().includes(productSearch.toLowerCase()) ||
+          (p.sku && p.sku.toLowerCase().includes(productSearch.toLowerCase()))
+        )
+      : products
+  );
 
   const token = () => localStorage.getItem('pc_token') ?? '';
 
@@ -222,30 +232,52 @@
           <h2 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Add Products</h2>
         </div>
         <div class="p-4 border-b border-gray-100">
-          <input 
-            type="search" 
-            placeholder="Search products..." 
-            class="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:border-indigo-500 outline-none"
+          <input
+            type="search"
+            bind:value={productSearch}
+            placeholder="Search products..."
+            class="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
           />
         </div>
         <div class="flex-1 overflow-y-auto p-4 space-y-2">
-          {#each products as p}
-            <button 
-              onclick={() => addItem(p)}
-              class="w-full text-left p-3 rounded-xl border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all flex justify-between items-center group active:scale-[0.98]"
-            >
-              <div>
-                <p class="text-sm font-bold text-gray-900 group-hover:text-indigo-700">{p.title}</p>
-                <div class="flex items-center gap-2 mt-0.5">
-                  <span class="text-xs font-mono text-gray-400">{p.sku || 'No SKU'}</span>
-                  <span class="text-xs font-bold text-emerald-600">{formatCurrency(p.price)}</span>
+          {#if loadingProducts}
+            <div class="py-12 flex flex-col items-center gap-2 text-gray-400">
+              <div class="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+              <p class="text-xs">Loading products…</p>
+            </div>
+          {:else if filteredProducts.length === 0}
+            <div class="py-12 text-center text-gray-400 text-sm">
+              {productSearch ? 'No products match your search.' : 'No products available.'}
+            </div>
+          {:else}
+            {#each filteredProducts as p}
+              {@const outOfStock = p.stock_quantity <= 0}
+              <button
+                onclick={() => !outOfStock && addItem(p)}
+                disabled={outOfStock}
+                class="w-full text-left p-3 rounded-xl border transition-all flex justify-between items-center group active:scale-[0.98]
+                  {outOfStock
+                    ? 'border-gray-100 opacity-50 cursor-not-allowed bg-gray-50'
+                    : 'border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/30'}"
+              >
+                <div>
+                  <p class="text-sm font-bold text-gray-900 {outOfStock ? '' : 'group-hover:text-indigo-700'}">{p.title}</p>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    {#if p.sku}<span class="text-xs font-mono text-gray-400">{p.sku}</span>{/if}
+                    <span class="text-xs font-bold text-emerald-600">{formatCurrency(p.price)}</span>
+                    <span class="text-[10px] font-bold {outOfStock ? 'text-red-400' : 'text-gray-400'}">
+                      {outOfStock ? 'Out of stock' : `${p.stock_quantity} left`}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div class="p-1.5 rounded-lg bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-              </div>
-            </button>
-          {/each}
+                {#if !outOfStock}
+                  <div class="p-1.5 rounded-lg bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white transition-colors flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  </div>
+                {/if}
+              </button>
+            {/each}
+          {/if}
         </div>
       </div>
 

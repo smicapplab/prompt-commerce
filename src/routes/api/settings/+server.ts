@@ -104,17 +104,22 @@ export const PATCH: RequestHandler = async (event) => {
     VALUES (?, ?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
   `);
+  const deleteKey = db.prepare(`DELETE FROM settings WHERE key = ?`);
 
+  // null → delete the key (clear it); '' → skip (no-op); string → upsert
   const entries = Object.entries(body).filter(
     ([key, value]) => allowed.includes(key) && value !== '' && value !== undefined
-  ) as [string, string][];
+  ) as [string, string | null][];
 
   if (entries.length === 0) {
     return json({ error: 'No valid keys provided' }, { status: 400 });
   }
 
-  const updateMany = db.transaction((rows: [string, string][]) => {
-    for (const [key, value] of rows) upsert.run(key, String(value), now);
+  const updateMany = db.transaction((rows: [string, string | null][]) => {
+    for (const [key, value] of rows) {
+      if (value === null) deleteKey.run(key);
+      else upsert.run(key, String(value), now);
+    }
   });
 
   updateMany(entries);
@@ -123,13 +128,15 @@ export const PATCH: RequestHandler = async (event) => {
   if (slug) {
     const AI_KEYS       = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
     const PAYMENT_KEYS  = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
-    const TELEGRAM_KEYS = new Set(['telegram_notify_chat_id']);
+    const TELEGRAM_KEYS      = new Set(['telegram_notify_chat_id']);
+    const TELEGRAM_BOT_KEYS  = new Set(['telegram_webhook_url']);
 
-    const hasAiChange       = entries.some(([key]) => AI_KEYS.has(key));
-    const hasPaymentChange  = entries.some(([key]) => PAYMENT_KEYS.has(key));
-    const hasTelegramChange = entries.some(([key]) => TELEGRAM_KEYS.has(key));
+    const hasAiChange          = entries.some(([key]) => AI_KEYS.has(key));
+    const hasPaymentChange     = entries.some(([key]) => PAYMENT_KEYS.has(key));
+    const hasTelegramChange    = entries.some(([key]) => TELEGRAM_KEYS.has(key));
+    const hasTelegramBotChange = entries.some(([key]) => TELEGRAM_BOT_KEYS.has(key));
 
-    if (hasAiChange || hasPaymentChange || hasTelegramChange) {
+    if (hasAiChange || hasPaymentChange || hasTelegramChange || hasTelegramBotChange) {
       void (async () => {
         try {
           const registry = getDb();
@@ -150,7 +157,7 @@ export const PATCH: RequestHandler = async (event) => {
           const allKeys = [
             'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
             'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret',
-            'telegram_notify_chat_id',
+            'telegram_notify_chat_id', 'telegram_webhook_url',
           ];
           const settingRows = storeDb
             .prepare(`SELECT key, value FROM settings WHERE key IN (${allKeys.map(() => '?').join(',')})`)
@@ -200,13 +207,24 @@ export const PATCH: RequestHandler = async (event) => {
             });
           }
 
-          // ── Push Telegram config ───────────────────────────────────────────
+          // ── Push Telegram notify config ────────────────────────────────────
           if (hasTelegramChange) {
             await fetch(`${gatewayUrl}/api/stores/${slug}/telegram-config`, {
               method: 'PATCH',
               headers,
               body: JSON.stringify({
                 notifyChatId: s['telegram_notify_chat_id'] || null,
+              }),
+            });
+          }
+
+          // ── Push Telegram bot webhook config ───────────────────────────────
+          if (hasTelegramBotChange) {
+            await fetch(`${gatewayUrl}/api/bot/telegram`, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({
+                webhookUrl: s['telegram_webhook_url'] || null,
               }),
             });
           }

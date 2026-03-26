@@ -61,6 +61,31 @@
   let aiGatewayStatus = $state<"idle" | "synced" | "failed">("idle");
   let aiGatewayReason = $state<string>("");
 
+  // Telegram bot mode + status
+  let telegramMode = $state<"polling" | "webhook">("polling");
+  let telegramCustomUrl = $state(""); // custom override URL; empty = use default
+  let telegramBotStatus = $state<"idle" | "checking" | "active" | "failed">("idle");
+  let telegramBotStatusInfo = $state<{ mode?: string; webhookUrl?: string | null; configuredUrl?: string | null } | null>(null);
+  let telegramWebhookUrlCopied = $state(false);
+
+  const defaultTelegramWebhookUrl = $derived(
+    serverSettings.gateway_url
+      ? serverSettings.gateway_url.replace(/\/$/, "") + "/webhooks/telegram"
+      : ""
+  );
+
+  // Sync telegramMode from loaded storeSettings
+  $effect(() => {
+    const existing = storeSettings.telegram_webhook_url as string | undefined;
+    if (existing) {
+      telegramMode = "webhook";
+      telegramCustomUrl = existing;
+    } else {
+      telegramMode = "polling";
+      telegramCustomUrl = "";
+    }
+  });
+
   let showClaudeKey = $state(false);
   let showGeminiKey = $state(false);
   let showOpenaiKey = $state(false);
@@ -360,8 +385,16 @@
     saving = true;
     saved = "";
     error = "";
-    const payload: Record<string, string> = {
-      telegram_webhook_url:    String(storeSettings.telegram_webhook_url ?? ""),
+    telegramBotStatus = "idle";
+
+    // Resolve the webhook URL to persist. null means "delete this key" (polling mode).
+    const webhookUrl =
+      telegramMode === "webhook"
+        ? (telegramCustomUrl.trim() || defaultTelegramWebhookUrl) || null
+        : null;
+
+    const payload: Record<string, string | null> = {
+      telegram_webhook_url:    webhookUrl,
       telegram_notify_chat_id: String(storeSettings.telegram_notify_chat_id ?? ""),
     };
     if (telegramKeyInput) payload.telegram_bot_token = telegramKeyInput;
@@ -379,6 +412,26 @@
       storeSettings = await res.json();
       telegramKeyInput = "";
       saved = "telegram";
+
+      // Poll gateway to confirm bot mode is live
+      telegramBotStatus = "checking";
+      setTimeout(async () => {
+        try {
+          const statusRes = await fetch(
+            `/api/settings/telegram-bot-status?store=${activeStore.slug}`,
+            { headers: { Authorization: `Bearer ${token()}` } }
+          );
+          if (statusRes.ok) {
+            telegramBotStatusInfo = await statusRes.json();
+            telegramBotStatus = "active";
+          } else {
+            telegramBotStatus = "failed";
+          }
+        } catch {
+          telegramBotStatus = "failed";
+        }
+      }, 1500);
+
       setTimeout(() => (saved = ""), 3000);
     } else {
       const d = await res.json();
@@ -1084,12 +1137,10 @@
       <p class="text-sm text-gray-400">Select a store first.</p>
     {:else}
       <div class="space-y-5">
+
+        <!-- Bot Token -->
         <div>
-          <label
-            for="t-token"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Bot Token</label
-          >
+          <label for="t-token" class="block text-sm font-medium text-gray-700 mb-1">Bot Token</label>
           <div class="relative">
             <input
               id="t-token"
@@ -1098,7 +1149,7 @@
               placeholder={storeSettings.telegram_bot_token_set
                 ? "••••••••••••••••••••••••••••"
                 : "123456789:ABCDefgh..."}
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 pr-16 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
               type="button"
@@ -1106,40 +1157,84 @@
               aria-label={showTelegramKey ? "Hide token" : "Show token"}
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              {#if showTelegramKey}<EyeOff class="w-4 h-4" />{:else}<Eye
-                  class="w-4 h-4"
-                />{/if}
+              {#if showTelegramKey}<EyeOff class="w-4 h-4" />{:else}<Eye class="w-4 h-4" />{/if}
             </button>
           </div>
           <p class="mt-1 text-xs text-gray-500">
-            From <a
-              href="https://t.me/BotFather"
-              target="_blank"
-              class="text-indigo-600 hover:underline">@BotFather</a
-            >.
+            From <a href="https://t.me/BotFather" target="_blank" class="text-indigo-600 hover:underline">@BotFather</a>.
           </p>
         </div>
 
+        <!-- Bot Mode -->
         <div>
-          <label
-            for="t-webhook"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Webhook URL (Optional)</label
-          >
-          <input
-            id="t-webhook"
-            type="text"
-            value={val("telegram_webhook_url")}
-            oninput={(e) =>
-              set("telegram_webhook_url", (e.target as HTMLInputElement).value)}
-            placeholder="https://..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <p class="mt-1 text-xs text-gray-500">
-            If empty, gateway uses long-polling. Use HTTPS for webhooks.
-          </p>
+          <p class="block text-sm font-medium text-gray-700 mb-2">Bot Mode</p>
+          <div class="flex gap-3">
+            {#each [["polling", "🔄 Long Polling", "Simple, works anywhere. Gateway repeatedly asks Telegram for updates."],
+                    ["webhook", "🔗 Webhook", "Recommended for production. Telegram pushes updates instantly to your HTTPS URL."]] as [modeId, label, desc]}
+              <button
+                type="button"
+                onclick={() => { telegramMode = modeId as "polling" | "webhook"; telegramBotStatus = "idle"; }}
+                class="flex-1 rounded-lg border-2 px-4 py-3 text-left text-sm transition-colors
+                  {telegramMode === modeId
+                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}"
+              >
+                <span class="font-medium block">{label}</span>
+                <span class="text-xs mt-0.5 block {telegramMode === modeId ? 'text-indigo-600/80' : 'text-gray-400'}">{desc}</span>
+              </button>
+            {/each}
+          </div>
         </div>
 
+        <!-- Webhook URL (only when webhook mode selected) -->
+        {#if telegramMode === "webhook"}
+          <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+            <div>
+              <p class="text-sm font-medium text-gray-800 mb-0.5">Webhook Endpoint</p>
+              <p class="text-xs text-gray-500">Register this URL in your Telegram bot settings. Must be publicly reachable over HTTPS.</p>
+            </div>
+
+            <!-- Auto-URL display -->
+            {#if defaultTelegramWebhookUrl}
+              <div>
+                <p class="block text-xs font-medium text-gray-600 mb-1">Default URL (from Gateway URL setting)</p>
+                <div class="flex items-center gap-2">
+                  <code class="flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-mono text-gray-700 truncate">
+                    {defaultTelegramWebhookUrl}
+                  </code>
+                  <button
+                    type="button"
+                    onclick={async () => {
+                      await navigator.clipboard.writeText(defaultTelegramWebhookUrl);
+                      telegramWebhookUrlCopied = true;
+                      setTimeout(() => (telegramWebhookUrlCopied = false), 2000);
+                    }}
+                    class="shrink-0 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 transition-colors"
+                  >
+                    {telegramWebhookUrlCopied ? "✓ Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            {/if}
+
+            <!-- Custom URL override -->
+            <div>
+              <label for="t-webhook-custom" class="block text-xs font-medium text-gray-600 mb-1">
+                Custom URL override <span class="text-gray-400 font-normal">(optional — leave blank to use default above)</span>
+              </label>
+              <input
+                id="t-webhook-custom"
+                type="text"
+                bind:value={telegramCustomUrl}
+                oninput={() => (telegramBotStatus = "idle")}
+                placeholder="https://your-gateway.example.com/webhooks/telegram"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        {/if}
+
+        <!-- Order Notifications -->
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
           <div>
             <h4 class="text-sm font-medium text-gray-800 mb-0.5">Order Notifications</h4>
@@ -1148,35 +1243,57 @@
             </p>
           </div>
           <div>
-            <label
-              for="t-notify-id"
-              class="block text-xs font-medium text-gray-700 mb-1"
-              >Your Telegram Chat ID</label
-            >
+            <label for="t-notify-id" class="block text-xs font-medium text-gray-700 mb-1">Your Telegram Chat ID</label>
             <input
               id="t-notify-id"
               type="text"
               value={val("telegram_notify_chat_id")}
-              oninput={(e) =>
-                set("telegram_notify_chat_id", (e.target as HTMLInputElement).value)}
+              oninput={(e) => set("telegram_notify_chat_id", (e.target as HTMLInputElement).value)}
               placeholder="e.g. 123456789"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <p class="mt-1 text-xs text-gray-500">
-              Send <code class="bg-gray-100 px-1 rounded">/myid</code> to your Telegram bot to get this number.
+              Send <code class="bg-gray-100 px-1 rounded">/myid</code> to your bot to get this number.
             </p>
           </div>
         </div>
 
-        <button
-          onclick={() => saveTelegram()}
-          disabled={saving}
-          class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {#if saving}Saving…{:else if saved === "telegram"}<Check
-              class="w-4 h-4"
-            /> Saved{:else}Save Telegram settings{/if}
-        </button>
+        <!-- Save + Status Row -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <button
+            onclick={() => saveTelegram()}
+            disabled={saving}
+            class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {#if saving}Saving…{:else if saved === "telegram"}<Check class="w-4 h-4" /> Saved{:else}Save Telegram settings{/if}
+          </button>
+
+          <!-- Live gateway badge -->
+          {#if telegramBotStatus === "checking"}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200">
+              <div class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse"></div>
+              <span class="text-xs font-medium">Checking bot status…</span>
+            </div>
+          {:else if telegramBotStatus === "active"}
+            {#if telegramBotStatusInfo?.mode === "webhook"}
+              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
+                <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                <span class="text-xs font-medium">Webhook active</span>
+              </div>
+            {:else}
+              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                <span class="text-xs font-medium">Long-polling active</span>
+              </div>
+            {/if}
+          {:else if telegramBotStatus === "failed"}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-100">
+              <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+              <span class="text-xs font-medium">Could not reach gateway</span>
+            </div>
+          {/if}
+        </div>
+
       </div>
     {/if}
   {/if}

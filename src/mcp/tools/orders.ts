@@ -180,7 +180,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
     'list_orders',
     'List recent orders for this store. Optionally filter by status or channel.',
     {
-      status: z.enum(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']).optional(),
+      status: z.enum(['pending', 'paid', 'picking', 'packing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled', 'refunded']).optional(),
       channel: z.string().optional().describe('Filter by channel (telegram, web, etc.)'),
       limit: z.number().int().min(1).max(100).default(20),
     },
@@ -215,7 +215,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
     'Update the status of an order (pending → confirmed → shipped → delivered, or cancelled).',
     {
       id: z.number().int().describe('Order ID'),
-      status: z.enum(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']).describe('New status'),
+      status: z.enum(['pending', 'paid', 'picking', 'packing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled', 'refunded']).describe('New status'),
     },
     async ({ id, status }) => {
       const order = db.prepare('SELECT id FROM orders WHERE id = ?').get(id) as { id: number } | undefined;
