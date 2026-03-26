@@ -72,6 +72,7 @@
 		images: [],
 		images_urls: [],
 	});
+	let erroredFields = $state(new Set());
 
 	let categories = $state([]);
 	let newImageFiles = $state([]);
@@ -141,17 +142,22 @@
 		}
 	};
 
+	let dirtyBreakdown = $derived(() => {
+		const deletedCount = products.filter(
+			(p) => !p.is_synced && p.deleted_at,
+		).length;
+		const activeDirty = products.filter(
+			(p) => !p.is_synced && !p.deleted_at,
+		).length;
+		return { deletedCount, activeDirty };
+	});
+
 	const debouncedSearch = () => {
 		clearTimeout(searchTimeout);
 		searchTimeout = setTimeout(() => {
 			currentPage = 1;
 			loadProducts();
 		}, 300);
-	};
-
-	const handleSearch = (e) => {
-		searchQuery = e.target.value;
-		debouncedSearch();
 	};
 
 	const handleFilterChange = (e) => {
@@ -178,6 +184,7 @@
 		newImageFiles = [];
 		imagePreviewUrls = [];
 		showModal = true;
+		erroredFields.clear();
 	};
 
 	const openEditModal = async (productId) => {
@@ -212,6 +219,7 @@
 				newImageFiles = [];
 				imagePreviewUrls = [];
 				showModal = true;
+				erroredFields.clear();
 			}
 		} catch (error) {
 			console.error("Failed to load product:", error);
@@ -247,6 +255,7 @@
 
 	const saveProduct = async () => {
 		if (!formData.title.trim()) {
+			erroredFields.add("title");
 			showToast("Title is required", "error");
 			return;
 		}
@@ -413,20 +422,25 @@
 			</div>
 		{:else if dirtyCount > 0}
 			<div
-				class="flex items-center justify-between mb-6 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm"
+				class="mb-6 flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800"
 			>
-				<span class="text-orange-800">
-					<strong>{dirtyCount}</strong> unsaved change{dirtyCount !==
-					1
-						? "s"
-						: ""} not yet synced to the gateway. Customers won't see
-					them until you sync.
-				</span>
+				<div class="flex items-center gap-2">
+					<RefreshCw
+						size={16}
+						class="text-orange-600 animate-spin-slow"
+					/>
+					<span class="font-medium">
+						{dirtyCount} item{dirtyCount === 1 ? "" : "s"} not yet synced.
+						<span class="text-orange-600/70 font-normal ml-1">
+							({dirtyBreakdown().activeDirty} new/edited · {dirtyBreakdown()
+								.deletedCount} deleted)
+						</span>
+					</span>
+				</div>
 				<button
 					onclick={runSync}
-					class="ml-4 shrink-0 inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700"
+					class="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700 transition-colors shadow-sm"
 				>
-					<RefreshCw size={12} />
 					Sync now
 				</button>
 			</div>
@@ -438,7 +452,7 @@
 					type="text"
 					placeholder="Search products..."
 					value={searchQuery}
-					onchange={handleSearch}
+					oninput={debouncedSearch}
 					class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 				/>
 				<select
@@ -472,7 +486,37 @@
 			<div
 				class="bg-white rounded-xl border border-gray-200 p-12 text-center"
 			>
-				<p class="text-gray-500">No products found</p>
+				<div class="text-center py-12">
+					<div
+						class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+					>
+						<Search size={24} class="text-gray-400" />
+					</div>
+					<h3 class="text-sm font-medium text-gray-900">
+						No products found
+					</h3>
+					<p class="text-xs text-gray-500 mt-1 max-w-[200px] mx-auto">
+						{#if searchQuery || activeFilter !== "all"}
+							No products match your current search or filters.
+							<button
+								onclick={() => {
+									searchQuery = "";
+									activeFilter = "all";
+									loadProducts();
+								}}
+								class="text-blue-600 hover:underline block mt-2 mx-auto"
+								>Clear all filters</button
+							>
+						{:else}
+							You haven't added any products to this store yet.
+							<button
+								onclick={openAddModal}
+								class="text-blue-600 hover:underline block mt-2 mx-auto"
+								>Add your first product</button
+							>
+						{/if}
+					</p>
+				</div>
 			</div>
 		{:else}
 			<div
@@ -674,7 +718,10 @@
 				<div
 					class="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10"
 				>
-					<h2 id="modal-title" class="text-xl font-bold text-gray-900">
+					<h2
+						id="modal-title"
+						class="text-xl font-bold text-gray-900"
+					>
 						{isEditing ? "Edit Product" : "Add Product"}
 					</h2>
 					<button
@@ -904,7 +951,9 @@
 					</div>
 				</div>
 
-				<div class="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 mt-auto">
+				<div
+					class="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 mt-auto"
+				>
 					<button
 						onclick={closeModal}
 						class="flex-1 border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-gray-300 focus:ring-offset-1 outline-none"

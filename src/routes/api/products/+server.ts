@@ -128,8 +128,6 @@ export const POST: RequestHandler = async (event) => {
 	const allImages = [...validatedExistingImages, ...uploadedImages];
 	const tags = tagsStr ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
-	const db = getStoreDb(store);
-
 	const result = db.prepare(`
 		INSERT INTO products (title, sku, description, price, stock_quantity, category_id, images, tags, active)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
