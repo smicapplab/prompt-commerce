@@ -13,7 +13,7 @@
     "start:prod": "NODE_ENV=production node --env-file=.env build/index.js",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "db:migrate": "tsx src/mcp/db/migrate.ts",
-    "db:reset": "tsx src/mcp/db/migrate.ts --reset"
+    "db:reset": "./scripts/reset-db.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

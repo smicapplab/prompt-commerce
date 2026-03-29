@@ -3,6 +3,8 @@
 # Prompt Commerce — Production Deployment Script
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$DIR"
 
 # ANSI color codes
 G='\033[0;32m'

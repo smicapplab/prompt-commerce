@@ -1,7 +1,7 @@
 @echo off
 TITLE Prompt Commerce - Seller Dev
 
-SET DIR=%~dp0
+SET DIR=%~dp0..\
 
 echo.
 echo   Prompt Commerce - Seller Dev

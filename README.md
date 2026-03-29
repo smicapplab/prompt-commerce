@@ -10,7 +10,7 @@ This repository contains the **Seller Admin Service**—a high-performance Svelt
 
 ---
 
-## 📈 Interactive KPI Dashboard
+##  Interactive KPI Dashboard
 *Manage your business with real-time insights and data-driven clarity.*
 
 <img src="screenshots/dashboard.png" alt="Seller Dashboard" width="800">
@@ -22,33 +22,33 @@ This repository contains the **Seller Admin Service**—a high-performance Svelt
 
 ---
 
-## ✨ Features at a Glance
+##  Features at a Glance
 
-### 🤖 AI Management & MCP Tools
+###  AI Management & MCP Tools
 - **Conversational CRUD**: Add, update, and manage products, categories, and promotions using natural language via the AI Assistant.
 - **Vision-Powered Search**: Attach product images in chat; the AI uses vision to extract details, identify categories, and suggest descriptions.
 - **Agentic Workflows**: A multi-round tool-use loop executes complex tasks (e.g., "Import these 50 products from this spreadsheet") with a single prompt.
 - **Preview-Before-Commit**: All write operations provide a detailed diff for confirmation before persisting changes to the database.
 
-### 💳 Universal Payment Integration
+###  Universal Payment Integration
 - **Multi-Provider Support**: Built-in adapters for **Stripe** (Global), **PayMongo** (Philippines), and a **Mock** provider for risk-free testing.
 - **Dynamic Config Push**: Securely manage and push payment credentials to your customer-facing gateway with one click.
 - **Encrypted Secrets**: All API keys and webhook secrets are masked and handled with enterprise-grade security.
 
-### 🛡️ Enterprise-Grade Security
+###  Enterprise-Grade Security
 - **SSRF Protection**: Advanced DNS resolution and IP filtering prevent server-side request forgery during image downloads.
 - **Brute-Force Mitigation**: Localized rate-limiting with progressive lockouts for the login system.
 - **Image Sanitization**: Strict MIME-type validation, extension checks, and size capping on all uploads and remote fetches.
 - **Secure Auto-Setup**: Automatically generates cryptographically secure JWT secrets and `.env` configurations on first launch.
 
-### 🏗️ High-Performance Architecture
+###  High-Performance Architecture
 - **Per-Store SQLite Containers**: Each store runs its own dedicated SQLite database file, ensuring total data isolation and extreme performance.
 - **Delta Sync Engine**: Seamlessly push inventory and configuration updates to customer-facing channels using an efficient "is_synced" dirty-flag system.
 - **RBAC (Role-Based Access Control)**: Granular permissions for Super Admins, Store Admins, Merchandisers, and Operations staff.
 
 ---
 
-## 🛠️ Architecture Overview
+##  Architecture Overview
 
 ```
 <root>/
@@ -70,7 +70,7 @@ The system utilizes a dual-layer SQLite strategy located in the `data/` director
 
 ---
 
-## 🔌 MCP Tools (Automated Management)
+##  MCP Tools (Automated Management)
 
 Each store exposes a standard set of MCP tools for integration with external AI agents (like Claude Desktop) or the built-in assistant.
 
@@ -94,7 +94,7 @@ Each store exposes a standard set of MCP tools for integration with external AI 
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 - **Node.js 20+**
@@ -124,7 +124,7 @@ The system will automatically:
 
 ---
 
-## 🔐 Connecting to a Gateway
+##  Connecting to a Gateway
 
 To enable customer-facing features like a Telegram bot or a public web storefront, you must connect this admin panel to a compatible Gateway.
 
@@ -135,7 +135,7 @@ To enable customer-facing features like a Telegram bot or a public web storefron
 
 ---
 
-## 💻 Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -149,7 +149,7 @@ To enable customer-facing features like a Telegram bot or a public web storefron
 
 ---
 
-## 🚢 Production Deployment
+##  Production Deployment
 
 For production, it is recommended to use a process manager like PM2:
 
@@ -163,7 +163,7 @@ Ensure `SELLER_PUBLIC_URL` is set to your production domain so visual assets are
 
 ---
 
-## 🗺️ Roadmap
+##  Roadmap
 
 - [ ] **Omnichannel Support**: Integration for **WhatsApp**, **Facebook Messenger**, and **Viber**.
 - [ ] **Vector / Semantic Search**: Product embeddings via HuggingFace (`all-MiniLM-L6-v2`) for intent-based search.
@@ -172,5 +172,5 @@ Ensure `SELLER_PUBLIC_URL` is set to your production domain so visual assets are
 
 ---
 
-## 📜 License
-MIT — Open for everyone. Built with ❤️ by the Prompt Commerce Team.
+##  License
+MIT — Open for everyone. Built with by the Prompt Commerce Team.
