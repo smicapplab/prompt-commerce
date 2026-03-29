@@ -387,10 +387,10 @@
     aiGatewayStatus = "idle";
     aiGatewayReason = "";
     const payload: Record<string, string> = {};
-    if (claudeKeyInput) payload.claude_api_key = claudeKeyInput;
-    if (geminiKeyInput) payload.gemini_api_key = geminiKeyInput;
-    if (openaiKeyInput) payload.openai_api_key = openaiKeyInput;
-    if (serperKeyInput) payload.serper_api_key = serperKeyInput;
+    if (claudeKeyInput) payload.claude_api_key = claudeKeyInput.trim();
+    if (geminiKeyInput) payload.gemini_api_key = geminiKeyInput.trim();
+    if (openaiKeyInput) payload.openai_api_key = openaiKeyInput.trim();
+    if (serperKeyInput) payload.serper_api_key = serperKeyInput.trim();
     payload.ai_enabled = String(storeSettings.ai_enabled ?? "0");
     payload.ai_provider = val("ai_provider", "claude");
     payload.ai_model = String(storeSettings.ai_model ?? "");
@@ -461,7 +461,7 @@
         storeSettings.telegram_notify_chat_id ?? "",
       ),
     };
-    if (telegramKeyInput) payload.telegram_bot_token = telegramKeyInput;
+    if (telegramKeyInput) payload.telegram_bot_token = telegramKeyInput.trim();
 
     const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
       method: "PATCH",
@@ -513,9 +513,9 @@
       payment_provider: val("payment_provider", "mock"),
       payment_public_key: String(storeSettings.payment_public_key ?? ""),
     };
-    if (paymentApiKeyInput) payload.payment_api_key = paymentApiKeyInput;
+    if (paymentApiKeyInput) payload.payment_api_key = paymentApiKeyInput.trim();
     if (paymentWebhookSecretInput)
-      payload.payment_webhook_secret = paymentWebhookSecretInput;
+      payload.payment_webhook_secret = paymentWebhookSecretInput.trim();
 
     const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
       method: "PATCH",
