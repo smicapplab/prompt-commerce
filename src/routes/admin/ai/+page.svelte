@@ -17,7 +17,7 @@
   interface ModelOption {
     id: string;
     displayName: string;
-    provider: "claude" | "gemini";
+    provider: "claude" | "gemini" | "openai";
   }
 
   // State
@@ -190,8 +190,15 @@
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
-      if (res.ok) {
+      const text = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: `Server returned an invalid response (${res.status})` };
+      }
+
+      if (res.ok && data.reply) {
         chatStore.addMessage(activeStore.slug, {
           role: "assistant",
           content: data.reply,

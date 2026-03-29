@@ -147,6 +147,7 @@ Always look up real store data before guessing. Be creative and action-oriented.
 
       return json({ reply: reply || '(no response)' });
     } catch (err: any) {
+      console.error('❌ Claude API Error:', err.response?.data || err.message || err);
       return json({ error: err.message ?? 'Claude API error' }, { status: 502 });
     }
   }
@@ -165,8 +166,28 @@ Always look up real store data before guessing. Be creative and action-oriented.
         content: m.content,
       }));
 
-      // Add system prompt
-      msgs.unshift({ role: 'system', content: systemPrompt });
+      // ─── o1 family logic ───────────────────────────────────────────────────
+      // o1 (latest) supports 'developer' role.
+      // o1-mini and o1-preview do NOT support 'system' or 'developer'; instructions
+      // must be prepended to the first user message.
+      const isO1Mini = body.model.includes('o1-mini') || body.model.includes('o1-preview');
+      const isO1Full = body.model === 'o1' || body.model.startsWith('o1-2024');
+      const isO1Family = isO1Mini || isO1Full;
+
+      if (isO1Full) {
+        msgs.unshift({ role: 'developer', content: systemPrompt });
+      } else if (isO1Mini) {
+        // Prepend to the first user message
+        const firstUserIdx = msgs.findIndex(m => m.role === 'user');
+        if (firstUserIdx !== -1) {
+          msgs[firstUserIdx].content = `[INSTRUCTIONS]\n${systemPrompt}\n\n[USER MESSAGE]\n${msgs[firstUserIdx].content}`;
+        } else {
+          msgs.unshift({ role: 'user', content: systemPrompt });
+        }
+      } else {
+        // Standard model (gpt-4o, etc.)
+        msgs.unshift({ role: 'system', content: systemPrompt });
+      }
       
       // Handle file content for the last user message
       const lastUserMsg = msgs[msgs.length - 1];
@@ -188,12 +209,14 @@ Always look up real store data before guessing. Be creative and action-oriented.
         const response = await client.chat.completions.create({
           model: body.model || OPENAI_DEFAULT_MODEL,
           messages: msgs,
-          tools: openaiTools as any,
-          tool_choice: 'auto',
+          // o1-mini doesn't support tools; o1 supports tools but not tool_choice
+          ...(isO1Mini ? {} : { tools: openaiTools as any }),
+          ...(isO1Family ? {} : { tool_choice: 'auto' }),
+          ...(isO1Family ? { max_completion_tokens: 16384 } : {}),
         });
 
         const choice = response.choices[0];
-        if (!choice.message.tool_calls) {
+        if (!choice.message.tool_calls?.length) {
           return json({ reply: choice.message.content || '(no response)' });
         }
 
@@ -201,20 +224,21 @@ Always look up real store data before guessing. Be creative and action-oriented.
 
         const toolResults: any[] = [];
         for (const toolCall of choice.message.tool_calls) {
+          const tc = toolCall as any;
           let toolOutput: string;
           try {
             toolOutput = await executeStoreTool(
-              toolCall.function.name,
-              JSON.parse(toolCall.function.arguments),
+              tc.function.name,
+              JSON.parse(tc.function.arguments),
               db
             );
           } catch (err: any) {
             toolOutput = `Tool error: ${err.message}`;
           }
           toolResults.push({
-            tool_call_id: toolCall.id,
+            tool_call_id: tc.id,
             role: 'tool',
-            name: toolCall.function.name,
+            name: tc.function.name,
             content: toolOutput,
           });
         }
@@ -224,6 +248,7 @@ Always look up real store data before guessing. Be creative and action-oriented.
       return json({ reply: '(tool use loop exceeded max rounds)' });
 
     } catch (err: any) {
+      console.error('❌ OpenAI API Error:', err.response?.data || err.message || err);
       return json({ error: err.message ?? 'OpenAI API error' }, { status: 502 });
     }
   }
