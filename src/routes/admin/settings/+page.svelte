@@ -671,7 +671,19 @@
 <svelte:head><title>Settings — Prompt Commerce</title></svelte:head>
 
 <div class="p-6 max-w-3xl">
-  <h1 class="text-xl font-semibold text-gray-900 mb-1">Settings</h1>
+  <div class="flex items-center justify-between mb-1">
+    <h1 class="text-xl font-semibold text-gray-900">Settings</h1>
+    {#if activeStore.slug && serverSettings.gateway_url}
+      <a
+        href="{serverSettings.gateway_url.replace(/\/$/, '')}/stores/{activeStore.slug}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+      >
+        View public store &rarr;
+      </a>
+    {/if}
+  </div>
   {#if activeStore.slug}
     <p class="text-sm text-gray-500 mb-6">
       Store: <span class="font-mono">{activeStore.slug}</span>

@@ -18,6 +18,7 @@ This repository contains the **Seller Admin Service**—a high-performance Svelt
 - **Live Revenue Analytics**: Track sales performance across daily, weekly, and monthly intervals with instant KPI visualization.
 - **Trend Visualization**: Interactive 14-day revenue charts and stacked order-status breakdowns provide a clear view of your store's health.
 - **Guided Setup Checklist**: A smart onboarding system that walks new retailers through adding products, configuring AI, and enabling payments.
+- **View Public Store**: Instantly preview your store's web presence on the public gateway directly from the Settings panel.
 - **Quick Order Actions**: Create, manage, and process orders with a single click directly from the main dashboard.
 
 ---
@@ -121,6 +122,11 @@ The system will automatically:
 - Generate a secure 64-character JWT secret.
 - Initialize the Registry and Store database schemas.
 - Start the SvelteKit dashboard on [http://localhost:3000](http://localhost:3000).
+
+---
+
+### 3. Integrated Smart Search
+Connected Gateways automatically leverage the high-performance Natural Language search engine for both Telegram and the Web Storefront. This handles complex queries like "laptop under 50k" or "in-stock electronics" with no additional configuration.
 
 ---
 
