@@ -440,7 +440,6 @@
 								? 'border-red-500 bg-red-50'
 								: 'border-gray-300'}"
 							placeholder="Category name"
-							autofocus
 						/>
 						{#if erroredFields.has("name")}
 							<p class="text-xs text-red-600 mt-1">
