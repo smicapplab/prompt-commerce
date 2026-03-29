@@ -118,6 +118,8 @@ const TOOL_DEFS: ToolDef[] = [
       category:       { type: 'string',  description: 'Category name — will be created if it does not exist' },
       price:          { type: 'number',  description: 'Price in local currency', minimum: 0 },
       stock_quantity: { type: 'integer', description: 'Initial stock level', minimum: 0, default: 0 },
+      tags:           { type: 'array', items: { type: 'string' }, description: 'Tags for search and filtering' },
+      images:         { type: 'array', items: { type: 'string' }, description: 'Image URLs' },
       confirm:        { type: 'boolean', description: 'Set to true to actually save. Default false (preview only).', default: false },
     },
     required: ['title'],
@@ -133,6 +135,8 @@ const TOOL_DEFS: ToolDef[] = [
       stock_quantity: { type: 'integer', description: 'New stock level', minimum: 0 },
       active:         { type: 'boolean', description: 'Set to false to delist the product' },
       category:       { type: 'string',  description: 'New category name' },
+      tags:           { type: 'array', items: { type: 'string' }, description: 'Replacement tag list' },
+      images:         { type: 'array', items: { type: 'string' }, description: 'Replacement image URLs' },
       confirm:        { type: 'boolean', description: 'Set to true to actually save. Default false (preview only).', default: false },
     },
     required: ['id'],
@@ -373,16 +377,16 @@ export async function executeStoreTool(
     }
 
     case 'add_product': {
-      const { title, description, sku, category, price, stock_quantity = 0, confirm = false } = args;
+      const { title, description, sku, category, price, stock_quantity = 0, tags, images, confirm = false } = args;
       if (!title) return 'Error: title is required.';
-      const preview = { title, sku: sku ?? null, description: description ?? null, category: category ?? null, price: price ?? null, stock_quantity };
+      const preview = { title, sku: sku ?? null, description: description ?? null, category: category ?? null, price: price ?? null, stock_quantity, tags: tags ?? [], images: images ?? [] };
       if (!confirm) return `📋 PREVIEW — no changes saved yet\n\n${JSON.stringify(preview, null, 2)}\n\nCall add_product again with confirm=true to save it.`;
       let categoryId: number | null = null;
       if (category) {
         const cat = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(category) as any;
         categoryId = cat ? cat.id : Number(db.prepare(`INSERT INTO categories (name) VALUES (?)`).run(category).lastInsertRowid);
       }
-      const r = db.prepare(`INSERT INTO products (title, description, sku, category_id, price, stock_quantity) VALUES (?,?,?,?,?,?)`).run(title, description ?? null, sku ?? null, categoryId, price ?? null, stock_quantity);
+      const r = db.prepare(`INSERT INTO products (title, description, sku, category_id, price, stock_quantity, tags, images) VALUES (?,?,?,?,?,?,?,?)`).run(title, description ?? null, sku ?? null, categoryId, price ?? null, stock_quantity, tags ? JSON.stringify(tags) : null, images ? JSON.stringify(images) : null);
       return `✅ Product "${title}" saved with ID ${r.lastInsertRowid}.`;
     }
 
@@ -397,6 +401,8 @@ export async function executeStoreTool(
       if (fields.stock_quantity !== undefined)                                        changes.stock_quantity = { from: existing.stock_quantity, to: fields.stock_quantity };
       if (fields.active !== undefined && fields.active !== Boolean(existing.active)) changes.active = { from: Boolean(existing.active), to: fields.active };
       if (fields.category !== undefined && fields.category !== existing.category_name) changes.category = { from: existing.category_name, to: fields.category };
+      if (fields.tags !== undefined)                                                  changes.tags = { from: existing.tags ? JSON.parse(existing.tags) : [], to: fields.tags };
+      if (fields.images !== undefined)                                                changes.images = { from: existing.images ? JSON.parse(existing.images) : [], to: fields.images };
       if (!confirm) return `📋 PREVIEW — Product ID ${id} ("${existing.title}") changes:\n${JSON.stringify(changes, null, 2)}\n\nCall update_product with confirm=true to save.`;
       const updates: string[] = [`updated_at = datetime('now')`];
       const params: any[] = [];
@@ -405,6 +411,8 @@ export async function executeStoreTool(
       if (fields.price !== undefined)          { updates.push('price = ?');          params.push(fields.price); }
       if (fields.stock_quantity !== undefined) { updates.push('stock_quantity = ?'); params.push(fields.stock_quantity); }
       if (fields.active !== undefined)         { updates.push('active = ?');         params.push(fields.active ? 1 : 0); }
+      if (fields.tags !== undefined)           { updates.push('tags = ?');           params.push(JSON.stringify(fields.tags)); }
+      if (fields.images !== undefined)         { updates.push('images = ?');         params.push(JSON.stringify(fields.images)); }
       if (fields.category !== undefined) {
         let catId: number | null = null;
         if (fields.category) {

@@ -277,6 +277,8 @@
 
 		if (formData.images_urls.length > 0) {
 			data.append("images_urls", formData.images_urls.join(","));
+		} else {
+			data.append("images_urls", "");
 		}
 
 		try {

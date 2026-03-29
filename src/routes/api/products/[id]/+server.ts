@@ -86,11 +86,11 @@ export const PATCH: RequestHandler = async (event) => {
 		uploadedImages.push(imgPath);
 	}
 
-	const existingImages = imageUrls.split(',').map((u) => u.trim()).filter(Boolean);
+	const existingImages = imageUrls ? imageUrls.split(',').map((u) => u.trim()).filter(Boolean) : [];
 	const validatedExistingImages = filterSecureImageUrls(existingImages);
 
 	const allImages = [...validatedExistingImages, ...uploadedImages];
-	const tags = tagsStr ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean) : null;
+	const tags = tagsStr ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
 	const updates: string[] = [];
 	const values: any[] = [];
@@ -101,8 +101,8 @@ export const PATCH: RequestHandler = async (event) => {
 	if (price !== null) { updates.push('price = ?'); values.push(price); }
 	if (stock_quantity !== null) { updates.push('stock_quantity = ?'); values.push(stock_quantity); }
 	if (category_id !== null) { updates.push('category_id = ?'); values.push(category_id); }
-	if (tags !== null) { updates.push('tags = ?'); values.push(JSON.stringify(tags)); }
-	if (allImages.length > 0 || imageUrls !== '') { updates.push('images = ?'); values.push(JSON.stringify(allImages)); }
+	if (formData.has('tags')) { updates.push('tags = ?'); values.push(JSON.stringify(tags)); }
+	if (formData.has('images_urls') || imageFiles.length > 0) { updates.push('images = ?'); values.push(JSON.stringify(allImages)); }
 	if (active !== null) { updates.push('active = ?'); values.push(active); }
 
 	if (updates.length > 0) {
