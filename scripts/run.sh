@@ -30,7 +30,7 @@ npm run db:migrate
 
 # 4. Build the application
 echo -e "${G}Step 3/4: Building application...${N}"
-npm run build
+npx svelte-kit sync && npm run build
 
 # 5. Start/Reload with PM2
 echo -e "${G}Step 4/4: Launching with PM2...${N}"
