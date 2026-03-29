@@ -202,16 +202,24 @@ export function initStoreSchema(db: Database.Database): void {
     CREATE TRIGGER IF NOT EXISTS settings_updated_at AFTER UPDATE ON settings FOR EACH ROW BEGIN
       UPDATE settings SET updated_at = datetime('now') WHERE key = OLD.key;
     END;
-    CREATE TRIGGER IF NOT EXISTS categories_updated_at AFTER UPDATE ON categories FOR EACH ROW BEGIN
+    CREATE TRIGGER IF NOT EXISTS categories_updated_at AFTER UPDATE ON categories FOR EACH ROW
+    WHEN (NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL)
+    BEGIN
       UPDATE categories SET updated_at = datetime('now') WHERE id = OLD.id;
     END;
-    CREATE TRIGGER IF NOT EXISTS products_updated_at AFTER UPDATE ON products FOR EACH ROW BEGIN
+    CREATE TRIGGER IF NOT EXISTS products_updated_at AFTER UPDATE ON products FOR EACH ROW
+    WHEN (NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL)
+    BEGIN
       UPDATE products SET updated_at = datetime('now') WHERE id = OLD.id;
     END;
-    CREATE TRIGGER IF NOT EXISTS promotions_updated_at AFTER UPDATE ON promotions FOR EACH ROW BEGIN
+    CREATE TRIGGER IF NOT EXISTS promotions_updated_at AFTER UPDATE ON promotions FOR EACH ROW
+    WHEN (NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL)
+    BEGIN
       UPDATE promotions SET updated_at = datetime('now') WHERE id = OLD.id;
     END;
-    CREATE TRIGGER IF NOT EXISTS reviews_updated_at AFTER UPDATE ON reviews FOR EACH ROW BEGIN
+    CREATE TRIGGER IF NOT EXISTS reviews_updated_at AFTER UPDATE ON reviews FOR EACH ROW
+    WHEN (NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL)
+    BEGIN
       UPDATE reviews SET updated_at = datetime('now') WHERE id = OLD.id;
     END;
     CREATE TRIGGER IF NOT EXISTS orders_updated_at AFTER UPDATE ON orders FOR EACH ROW BEGIN
@@ -226,19 +234,19 @@ export function initStoreSchema(db: Database.Database): void {
 
     -- ─── Triggers: is_synced (Auto-dirty on change) ──────────────────────────
     CREATE TRIGGER IF NOT EXISTS categories_sync_dirty AFTER UPDATE ON categories FOR EACH ROW
-    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
     BEGIN
       UPDATE categories SET is_synced = 0 WHERE id = OLD.id;
     END;
 
     CREATE TRIGGER IF NOT EXISTS products_sync_dirty AFTER UPDATE ON products FOR EACH ROW
-    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
     BEGIN
       UPDATE products SET is_synced = 0 WHERE id = OLD.id;
     END;
 
     CREATE TRIGGER IF NOT EXISTS promotions_sync_dirty AFTER UPDATE ON promotions FOR EACH ROW
-    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
     BEGIN
       UPDATE promotions SET is_synced = 0 WHERE id = OLD.id;
     END;
