@@ -384,7 +384,7 @@
   <!-- Body -->
   <div class="flex-1 overflow-y-auto relative">
     <!-- No AI configured overlay -->
-    {#if settingsChecked && !hasClaudeKey && !hasGeminiKey}
+    {#if settingsChecked && !hasClaudeKey && !hasGeminiKey && !hasOpenaiKey}
       <div
         class="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-10 p-6"
       >
@@ -397,7 +397,7 @@
           Connect AI to Start
         </h2>
         <p class="text-sm text-gray-500 text-center max-w-xs mb-5">
-          Add a Claude or Gemini API key in your store settings to enable the AI
+          Add an OpenAI, Claude, or Gemini API key in your store settings to enable the AI
           assistant.
         </p>
         <a

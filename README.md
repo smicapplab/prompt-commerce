@@ -8,7 +8,17 @@
 
 This repository contains the **Seller Admin Service**—a high-performance SvelteKit dashboard, an integrated [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server, and a robust multi-database SQLite architecture. It is designed to work as a standalone management hub or pair with any compatible customer-facing gateway for Telegram, Web, or Mobile shopping.
 
+
 ---
+
+## 🚀 Live Demo
+
+Experience Prompt Commerce in action:
+- ⚡ **Admin Dashboard**: [https://admin.13.212.57.92.nip.io/](https://admin.13.212.57.92.nip.io/)
+- 🛒 **Customer Gateway**: [https://gateway.13.212.57.92.nip.io/](https://gateway.13.212.57.92.nip.io/)
+
+---
+
 
 ##  Interactive KPI Dashboard
 *Manage your business with real-time insights and data-driven clarity.*
