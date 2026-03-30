@@ -18,7 +18,7 @@ export const GET: RequestHandler = async (event) => {
     return json({ error: 'key query parameter is required.' }, { status: 400 });
   }
 
-  const gatewayUrl = process.env.GATEWAY_URL ?? 'http://localhost:3002';
+  const gatewayUrl = process.env.GATEWAY_URL ?? 'http://localhost:3003';
 
   let res: Response;
   try {
