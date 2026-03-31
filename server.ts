@@ -15,6 +15,7 @@ const db = getRegistryDb();
 
 // ─── Express app ──────────────────────────────────────────────────────────────
 const app = express();
+app.use(express.json());
 
 // Serve uploaded product images from _data/uploads/
 const UPLOAD_DIR = getUploadDir();

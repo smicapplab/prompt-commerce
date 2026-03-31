@@ -135,6 +135,26 @@ export async function requireStoreRole(
   return { user, storeRole: mapping.role };
 }
 
+/**
+ * Validates the x-gateway-key header against the stores table.
+ * Used for bot-to-seller API calls (sync, AI config, chat logging).
+ */
+export function requireGatewayKey(event: RequestEvent, slug: string | null): boolean | Response {
+  if (!slug) return apiError(400, 'store slug is required');
+
+  const key = event.request.headers.get('x-gateway-key');
+  if (!key) return apiError(401, 'x-gateway-key is missing');
+
+  const db = getDb();
+  const store = db.prepare('SELECT gateway_key FROM stores WHERE slug = ?').get(slug) as { gateway_key: string } | undefined;
+
+  if (!store || !store.gateway_key || store.gateway_key !== key) {
+    return apiError(403, 'Invalid gateway key for this store');
+  }
+
+  return true;
+}
+
 // ─── Role hierarchy ───────────────────────────────────────────────────────────
 // Higher index = more privileged. Enforces scoped keys can't exceed user's role.
 const ROLE_RANK: Record<string, number> = {

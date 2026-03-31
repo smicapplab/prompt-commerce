@@ -52,21 +52,22 @@ export const POST: RequestHandler = async (event) => {
   // ── 2. Fetch dirty rows from store SQLite ──────────────────────────────────
   const storeDb = getStoreDb(slug);
 
-  type RawCategory = { id: number; name: string; parent_id: number | null; deleted_at: string | null };
+  type RawCategory = { id: number; name: string; parent_id: number | null; deleted_at: string | null; updated_at: string };
   type RawProduct = {
     id: number; title: string; description: string | null; sku: string | null;
     price: number | null; stock_quantity: number; category_id: number | null;
     tags: string | null; images: string | null; active: number; deleted_at: string | null;
+    updated_at: string;
   };
 
   const dirtyCategories = storeDb
-    .prepare('SELECT id, name, parent_id, deleted_at FROM categories WHERE is_synced = 0')
+    .prepare('SELECT id, name, parent_id, deleted_at, updated_at FROM categories WHERE is_synced = 0')
     .all() as RawCategory[];
 
   const dirtyProducts = storeDb
     .prepare(`
       SELECT id, title, description, sku, price, stock_quantity,
-             category_id, tags, images, active, deleted_at
+             category_id, tags, images, active, deleted_at, updated_at
       FROM products WHERE is_synced = 0
     `)
     .all() as RawProduct[];
@@ -140,6 +141,7 @@ export const POST: RequestHandler = async (event) => {
       'x-gateway-key': store.gateway_key,
     },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!response.ok) {
@@ -147,32 +149,33 @@ export const POST: RequestHandler = async (event) => {
     return apiError(502, `Gateway sync failed (${response.status}): ${errorText}`);
   }
 
-  // ── 5. Mark all pushed rows as synced ─────────────────────────────────────
-  // GAP-2: Use chunked updates to avoid SQLite parameter limits (default ~999)
-  const CHUNK_SIZE = 500;
+  // ── 5. Parse response before committing local sync ────────────────────────
+  let result: any;
+  try {
+    result = await response.json();
+  } catch (err) {
+    return apiError(502, `Gateway returned non-JSON response: ${err}`);
+  }
+
+  // ── 6. Mark all pushed rows as synced (only if not modified since) ─────────
+  // We use the snapshot updated_at to ensure that if a row was edited 
+  // DURING the network call, it stays dirty (is_synced=0).
   const markSynced = storeDb.transaction(() => {
     if (dirtyCategories.length > 0) {
-      const ids = dirtyCategories.map(c => c.id);
-      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-        const chunk = ids.slice(i, i + CHUNK_SIZE);
-        storeDb
-          .prepare(`UPDATE categories SET is_synced = 1 WHERE id IN (${chunk.map(() => '?').join(',')})`)
-          .run(...chunk);
+      const stmt = storeDb.prepare(`UPDATE categories SET is_synced = 1 WHERE id = ? AND updated_at = ?`);
+      for (const cat of dirtyCategories) {
+        stmt.run(cat.id, cat.updated_at);
       }
     }
     if (dirtyProducts.length > 0) {
-      const ids = dirtyProducts.map(p => p.id);
-      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-        const chunk = ids.slice(i, i + CHUNK_SIZE);
-        storeDb
-          .prepare(`UPDATE products SET is_synced = 1 WHERE id IN (${chunk.map(() => '?').join(',')})`)
-          .run(...chunk);
+      const stmt = storeDb.prepare(`UPDATE products SET is_synced = 1 WHERE id = ? AND updated_at = ?`);
+      for (const prod of dirtyProducts) {
+        stmt.run(prod.id, prod.updated_at);
       }
     }
   });
   markSynced();
 
-  const result = await response.json();
   return json({
     success: true,
     synced: {
@@ -183,6 +186,6 @@ export const POST: RequestHandler = async (event) => {
       upserted: { categories: upsertCategories.length, products: upsertProducts.length },
       deleted: { categories: deleteCategoryIds.length, products: deleteProductIds.length },
     },
-    message: result.message,
+    message: result?.message ?? `Sync complete for "${slug}".`,
   });
 };

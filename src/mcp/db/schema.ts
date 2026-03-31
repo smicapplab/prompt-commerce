@@ -180,12 +180,16 @@ export function initStoreSchema(db: Database.Database): void {
 
     -- ─── Conversations ───────────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS conversations (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      buyer_ref  TEXT    NOT NULL,
-      channel    TEXT    NOT NULL DEFAULT 'telegram',
-      status     TEXT    NOT NULL DEFAULT 'open',
-      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      buyer_ref        TEXT    NOT NULL,
+      buyer_name       TEXT,
+      telegram_chat_id TEXT,
+      channel          TEXT    NOT NULL DEFAULT 'telegram',
+      status           TEXT    NOT NULL DEFAULT 'open',
+      mode             TEXT    NOT NULL DEFAULT 'ai',
+      assigned_to      TEXT,
+      created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at       TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
     -- ─── Messages ───────────────────────────────────────────────────────────
@@ -193,6 +197,7 @@ export function initStoreSchema(db: Database.Database): void {
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
       conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
       sender          TEXT    NOT NULL,
+      sender_name     TEXT,
       body            TEXT    NOT NULL,
       created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))

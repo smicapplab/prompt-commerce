@@ -14,8 +14,11 @@
     id: number;
     store: number;
     buyer_ref: string;
+    buyer_name: string | null;
     channel: string;
     status: string;
+    mode: string;
+    assigned_to: string | null;
     last_message: string | null;
     last_message_at: string | null;
     message_count: number;
@@ -41,6 +44,7 @@
   let sending = $state(false);
   let pollingTimer: ReturnType<typeof setInterval> | null = null;
   let messagesEnd = $state<HTMLDivElement | null>(null);
+  let currentUser = $state<{ username: string } | null>(null);
 
   const token = () => localStorage.getItem('pc_token') ?? '';
 
@@ -103,7 +107,7 @@
     const res = await fetch(`/api/conversations/${selectedConv.id}/messages?store=${activeStore.slug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-      body: JSON.stringify({ body, sender: 'seller' })
+      body: JSON.stringify({ body, sender: 'seller', sender_name: currentUser?.username })
     });
     sending = false;
     if (res.ok) {
@@ -115,6 +119,33 @@
       );
       await tick();
       scrollToBottom();
+    }
+  }
+
+  async function takeOver(conv: Conversation) {
+    if (!currentUser) return;
+    const res = await fetch(`/api/conversations/${conv.id}?store=${activeStore.slug}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ mode: 'human', assigned_to: currentUser.username })
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      conversations = conversations.map(c => c.id === conv.id ? { ...c, ...updated } : c);
+      if (selectedConv?.id === conv.id) selectedConv = { ...selectedConv, ...updated };
+    }
+  }
+
+  async function closeSession(conv: Conversation) {
+    const res = await fetch(`/api/conversations/${conv.id}?store=${activeStore.slug}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ status: 'resolved', mode: 'closed' })
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      conversations = conversations.map(c => c.id === conv.id ? { ...c, ...updated } : c);
+      if (selectedConv?.id === conv.id) selectedConv = { ...selectedConv, ...updated };
     }
   }
 
@@ -156,7 +187,9 @@
     return '📨';
   }
 
-  onMount(() => {
+  onMount(async () => {
+    const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token()}` } });
+    if (res.ok) currentUser = await res.json();
     if (activeStore.slug) { load(activeStore.slug); }
     return () => {
       stopPolling();
@@ -209,7 +242,7 @@
             <div class="flex items-start justify-between gap-2">
               <div class="flex items-center gap-1.5 min-w-0">
                 <span class="text-base leading-none flex-shrink-0">{channelIcon(conv.channel)}</span>
-                <span class="text-sm font-medium text-gray-900 truncate">{conv.buyer_ref}</span>
+                <span class="text-sm font-medium text-gray-900 truncate">{conv.buyer_name || conv.buyer_ref}</span>
               </div>
               <span class="text-xs text-gray-400 flex-shrink-0">{relativeTime(conv.last_message_at ?? conv.updated_at)}</span>
             </div>
@@ -217,10 +250,16 @@
               <p class="text-xs text-gray-500 mt-1 truncate pl-5">{conv.last_message}</p>
             {/if}
             <div class="flex items-center gap-2 mt-1.5 pl-5">
-              {#if conv.status === 'resolved'}
-                <span class="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-700">Resolved</span>
+              {#if conv.mode === 'human'}
+                <span class="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">👤 Human</span>
+              {:else if conv.mode === 'ai'}
+                <span class="inline-flex items-center rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">🤖 AI</span>
               {:else}
-                <span class="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">Open</span>
+                <span class="inline-flex items-center rounded-full bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-700">✅ Closed</span>
+              {/if}
+              
+              {#if conv.status === 'resolved'}
+                <span class="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Resolved</span>
               {/if}
               <span class="text-xs text-gray-400">{conv.message_count} msgs</span>
             </div>
@@ -253,19 +292,32 @@
       <div class="px-5 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-semibold text-indigo-700">
-            {selectedConv.buyer_ref.charAt(0).toUpperCase()}
+            {(selectedConv.buyer_name || selectedConv.buyer_ref).charAt(0).toUpperCase()}
           </div>
           <div>
-            <p class="text-sm font-semibold text-gray-900">{selectedConv.buyer_ref}</p>
-            <p class="text-xs text-gray-500 capitalize">{channelIcon(selectedConv.channel)} {selectedConv.channel}</p>
+            <p class="text-sm font-semibold text-gray-900">{selectedConv.buyer_name || selectedConv.buyer_ref}</p>
+            <p class="text-xs text-gray-500 flex items-center gap-1.5">
+              <span>{channelIcon(selectedConv.channel)} {selectedConv.channel}</span>
+              {#if selectedConv.buyer_name}
+                <span class="text-gray-300">|</span>
+                <span class="font-mono text-[10px]">ID: {selectedConv.buyer_ref}</span>
+              {/if}
+            </p>
           </div>
         </div>
         <div class="flex items-center gap-2">
+          {#if selectedConv.mode === 'ai'}
+            <button
+              onclick={() => takeOver(selectedConv!)}
+              class="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+            >Take over</button>
+          {/if}
+          
           {#if selectedConv.status === 'open'}
             <button
-              onclick={() => setConvStatus(selectedConv!.id, 'resolved')}
-              class="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-            >Mark resolved</button>
+              onclick={() => closeSession(selectedConv!)}
+              class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >Close session</button>
           {:else}
             <button
               onclick={() => setConvStatus(selectedConv!.id, 'open')}
@@ -283,22 +335,32 @@
           <div class="text-center text-sm text-gray-400 py-8">No messages yet.</div>
         {:else}
           {#each selectedConv.messages as msg}
-            <div class="flex {msg.sender === 'seller' ? 'justify-end' : 'justify-start'}">
-              <div class="max-w-xs lg:max-w-md">
-                {#if msg.sender !== 'seller'}
-                  <p class="text-xs text-gray-500 mb-1 ml-1">{selectedConv.buyer_ref}</p>
-                {/if}
-                <div class="rounded-2xl px-4 py-2.5 {msg.sender === 'seller' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm shadow-sm'} {msg.sender === 'ai' ? 'bg-purple-50 text-purple-900 border-purple-200' : ''}">
-                  <p class="text-sm whitespace-pre-wrap">{msg.body}</p>
-                </div>
-                <div class="flex items-center gap-1 mt-1 {msg.sender === 'seller' ? 'justify-end mr-1' : 'ml-1'}">
-                  {#if msg.sender === 'ai'}
-                    <span class="text-xs text-purple-400">🤖 AI</span>
+            {#if msg.sender === 'system'}
+              <div class="flex justify-center my-2">
+                <span class="px-3 py-1 bg-gray-100 rounded-full text-[10px] text-gray-500 font-medium italic">
+                  {msg.body}
+                </span>
+              </div>
+            {:else}
+              <div class="flex {msg.sender === 'seller' ? 'justify-end' : 'justify-start'}">
+                <div class="max-w-xs lg:max-w-md">
+                  {#if msg.sender !== 'seller'}
+                    <p class="text-xs text-gray-500 mb-1 ml-1">{msg.sender === 'ai' ? 'AI Bot' : (selectedConv.buyer_name || selectedConv.buyer_ref)}</p>
+                  {:else}
+                    <p class="text-xs text-gray-500 mb-1 mr-1 text-right">{msg.sender_name || 'Seller'}</p>
                   {/if}
-                  <span class="text-xs text-gray-400">{formatTime(msg.created_at)}</span>
+                  <div class="rounded-2xl px-4 py-2.5 {msg.sender === 'seller' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm shadow-sm'} {msg.sender === 'ai' ? 'bg-purple-50 text-purple-900 border-purple-200' : ''}">
+                    <p class="text-sm whitespace-pre-wrap">{msg.body}</p>
+                  </div>
+                  <div class="flex items-center gap-1 mt-1 {msg.sender === 'seller' ? 'justify-end mr-1' : 'ml-1'}">
+                    {#if msg.sender === 'ai'}
+                      <span class="text-xs text-purple-400">🤖 AI</span>
+                    {/if}
+                    <span class="text-xs text-gray-400">{formatTime(msg.created_at)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            {/if}
           {/each}
           <div bind:this={messagesEnd}></div>
         {/if}

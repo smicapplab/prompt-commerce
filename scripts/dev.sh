@@ -39,18 +39,20 @@ echo "  Prompt Commerce — Seller Dev"
 echo "  ─────────────────────────────"
 echo ""
 
-# ── Clear port 3000 ───────────────────────────────────────────────────────────
-PIDS=$(lsof -ti :3000 2>/dev/null || true)
-if [ -n "$PIDS" ]; then
-  echo "  Clearing port 3000…"
-  echo "$PIDS" | xargs kill -9 2>/dev/null || true
-  sleep 1
-fi
-
 # ── Bootstrap .env ────────────────────────────────────────────────────────────
 if [ ! -f "$DIR/.env" ]; then
   echo -e "  ${R}[warn]${N} .env not found — copying from .env.example"
   cp "$DIR/.env.example" "$DIR/.env"
+fi
+
+# ── Clear port ────────────────────────────────────────────────────────────────
+# SEC-10: Dynamically detect port from .env to ensure robust process cleanup
+TARGET_PORT=$(grep "^PORT=" "$DIR/.env" | cut -d'=' -f2 | grep -oE "[0-9]+" || echo 3000)
+PIDS=$(lsof -ti :$TARGET_PORT 2>/dev/null || true)
+if [ -n "$PIDS" ]; then
+  echo "  Clearing port $TARGET_PORT…"
+  echo "$PIDS" | xargs kill -9 2>/dev/null || true
+  sleep 1
 fi
 
 # ── Install deps if needed ────────────────────────────────────────────────────

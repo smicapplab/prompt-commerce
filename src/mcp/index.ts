@@ -150,6 +150,53 @@ export function mountMcp(app: Application): void {
     await transport.handlePostMessage(req, res);
   });
 
+  // Recording endpoint for gateway (authenticated via x-gateway-key)
+  app.post('/api/gateway/conversations/:slug', (req, res, next) => {
+    makeGatewayKeyMiddleware(req.params.slug)(req, res, next);
+  }, async (req, res) => {
+    const slug = req.params.slug;
+    const { buyer_ref, channel, telegram_chat_id, message, sender } = req.body;
+
+    if (!buyer_ref || !message) {
+      res.status(400).json({ error: 'buyer_ref and message are required' });
+      return;
+    }
+
+    const db = getStoreDb(slug);
+    const now = new Date().toISOString();
+
+    try {
+      // Find or create conversation by buyer_ref + channel
+      let conv = db.prepare(`SELECT * FROM conversations WHERE buyer_ref = ? AND channel = ?`)
+        .get(buyer_ref, channel || 'telegram') as any;
+
+      if (!conv) {
+        const result = db.prepare(`
+          INSERT INTO conversations (buyer_ref, channel, telegram_chat_id, status, created_at, updated_at)
+          VALUES (?, ?, ?, 'open', ?, ?)
+        `).run(buyer_ref, channel || 'telegram', telegram_chat_id, now, now);
+        conv = { id: result.lastInsertRowid };
+      } else if (telegram_chat_id && conv.telegram_chat_id !== telegram_chat_id) {
+        // Sync the chat_id if it's new/updated
+        db.prepare(`UPDATE conversations SET telegram_chat_id = ?, updated_at = ? WHERE id = ?`)
+          .run(telegram_chat_id, now, conv.id);
+      }
+
+      // Record the message
+      const result = db.prepare(`
+        INSERT INTO messages (conversation_id, sender, body, created_at)
+        VALUES (?, ?, ?, ?)
+      `).run(conv.id, sender || 'buyer', message, now);
+
+      // Update conversation timestamp
+      db.prepare(`UPDATE conversations SET updated_at = ? WHERE id = ?`).run(now, conv.id);
+
+      res.status(201).json({ conversation_id: conv.id, message_id: result.lastInsertRowid });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Backward-compat: /sse without slug → redirect to /sse/main-store ───────
   // Helps users who registered the old endpoint URL.
   app.get('/sse', (_req, res) => {

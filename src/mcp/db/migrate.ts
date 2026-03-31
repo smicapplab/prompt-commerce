@@ -232,6 +232,11 @@ if (fs.existsSync(storesDir)) {
       'ALTER TABLE promotions ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
       'ALTER TABLE reviews    ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
       'ALTER TABLE messages   ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
+      'ALTER TABLE messages   ADD COLUMN sender_name TEXT',
+      'ALTER TABLE conversations ADD COLUMN telegram_chat_id TEXT DEFAULT NULL',
+      'ALTER TABLE conversations ADD COLUMN mode TEXT NOT NULL DEFAULT \'ai\'',
+      'ALTER TABLE conversations ADD COLUMN assigned_to TEXT',
+      'ALTER TABLE conversations ADD COLUMN buyer_name TEXT',
     ]) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
     }

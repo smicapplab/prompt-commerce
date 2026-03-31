@@ -1599,6 +1599,17 @@
           </div>
         {/if}
 
+        {#if val("payment_provider") === "mock"}
+          <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div class="flex items-center gap-2 text-amber-800 font-medium mb-1">
+              <span class="text-lg">🧪</span> Test Mode
+            </div>
+            <p class="text-xs text-amber-700 leading-relaxed">
+              Payments are simulated. Buyers will be redirected to a fake checkout page where they can "pay" with a test card. No real money will be moved, and no API keys are required.
+            </p>
+          </div>
+        {/if}
+
         <button
           onclick={() => savePayments()}
           disabled={saving}
