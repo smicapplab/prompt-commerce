@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
-import { requireAuth, requireStoreRole, requireGatewayKey } from '$lib/server/auth.js';
+import { requireStoreRole, requireGatewayKey } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
 export const GET: RequestHandler = async (event) => {
