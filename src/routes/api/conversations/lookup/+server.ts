@@ -16,11 +16,11 @@ export const POST: RequestHandler = async (event) => {
   if (!buyer_ref) return json({ error: 'buyer_ref is required' }, { status: 400 });
 
   const db = getStoreDb(store!);
-  const conv = db.prepare(\`
+  const conv = db.prepare(`
     SELECT id, status, mode FROM conversations
     WHERE buyer_ref = ? AND channel = ? AND status = 'open'
     LIMIT 1
-  \`).get(buyer_ref, channel || 'telegram');
+  `).get(buyer_ref, channel || 'telegram');
 
   if (!conv) return json({ error: 'Conversation not found' }, { status: 404 });
   return json(conv);
