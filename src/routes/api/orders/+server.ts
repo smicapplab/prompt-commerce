@@ -104,6 +104,13 @@ export const POST: RequestHandler = async (event) => {
           INSERT INTO order_items (order_id, product_id, title, price, quantity)
           VALUES (?, ?, ?, ?, ?)
         `).run(orderId, item.product_id || null, item.title, price, qty);
+        
+        if (item.product_id) {
+          db.prepare(
+            'UPDATE products SET stock_quantity = stock_quantity - ?, updated_at = datetime(\'now\') WHERE id = ?'
+          ).run(qty, item.product_id);
+        }
+        
         calculatedTotal += price * qty;
       }
 

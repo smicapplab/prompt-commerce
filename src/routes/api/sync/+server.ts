@@ -36,6 +36,10 @@ export const POST: RequestHandler = async (event) => {
     sellerPublicUrl = undefined;
   }
 
+  if (!sellerPublicUrl) {
+    return apiError(400, 'Server configuration error: seller_public_url is missing or invalid.');
+  }
+
   const store = registry
     .prepare('SELECT gateway_key FROM stores WHERE slug = ? AND active = 1')
     .get(slug) as { gateway_key: string | null } | undefined;

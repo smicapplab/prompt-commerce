@@ -60,22 +60,23 @@ export const PATCH: RequestHandler = async (event) => {
     params.push(body.mobile || null);
   }
 
-  if (updates.length > 0) {
-    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params, id);
-  }
+  const applyUpdates = db.transaction(() => {
+    if (updates.length > 0) {
+      db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params, id);
+    }
 
-  // Handle store assignments if provided
-  if (body.stores && Array.isArray(body.stores)) {
-    // Replace all store assignments for this user
-    const updateStores = db.transaction((assignments: { slug: string; role: string }[]) => {
+    // Handle store assignments if provided
+    if (body.stores && Array.isArray(body.stores)) {
+      // Replace all store assignments for this user
       db.prepare('DELETE FROM user_stores WHERE user_id = ?').run(id);
       const insert = db.prepare('INSERT INTO user_stores (user_id, store_slug, role) VALUES (?, ?, ?)');
-      for (const a of assignments) {
+      for (const a of body.stores) {
         insert.run(id, a.slug, a.role);
       }
-    });
-    updateStores(body.stores);
-  }
+    }
+  });
+
+  applyUpdates();
 
   return json({ success: true });
 };
