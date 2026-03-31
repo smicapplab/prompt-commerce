@@ -147,9 +147,7 @@ export function mountMcp(app: Application): void {
       return;
     }
 
-    // Express.json() middleware has already parsed the body, so we must pass it 
-    // to handlePostMessage to prevent the SDK from hanging trying to read the stream
-    await transport.handlePostMessage(req, res, req.body);
+    await transport.handlePostMessage(req, res);
   });
 
   // Recording endpoint for gateway (authenticated via x-gateway-key)
