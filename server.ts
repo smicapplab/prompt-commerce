@@ -15,7 +15,7 @@ const db = getRegistryDb();
 
 // ─── Express app ──────────────────────────────────────────────────────────────
 const app = express();
-app.use(express.json());
+// Global body parser removed — SvelteKit handles its own body parsing
 
 // Serve uploaded product images from _data/uploads/
 const UPLOAD_DIR = getUploadDir();
