@@ -56,6 +56,7 @@ export function getStoreDb(slug: string): Database.Database {
 // _data/uploads/  — shared across all stores
 export function getUploadDir(): string {
   const dir = path.join(DATA_DIR, 'uploads');
-  fs.mkdirSync(dir, { recursive: true });
+  const ordersDir = path.join(dir, 'orders');
+  fs.mkdirSync(ordersDir, { recursive: true });
   return dir;
 }

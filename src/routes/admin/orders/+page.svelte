@@ -2,35 +2,16 @@
   import { onMount } from "svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import { goto } from "$app/navigation";
-
-  interface OrderItem {
-    id: number;
-    product_id: number | null;
-    title: string;
-    price: number;
-    quantity: number;
-    product_title: string | null;
-  }
-
-  interface Order {
-    id: number;
-    store: number;
-    buyer_ref: string | null;
-    channel: string;
-    status: string;
-    total: number | null;
-    notes: string | null;
-    item_count: number;
-    created_at: string;
-    updated_at: string;
-  }
+  import type { Order } from "$lib/types/orders";
 
   const STATUS_OPTIONS = [
+    "pending_payment",
     "pending",
     "paid",
     "picking",
     "packing",
     "ready_for_pickup",
+    "picked_up",
     "in_transit",
     "delivered",
     "cancelled",
@@ -38,11 +19,13 @@
   ];
 
   const STATUS_COLORS: Record<string, string> = {
+    pending_payment: "bg-orange-100 text-orange-700 border-orange-200",
     pending: "bg-amber-100 text-amber-700 border-amber-200",
     paid: "bg-blue-100 text-blue-700 border-blue-200",
     picking: "bg-indigo-100 text-indigo-700 border-indigo-200",
     packing: "bg-violet-100 text-violet-700 border-violet-200",
     ready_for_pickup: "bg-cyan-100 text-cyan-700 border-cyan-200",
+    picked_up: "bg-emerald-100 text-emerald-700 border-emerald-200",
     in_transit: "bg-sky-100 text-sky-700 border-sky-200",
     delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
     cancelled: "bg-red-100 text-red-700 border-red-200",
@@ -56,6 +39,10 @@
   const limit = 20;
   let q = $state("");
   let filterStatus = $state("");
+  
+  // Sync Status
+  let dirtyCount = $state(0);
+  let isSyncing = $state(false);
 
   const token = () => localStorage.getItem("pc_token") ?? "";
 
@@ -77,6 +64,38 @@
       const data = await res.json();
       orders = data.orders;
       totalCount = data.totalCount;
+    }
+    loadSyncStatus(sid);
+  }
+
+  async function loadSyncStatus(sid = activeStore.slug) {
+    if (!sid) return;
+    try {
+      const res = await fetch(`/api/sync/status?store=${sid}&type=orders`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        dirtyCount = data.dirty;
+      }
+    } catch (e) {
+      console.error("Failed to load sync status", e);
+    }
+  }
+
+  async function syncNow() {
+    if (!activeStore.slug || isSyncing) return;
+    isSyncing = true;
+    try {
+      const res = await fetch(`/api/sync?store=${activeStore.slug}&type=orders`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (res.ok) {
+        await loadSyncStatus();
+      }
+    } finally {
+      isSyncing = false;
     }
   }
 
@@ -144,6 +163,26 @@
     </button>
   </div>
 
+  {#if dirtyCount > 0}
+    <div
+      class="mb-6 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 flex items-center justify-between"
+    >
+      <div class="flex items-center gap-3">
+        <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+        <p class="text-sm font-medium text-orange-800">
+          {dirtyCount} order{dirtyCount !== 1 ? "s" : ""} changed since last sync.
+        </p>
+      </div>
+      <button
+        onclick={syncNow}
+        disabled={isSyncing}
+        class="text-xs font-bold text-orange-600 bg-white border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-all disabled:opacity-50"
+      >
+        {isSyncing ? "Syncing..." : "Sync Now"}
+      </button>
+    </div>
+  {/if}
+
   <!-- Filters -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
     <div class="md:col-span-2 relative">
@@ -208,6 +247,9 @@
             <th class="px-6 py-4 font-semibold text-gray-600">Buyer</th>
             <th class="px-6 py-4 font-semibold text-gray-600 text-center"
               >Channel</th
+            >
+            <th class="px-6 py-4 font-semibold text-gray-600 text-center"
+              >Delivery</th
             >
             <th class="px-6 py-4 font-semibold text-gray-600 text-center"
               >Items</th
@@ -288,6 +330,13 @@
                     class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-600"
                   >
                     {order.channel}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider {(order as any).delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}"
+                  >
+                    {(order as any).delivery_type || 'delivery'}
                   </span>
                 </td>
                 <td class="px-6 py-4 text-center text-gray-600 font-medium"

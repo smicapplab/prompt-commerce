@@ -2,26 +2,7 @@
   import { onMount } from "svelte";
   import { RefreshCw } from "@lucide/svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
-
-  interface Promotion {
-    id: number;
-    store: number;
-    title: string;
-    product_id: number | null;
-    product_title: string | null;
-    voucher_code: string | null;
-    discount_type: "percentage" | "fixed";
-    discount_value: number;
-    start_date: string | null;
-    end_date: string | null;
-    active: number;
-    created_at: string;
-  }
-
-  interface Product {
-    id: number;
-    title: string;
-  }
+  import type { Promotion, Product } from "$lib/types/catalog";
 
   let promotions = $state<Promotion[]>([]);
   let products = $state<Product[]>([]);

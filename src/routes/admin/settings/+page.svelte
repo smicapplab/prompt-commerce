@@ -154,6 +154,9 @@
   let telegramKeyInput = $state("");
   let paymentApiKeyInput = $state("");
   let paymentWebhookSecretInput = $state("");
+  let paymentInstructionsInput = $state("");
+  let paymentLinkTemplateInput = $state("");
+  let assistedLabelInput = $state("");
 
   // Temp MCP Key state
   let tempMcpKey = $state("");
@@ -331,8 +334,18 @@
     });
     if (res.ok) {
       storeSettings = await res.json();
+      // If payment_provider is missing/empty, default to "none" for the UI toggle
+      if (!storeSettings.payment_provider) {
+        storeSettings.payment_provider = "none";
+      }
       // If a custom model name was previously saved (not in any preset list), open custom mode.
       customModelMode = savedModelIsCustom();
+      
+      // Initialize inputs from loaded settings
+      paymentInstructionsInput = val("payment_instructions");
+      paymentLinkTemplateInput = val("payment_link_template");
+      assistedLabelInput = val("assisted_label");
+
       updateSnap();
     }
   }
@@ -358,6 +371,7 @@
     payload.store_display_name = String(storeSettings.store_display_name ?? "");
     payload.store_currency = String(storeSettings.store_currency ?? "");
     payload.store_timezone = String(storeSettings.store_timezone ?? "");
+    payload.allows_pickup = String(storeSettings.allows_pickup ?? "0");
 
     const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
       method: "PATCH",
@@ -509,9 +523,14 @@
     saving = true;
     saved = "";
     error = "";
+    const provider = val("payment_provider", "none");
     const payload: Record<string, string> = {
-      payment_provider: val("payment_provider", "mock"),
+      payment_provider: provider === "none" ? "" : provider,
       payment_public_key: String(storeSettings.payment_public_key ?? ""),
+      payment_instructions: paymentInstructionsInput.trim(),
+      payment_link_template: paymentLinkTemplateInput.trim(),
+      assisted_label: assistedLabelInput.trim(),
+      allow_cod: String(storeSettings.allow_cod ?? "1"),
     };
     if (paymentApiKeyInput) payload.payment_api_key = paymentApiKeyInput.trim();
     if (paymentWebhookSecretInput)
@@ -530,6 +549,7 @@
       storeSettings = await res.json();
       paymentApiKeyInput = "";
       paymentWebhookSecretInput = "";
+      // Note: we don't clear instructions/template/label as they are not "secrets"
       saved = "payments";
       setTimeout(() => (saved = ""), 3000);
     } else {
@@ -812,6 +832,24 @@
           <p class="mt-1 text-xs text-gray-500">
             IANA timezone for timestamps.
           </p>
+        </div>
+
+        <div class="pt-2">
+          <label class="flex items-center gap-3 cursor-pointer group">
+            <div class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none {val('allows_pickup', '0') === '1' ? 'bg-indigo-600' : 'bg-gray-200'}">
+              <input 
+                type="checkbox" 
+                class="sr-only" 
+                checked={val('allows_pickup', '0') === '1'} 
+                onchange={(e) => set('allows_pickup', (e.target as HTMLInputElement).checked ? '1' : '0')}
+              />
+              <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {val('allows_pickup', '0') === '1' ? 'translate-x-5' : 'translate-x-0'}"></span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-sm font-medium text-gray-900">Allow Store Pickup</span>
+              <span class="text-xs text-gray-500">Buyers will see a "Store Pickup" option during checkout.</span>
+            </div>
+          </label>
         </div>
         <button
           onclick={() => saveStore()}
@@ -1492,30 +1530,73 @@
     {:else}
       <div class="space-y-6">
         <div>
-          <p class="block text-sm font-medium text-gray-700 mb-2">Provider</p>
-          <div class="flex gap-3">
-            {#each [["mock", "📦 Mock"], ["paymongo", "🇵🇭 PayMongo"], ["stripe", "🌍 Stripe"]] as [pid, label]}
+          <p class="block text-sm font-medium text-gray-700 mb-2">Online Gateway</p>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {#each [
+              ["none", "🚫 None"],
+              ["mock", "🧪 Mock"], 
+              ["assisted", "🤝 Assisted"], 
+              ["paymongo", "🇵🇭 PayMongo"], 
+              ["stripe", "🌍 Stripe"]
+            ] as [pid, label]}
               <button
                 onclick={() => set("payment_provider", pid)}
-                class="flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors
-                  {val('payment_provider', 'mock') === pid
+                class="rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors
+                  {val('payment_provider', 'none') === pid
                   ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                   : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}"
                 >{label}</button
               >
             {/each}
           </div>
+          <p class="mt-2 text-xs text-gray-500">Select which automated or manual payment gateway to offer. You can enable Cash on Delivery separately below.</p>
         </div>
 
-        {#if val("payment_provider") !== "mock"}
+        {#if val("payment_provider") === "assisted"}
+          <div class="space-y-4 rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
+            <div>
+              <label for="p-label" class="block text-sm font-medium text-gray-700 mb-1">Display Label</label>
+              <input
+                id="p-label"
+                type="text"
+                bind:value={assistedLabelInput}
+                placeholder="e.g. Bank Transfer / GCash"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p class="mt-1 text-xs text-gray-500">The button text shown to buyers in Telegram.</p>
+            </div>
+            <div>
+              <label for="p-inst" class="block text-sm font-medium text-gray-700 mb-1">Payment Instructions</label>
+              <textarea
+                id="p-inst"
+                rows="3"
+                bind:value={paymentInstructionsInput}
+                placeholder="e.g. Please transfer to BDO Account 123456789 and send us a screenshot."
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              ></textarea>
+              <p class="mt-1 text-xs text-gray-500">Shown to the buyer immediately after they place the order.</p>
+            </div>
+            <div>
+              <label for="p-tmpl" class="block text-sm font-medium text-gray-700 mb-1">Payment Link Template (Optional)</label>
+              <input
+                id="p-tmpl"
+                type="text"
+                bind:value={paymentLinkTemplateInput}
+                placeholder="https://pay.me/mystore/{{amount}}"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p class="mt-1 text-xs text-gray-500">Placeholders: <code>{"{{orderId}}"}</code>, <code>{"{{amount}}"}</code>, <code>{"{{currency}}"}</code>, <code>{"{{slug}}"}</code>.</p>
+            </div>
+          </div>
+        {/if}
+
+        {#if val("payment_provider") === "paymongo" || val("payment_provider") === "stripe"}
           <div>
             <label
               for="p-api"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
-              {val("payment_provider") === "paymongo"
-                ? "Secret Key"
-                : "Secret Key"}
+              Secret Key
             </label>
             <div class="relative">
               <input
@@ -1599,16 +1680,37 @@
           </div>
         {/if}
 
-        {#if val("payment_provider") === "mock"}
+        {#if val("payment_provider") === "mock" || val("payment_provider") === "cod"}
           <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
             <div class="flex items-center gap-2 text-amber-800 font-medium mb-1">
-              <span class="text-lg">🧪</span> Test Mode
+              <span class="text-lg">{val("payment_provider") === "mock" ? "🧪" : "💵"}</span> 
+              {val("payment_provider") === "mock" ? "Test Mode" : "Cash on Delivery"}
             </div>
             <p class="text-xs text-amber-700 leading-relaxed">
-              Payments are simulated. Buyers will be redirected to a fake checkout page where they can "pay" with a test card. No real money will be moved, and no API keys are required.
+              {val("payment_provider") === "mock" 
+                ? "Payments are simulated. Buyers will be redirected to a fake checkout page where they can \"pay\" with a test card. No real money will be moved, and no API keys are required."
+                : "Orders will be marked as 'pending_payment'. You must manually mark them as 'paid' once cash is collected from the buyer."}
             </p>
           </div>
         {/if}
+
+        <div class="pt-2 border-t border-gray-100">
+          <label class="flex items-center gap-3 cursor-pointer group">
+            <div class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none {val('allow_cod', '1') === '1' ? 'bg-indigo-600' : 'bg-gray-200'}">
+              <input 
+                type="checkbox" 
+                class="sr-only" 
+                checked={val('allow_cod', '1') === '1'} 
+                onchange={(e) => set('allow_cod', (e.target as HTMLInputElement).checked ? '1' : '0')}
+              />
+              <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {val('allow_cod', '1') === '1' ? 'translate-x-5' : 'translate-x-0'}"></span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-sm font-medium text-gray-900">Always offer Cash on Delivery</span>
+              <span class="text-xs text-gray-500">Allow buyers to pick COD even if you have an online payment gateway active.</span>
+            </div>
+          </label>
+        </div>
 
         <button
           onclick={() => savePayments()}

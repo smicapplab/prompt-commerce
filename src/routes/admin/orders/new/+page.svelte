@@ -2,21 +2,7 @@
   import { onMount } from 'svelte';
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
   import { goto } from '$app/navigation';
-
-  interface Product {
-    id: number;
-    title: string;
-    price: number;
-    sku: string;
-    stock_quantity: number;
-  }
-
-  interface OrderItem {
-    product_id: number | null;
-    title: string;
-    price: number;
-    quantity: number;
-  }
+  import type { Product, OrderItem } from '$lib/types/orders';
 
   let buyer_ref = $state('');
   let notes = $state('');

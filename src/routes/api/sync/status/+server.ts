@@ -21,9 +21,24 @@ export const GET: RequestHandler = async (event) => {
     .prepare('SELECT COUNT(*) as n FROM categories WHERE is_synced = 0')
     .get() as { n: number }).n;
 
+  const dirtyOrders = (db
+    .prepare('SELECT COUNT(*) as n FROM orders WHERE is_synced = 0')
+    .get() as { n: number }).n;
+
+  const dirtyNotes = (db
+    .prepare('SELECT COUNT(*) as n FROM order_notes WHERE is_synced = 0')
+    .get() as { n: number }).n;
+
+  const dirtyFiles = (db
+    .prepare('SELECT COUNT(*) as n FROM order_files WHERE is_synced = 0')
+    .get() as { n: number }).n;
+
   return json({
-    dirty:      dirtyProducts + dirtyCategories,
+    dirty:      dirtyProducts + dirtyCategories + dirtyOrders + dirtyNotes + dirtyFiles,
     products:   dirtyProducts,
     categories: dirtyCategories,
+    orders:     dirtyOrders,
+    notes:      dirtyNotes,
+    files:      dirtyFiles,
   });
 };

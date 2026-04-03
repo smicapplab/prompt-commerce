@@ -162,10 +162,47 @@ export function initStoreSchema(db: Database.Database): void {
       buyer_ref    TEXT,
       channel      TEXT    NOT NULL DEFAULT 'telegram',
       status       TEXT    NOT NULL DEFAULT 'pending',
+      delivery_type TEXT   NOT NULL DEFAULT 'delivery',
+      tracking_number TEXT,
+      courier_name TEXT,
+      tracking_url TEXT,
+      cancellation_reason TEXT,
+      payment_provider TEXT,
+      payment_instructions TEXT,
       total        REAL,
       notes        TEXT,
+      is_synced    INTEGER NOT NULL DEFAULT 0,
+      deleted_at   TEXT    DEFAULT NULL,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- ─── Order Notes ────────────────────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS order_notes (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id    INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      note        TEXT    NOT NULL,
+      created_by  TEXT    NOT NULL,
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      deleted_at  TEXT    DEFAULT NULL,
+      deleted_by  TEXT    DEFAULT NULL,
+      is_synced   INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- ─── Order Files ────────────────────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS order_files (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id      INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      filename      TEXT    NOT NULL,
+      original_name TEXT    NOT NULL,
+      file_url      TEXT    NOT NULL,
+      mime_type     TEXT    NOT NULL,
+      size_bytes    INTEGER NOT NULL,
+      uploaded_by   TEXT    NOT NULL,
+      uploaded_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+      deleted_at    TEXT    DEFAULT NULL,
+      deleted_by    TEXT    DEFAULT NULL,
+      is_synced     INTEGER NOT NULL DEFAULT 0
     );
 
     -- ─── Order Items ────────────────────────────────────────────────────────
@@ -283,6 +320,12 @@ export function initStoreSchema(db: Database.Database): void {
     WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
     BEGIN
       UPDATE products SET is_synced = 0 WHERE id = OLD.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS orders_sync_dirty AFTER UPDATE ON orders FOR EACH ROW
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE orders SET is_synced = 0 WHERE id = OLD.id;
     END;
 
     CREATE TRIGGER IF NOT EXISTS promotions_sync_dirty AFTER UPDATE ON promotions FOR EACH ROW

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { onMount } from "svelte";
 	import {
 		ChevronLeft,
@@ -16,8 +16,9 @@
 		fetchSyncStatus,
 		syncToGateway as doSync,
 	} from "$lib/syncGateway.js";
+	import type { Product, Category } from "$lib/types/catalog";
 
-	let products = $state([]);
+	let products = $state<Product[]>([]);
 	let loading = $state(true);
 
 	// ── Sync banner state ──────────────────────────────────────────────────────
@@ -60,7 +61,18 @@
 	let isEditing = $state(false);
 	let editingProductId = $state(null);
 
-	let formData = $state({
+	let formData = $state<{
+		title: string;
+		sku: string;
+		description: string;
+		category_id: string | number;
+		price: string | number;
+		stock_quantity: string | number;
+		active: boolean;
+		tags: string;
+		images: any[];
+		images_urls: string[];
+	}>({
 		title: "",
 		sku: "",
 		description: "",
@@ -72,9 +84,9 @@
 		images: [],
 		images_urls: [],
 	});
-	let erroredFields = $state(new Set());
+	let erroredFields = $state(new Set<string>());
 
-	let categories = $state([]);
+	let categories = $state<Category[]>([]);
 	let newImageFiles = $state([]);
 	let imagePreviewUrls = $state([]);
 

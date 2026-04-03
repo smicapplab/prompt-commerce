@@ -16,6 +16,7 @@ const STORE_KEYS = [
   'store_display_name',
   'store_currency',
   'store_timezone',
+  'allows_pickup',
   // AI
   'claude_api_key',
   'gemini_api_key',
@@ -33,6 +34,10 @@ const STORE_KEYS = [
   'payment_api_key',
   'payment_public_key',
   'payment_webhook_secret',
+  'payment_instructions',
+  'payment_link_template',
+  'assisted_label',
+  'allow_cod',
   // Telegram seller notifications
   'telegram_notify_chat_id',
 ] as const;
@@ -127,16 +132,18 @@ export const PATCH: RequestHandler = async (event) => {
   // ── Fire-and-forget: push config changes to gateway ─────────────────────────
   if (slug) {
     const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
-    const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret']);
+    const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod']);
     const TELEGRAM_KEYS = new Set(['telegram_notify_chat_id']);
     const TELEGRAM_BOT_KEYS = new Set(['telegram_webhook_url']);
+    const STORE_CONFIG_KEYS = new Set(['allows_pickup']);
 
     const hasAiChange = entries.some(([key]) => AI_KEYS.has(key));
     const hasPaymentChange = entries.some(([key]) => PAYMENT_KEYS.has(key));
     const hasTelegramChange = entries.some(([key]) => TELEGRAM_KEYS.has(key));
     const hasTelegramBotChange = entries.some(([key]) => TELEGRAM_BOT_KEYS.has(key));
+    const hasStoreConfigChange = entries.some(([key]) => STORE_CONFIG_KEYS.has(key));
 
-    if (hasAiChange || hasPaymentChange || hasTelegramChange || hasTelegramBotChange) {
+    if (hasAiChange || hasPaymentChange || hasTelegramChange || hasTelegramBotChange || hasStoreConfigChange) {
       void (async () => {
         try {
           const registry = getDb();
@@ -156,8 +163,9 @@ export const PATCH: RequestHandler = async (event) => {
           const storeDb = getStoreDb(slug);
           const allKeys = [
             'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
-            'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret',
+            'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod',
             'telegram_notify_chat_id', 'telegram_webhook_url',
+            'allows_pickup'
           ];
           const settingRows = storeDb
             .prepare(`SELECT key, value FROM settings WHERE key IN (${allKeys.map(() => '?').join(',')})`)
@@ -203,6 +211,21 @@ export const PATCH: RequestHandler = async (event) => {
                 paymentApiKey: s['payment_api_key'] || null,
                 paymentPublicKey: s['payment_public_key'] || null,
                 paymentWebhookSecret: s['payment_webhook_secret'] || null,
+                paymentInstructions: s['payment_instructions'] || null,
+                paymentLinkTemplate: s['payment_link_template'] || null,
+                assistedLabel: s['assisted_label'] || null,
+                allowCod: s['allow_cod'] !== '0', // Default true if missing or not '0'
+              }),
+            });
+          }
+
+          // ── Push store config (pickup) ─────────────────────────────────────
+          if (hasStoreConfigChange) {
+            await fetch(`${gatewayUrl}/api/stores/${slug}/store-config`, {
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({
+                allowsPickup: s['allows_pickup'] === '1',
               }),
             });
           }

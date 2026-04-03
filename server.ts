@@ -7,6 +7,7 @@
  */
 import 'dotenv/config'; // ← must be first — loads .env before DATA_DIR is evaluated
 import express from 'express';
+import path from 'path';
 import { getRegistryDb, getUploadDir } from './src/mcp/db/client.js';
 import { mountMcp } from './src/mcp/index.js';
 

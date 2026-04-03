@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { onMount } from "svelte";
 	import { Plus, Edit2, Trash2, X, RefreshCw } from "@lucide/svelte";
 	import { activeStore } from "$lib/stores/activeStore.svelte.js";
@@ -6,8 +6,9 @@
 		fetchSyncStatus,
 		syncToGateway as doSync,
 	} from "$lib/syncGateway.js";
+	import type { Category } from "$lib/types/catalog";
 
-	let categories = $state([]);
+	let categories = $state<Category[]>([]);
 	let loading = $state(true);
 
 	// ── Sync banner state ──────────────────────────────────────────────────────

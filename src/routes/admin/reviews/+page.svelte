@@ -1,17 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
-
-  interface Review {
-    id: number;
-    store: number;
-    product_id: number;
-    product_title: string | null;
-    customer_name: string | null;
-    rating: number;
-    comment: string | null;
-    created_at: string;
-  }
+  import type { Review } from '$lib/types/catalog';
 
   let reviews = $state<Review[]>([]);
   let totalCount = $state(0);

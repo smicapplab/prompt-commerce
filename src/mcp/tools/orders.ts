@@ -47,8 +47,11 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       channel: z.string().default('telegram').describe('Sales channel: telegram, web, etc.'),
       notes: z.string().optional().describe('Delivery notes, name, address, etc.'),
       confirm: z.boolean().default(false).describe('Set true to actually place the order. False returns a preview.'),
+      delivery_type: z.enum(['delivery', 'pickup']).default('delivery'),
+      payment_provider: z.string().optional(),
+      payment_instructions: z.string().optional(),
     },
-    async ({ items, buyer_ref, channel, notes, confirm }) => {
+    async ({ items, buyer_ref, channel, notes, confirm, delivery_type, payment_provider, payment_instructions }) => {
       // Resolve products and validate stock
       const resolved: Array<{ product: ProductRow; quantity: number }> = [];
       const errors: string[] = [];
@@ -109,10 +112,12 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
 
       // Place the order in a transaction
       const placeOrder = db.transaction(() => {
+        const initialStatus = (payment_provider === 'cod' || payment_provider === 'assisted') ? 'pending_payment' : 'pending';
+
         const orderResult = db.prepare(`
-          INSERT INTO orders (buyer_ref, channel, status, total, notes)
-          VALUES (?, ?, 'pending', ?, ?)
-        `).run(buyer_ref ?? null, channel, total, notes ?? null);
+          INSERT INTO orders (buyer_ref, channel, status, total, notes, delivery_type, payment_provider, payment_instructions, is_synced)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `).run(buyer_ref ?? null, channel, initialStatus, total, notes ?? null, delivery_type, payment_provider ?? null, payment_instructions ?? null);
 
         const orderId = orderResult.lastInsertRowid as number;
 
@@ -218,23 +223,71 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
   // ── update_order_status ───────────────────────────────────────────────────
   server.tool(
     'update_order_status',
-    'Update the status of an order (pending → confirmed → shipped → delivered, or cancelled).',
+    'Update the status of an order. Enforces transition rules and requires tracking info for shipping.',
     {
       id: z.number().int().describe('Order ID'),
-      status: z.enum(['pending', 'paid', 'picking', 'packing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled', 'refunded']).describe('New status'),
+      status: z.enum([
+        'pending_payment', 'pending', 'paid', 'picking', 'packing', 
+        'ready_for_pickup', 'picked_up', 'in_transit', 'delivered', 
+        'cancelled', 'refunded'
+      ]).describe('New status'),
+      tracking_number: z.string().optional().describe('Required when status is in_transit'),
+      courier_name: z.string().optional().describe('Courier name (e.g. J&T)'),
+      tracking_url: z.string().optional().describe('Optional tracking link'),
+      cancellation_reason: z.string().optional().describe('Reason for cancelling'),
     },
-    async ({ id, status }) => {
-      const order = db.prepare('SELECT id FROM orders WHERE id = ?').get(id) as { id: number } | undefined;
+    async ({ id, status, tracking_number, courier_name, tracking_url, cancellation_reason }) => {
+      const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as any;
       if (!order) {
-        return { content: [{ type: 'text', text: `Order #${id} not found.` }] };
+        return { content: [{ type: 'text', text: `❌ Order #${id} not found.` }] };
       }
 
-      db.prepare(
-        "UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?"
-      ).run(status, id);
+      // ── Transition Validation ──────────────────────────────────────────────
+      const from = order.status;
+      const to = status;
+      const allowedTransitions: Record<string, string[]> = {
+        'pending_payment': ['paid', 'cancelled'],
+        'pending':         ['picking', 'cancelled', 'refunded'],
+        'paid':            ['picking', 'cancelled', 'refunded'],
+        'picking':         ['packing', 'cancelled', 'refunded'],
+        'packing':         ['in_transit', 'ready_for_pickup', 'cancelled', 'refunded'],
+        'in_transit':      ['delivered', 'cancelled', 'refunded'],
+        'ready_for_pickup': ['picked_up', 'cancelled', 'refunded'],
+        'delivered':       ['refunded'],
+        'picked_up':       ['refunded'],
+        'cancelled':       [],
+        'refunded':        [],
+      };
+
+      if (from !== to && !allowedTransitions[from]?.includes(to)) {
+        return { content: [{ type: 'text', text: `❌ Invalid status transition from "${from}" to "${to}".` }] };
+      }
+
+      // SEC-10: Pickup orders cannot transition to in_transit
+      if (to === 'in_transit' && order.delivery_type === 'pickup') {
+        return { content: [{ type: 'text', text: `❌ Pickup orders cannot go "in_transit".` }] };
+      }
+
+      // Require tracking info when moving to in_transit
+      if (to === 'in_transit' && order.delivery_type === 'delivery' && !tracking_number && !order.tracking_number) {
+        return { content: [{ type: 'text', text: `❌ tracking_number is required when moving order to "in_transit".` }] };
+      }
+
+      // Build update
+      const fields = ['status = ?', 'updated_at = datetime(\'now\')', 'is_synced = 0'];
+      const values = [to];
+
+      if (tracking_number) { fields.push('tracking_number = ?'); values.push(tracking_number); }
+      if (courier_name)    { fields.push('courier_name = ?');    values.push(courier_name); }
+      if (tracking_url)    { fields.push('tracking_url = ?');    values.push(tracking_url); }
+      if (cancellation_reason) { fields.push('cancellation_reason = ?'); values.push(cancellation_reason); }
+
+      values.push(id);
+
+      db.prepare(`UPDATE orders SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 
       return {
-        content: [{ type: 'text', text: `✅ Order #${id} status updated to "${status}".` }],
+        content: [{ type: 'text', text: `✅ Order #${id} updated to "${to}".` }],
       };
     },
   );

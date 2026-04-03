@@ -241,9 +241,68 @@ if (fs.existsSync(storesDir)) {
       'ALTER TABLE conversations ADD COLUMN last_message TEXT',
       'ALTER TABLE conversations ADD COLUMN last_message_at TEXT',
       'ALTER TABLE conversations ADD COLUMN message_count INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE orders ADD COLUMN delivery_type TEXT NOT NULL DEFAULT \'delivery\'',
+      'ALTER TABLE orders ADD COLUMN tracking_number TEXT',
+      'ALTER TABLE orders ADD COLUMN courier_name TEXT',
+      'ALTER TABLE orders ADD COLUMN tracking_url TEXT',
+      'ALTER TABLE orders ADD COLUMN cancellation_reason TEXT',
+      'ALTER TABLE orders ADD COLUMN payment_provider TEXT',
+      'ALTER TABLE orders ADD COLUMN payment_instructions TEXT',
+      'ALTER TABLE orders ADD COLUMN is_synced INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE orders ADD COLUMN deleted_at TEXT DEFAULT NULL',
     ]) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
     }
+
+    // New tables: order_notes and order_files
+    sdb.exec(`
+      CREATE TABLE IF NOT EXISTS order_notes (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id    INTEGER NOT NULL REFERENCES orders(id),
+        note        TEXT NOT NULL,
+        created_by  TEXT NOT NULL,
+        created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+        deleted_at  TEXT DEFAULT NULL,
+        deleted_by  TEXT DEFAULT NULL,
+        is_synced   INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS order_files (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id      INTEGER NOT NULL REFERENCES orders(id),
+        filename      TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        file_url      TEXT NOT NULL,
+        mime_type     TEXT NOT NULL,
+        size_bytes    INTEGER NOT NULL,
+        uploaded_by   TEXT NOT NULL,
+        uploaded_at   TEXT NOT NULL DEFAULT (datetime('now')),
+        deleted_at    TEXT DEFAULT NULL,
+        deleted_by    TEXT DEFAULT NULL,
+        is_synced     INTEGER NOT NULL DEFAULT 0
+      );
+    `);
+
+    // Add is_synced trigger for orders
+    sdb.exec(`
+      CREATE TRIGGER IF NOT EXISTS orders_sync_dirty AFTER UPDATE ON orders FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+      BEGIN
+        UPDATE orders SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS order_notes_sync_dirty AFTER UPDATE ON order_notes FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+      BEGIN
+        UPDATE order_notes SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS order_files_sync_dirty AFTER UPDATE ON order_files FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1
+      BEGIN
+        UPDATE order_files SET is_synced = 0 WHERE id = OLD.id;
+      END;
+    `);
 
     // Populate denormalized conversation columns if they are empty
     try {
@@ -265,7 +324,12 @@ if (fs.existsSync(storesDir)) {
       'CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status)',
       'CREATE INDEX IF NOT EXISTS idx_conversations_gateway_id ON conversations(gateway_id)',
       'CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)',
-    ]) {
+      'CREATE INDEX IF NOT EXISTS idx_orders_is_synced ON orders(is_synced)',
+      'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
+      'CREATE INDEX IF NOT EXISTS idx_order_notes_order_id ON order_notes(order_id)',
+      'CREATE INDEX IF NOT EXISTS idx_order_files_order_id ON order_files(order_id)',
+      ]) {
+
       try { sdb.exec(stmt); } catch { /* index already exists */ }
     }
 

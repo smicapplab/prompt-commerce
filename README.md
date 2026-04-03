@@ -35,30 +35,32 @@ Experience Prompt Commerce in action:
 
 ##  Features at a Glance
 
-###  AI Management & MCP Tools
+###  Conversational AI & MCP Tools
 - **Conversational CRUD**: Add, update, and manage products, categories, and promotions using natural language via the AI Assistant.
 - **Vision-Powered Search**: Attach product images in chat; the AI uses vision to extract details, identify categories, and suggest descriptions.
-- **Integrated Chat Inbox**: A dedicated interface for human-agent takeover of customer conversations. Supports real-time mirroring of Telegram and Web chats.
 - **Agentic Workflows**: A multi-round tool-use loop executes complex tasks (e.g., "Import these 50 products from this spreadsheet") with a single prompt.
-- **Preview-Before-Commit**: All write operations provide a detailed diff for confirmation before persisting changes to the database.
+- **Enhanced Order Tools**: AI-driven order creation and status management with built-in transition validation and mandatory shipping details.
+
+###  Collaborative Order Fulfillment
+- **State-Machine Workflow**: Robust order status lifecycle (`pending` → `picking` → `packing` → `in_transit` → `delivered`) with specific flows for **Store Pickup**.
+- **Internal Timeline**: A collaborative note system for order-level communication among staff with full history and soft-delete support.
+- **Order Attachments**: Securely upload and manage receipts, shipping labels, and documents (PDF, Excel, Images up to 20MB).
+- **Shipping Integration**: Capture tracking numbers and courier details at the point of fulfillment, automatically notified to the buyer.
 
 ###  Universal Payment Integration
-- **Multi-Provider Support**: Built-in adapters for **Stripe** (Global), **PayMongo** (Philippines), and a **Mock** provider for risk-free testing.
-- **Dynamic Config Push**: Securely manage and push payment credentials to your customer-facing gateway with one click.
-- **Encrypted Secrets**: All API keys and webhook secrets are masked and handled with enterprise-grade security.
+- **Flexible Provider Support**: Built-in adapters for **Stripe**, **PayMongo**, **Cash on Delivery (COD)**, and **Assisted Payments** (offline bank transfers/links).
+- **Custom Instructions**: Define provider-specific payment instructions shown directly to customers in their Telegram chat.
+- **Dynamic Config Push**: Securely manage and push payment credentials and store policies (like Pickup availability) to your gateway with one click.
 
 ###  Enterprise-Grade Security
-- **SSRF Protection**: Advanced DNS resolution and IP filtering prevent server-side request forgery during image downloads.
-- **Brute-Force Mitigation**: Localized rate-limiting with progressive lockouts for the login system.
-- **Image Sanitization**: Strict MIME-type validation, extension checks, and size capping on all uploads and remote fetches.
-- **Secure Auto-Setup**: Automatically generates cryptographically secure JWT secrets and `.env` configurations on first launch.
+- **RBAC (Role-Based Access Control)**: Granular permissions for Super Admins, Store Admins, Merchandisers, and Operations staff.
+- **SSRF & Auth Protection**: Advanced DNS resolution filters and secure cross-order authorization checks for attachments and notes.
+- **Image Sanitization**: Strict MIME-type validation, extension checks, and size capping on all uploads.
 
 ###  High-Performance Architecture
-- **Per-Store SQLite Containers**: Each store runs its own dedicated SQLite database file, ensuring total data isolation and extreme performance.
-- **Denormalized Metadata**: Fast inbox loading via denormalized last-message data and message counts, synchronized automatically by SQLite triggers.
-- **Incremental Polling**: UI and API support `since_id` filtering, reducing payload size by only fetching new chat messages.
-- **Delta Sync Engine**: Seamlessly push inventory and configuration updates to customer-facing channels using an efficient "is_synced" dirty-flag system.
-- **RBAC (Role-Based Access Control)**: Granular permissions for Super Admins, Store Admins, Merchandisers, and Operations staff.
+- **Per-Store SQLite Containers**: Dedicated database files per store ensuring total data isolation and zero-latency queries.
+- **Delta Sync Engine**: Optimized 500-row batch syncing for products, categories, orders, notes, and files to keep customer-facing channels updated.
+- **SQLite Trigger Logic**: Automatic `is_synced` dirty-marking and `updated_at` management powered by high-performance database triggers.
 
 ---
 
@@ -95,7 +97,7 @@ Each store exposes a standard set of MCP tools for integration with external AI 
 | `get_store_stats` | High-level business overview: revenue, stock levels, and order volume. |
 | `list_categories` | Browse the store's taxonomy with live product counts. |
 | `get_product` | Fetch exhaustive details, including pricing, SKU, and image paths. |
-| `list_orders` | Access recent sales with status-based filtering. |
+| `list_orders` | Access recent sales filtered by status (`pending_payment`, `pending`, `paid`, `picking`, `packing`, `in_transit`, `ready_for_pickup`, `picked_up`, `delivered`, `cancelled`, `refunded`) or channel. |
 
 ### Active Management (Write)
 | Tool | Description |
@@ -104,7 +106,8 @@ Each store exposes a standard set of MCP tools for integration with external AI 
 | `update_inventory` | Rapid stock-level adjustments by ID or SKU. |
 | `import_products` | Bulk ingestion from Excel/CSV with extension & path validation. |
 | `create_promotion` | Manage discount codes and percentage-based vouchers. |
-| `create_order` | Programmatic order creation for bot-assisted checkouts. |
+| `create_order` | Programmatic order creation with delivery type and payment provider selection. |
+| `update_order_status` | Enforce the full status state machine from AI — includes transition validation, tracking info, and pickup-vs-delivery guards. |
 
 ---
 
@@ -163,7 +166,7 @@ To enable customer-facing features like a Telegram bot or a public web storefron
 | **Core Logic** | Model Context Protocol (MCP) SDK |
 | **Databases** | Better-SQLite3 (Multi-file / Per-store) |
 | **AI (LLMs)** | Anthropic Claude, Google Gemini, OpenAI |
-| **Payments** | Stripe, PayMongo |
+| **Payments** | Stripe, PayMongo, COD, Assisted (offline) |
 | **Build Tooling** | Vite + Adapter-Node |
 
 ---

@@ -16,6 +16,8 @@ export const GET: RequestHandler = async (event) => {
   const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 200);
   const q = event.url.searchParams.get('q') ?? '';
   const status = event.url.searchParams.get('status') ?? '';
+  const deliveryType = event.url.searchParams.get('delivery_type') ?? '';
+  const showDeleted = event.url.searchParams.get('show_deleted') === '1';
   const offset = (page - 1) * limit;
 
   const db = getStoreDb(store);
@@ -23,6 +25,9 @@ export const GET: RequestHandler = async (event) => {
   let query = `SELECT * FROM orders WHERE 1=1`;
   const params: any[] = [];
 
+  if (!showDeleted) {
+    query += ` AND deleted_at IS NULL`;
+  }
   if (q) {
     query += ` AND (buyer_ref LIKE ? OR notes LIKE ?)`;
     params.push(`%${q}%`, `%${q}%`);
@@ -30,6 +35,10 @@ export const GET: RequestHandler = async (event) => {
   if (status) {
     query += ` AND status = ?`;
     params.push(status);
+  }
+  if (deliveryType) {
+    query += ` AND delivery_type = ?`;
+    params.push(deliveryType);
   }
   query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
   params.push(limit, offset);
@@ -49,6 +58,9 @@ export const GET: RequestHandler = async (event) => {
 
   let countQuery = `SELECT COUNT(*) as count FROM orders WHERE 1=1`;
   const countParams: any[] = [];
+  if (!showDeleted) {
+    countQuery += ` AND deleted_at IS NULL`;
+  }
   if (q) {
     countQuery += ` AND (buyer_ref LIKE ? OR notes LIKE ?)`;
     countParams.push(`%${q}%`, `%${q}%`);
@@ -56,6 +68,10 @@ export const GET: RequestHandler = async (event) => {
   if (status) {
     countQuery += ` AND status = ?`;
     countParams.push(status);
+  }
+  if (deliveryType) {
+    countQuery += ` AND delivery_type = ?`;
+    countParams.push(deliveryType);
   }
   const { count } = db.prepare(countQuery).get(...countParams) as any;
 
@@ -72,7 +88,11 @@ export const POST: RequestHandler = async (event) => {
   const body = await event.request.json();
   const { items, ...orderBody } = body;
 
-  const VALID_STATUSES = ['pending', 'paid', 'picking', 'packing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled', 'refunded'];
+  const VALID_STATUSES = [
+    'pending_payment', 'pending', 'paid', 'picking', 'packing', 
+    'ready_for_pickup', 'picked_up', 'in_transit', 'delivered', 
+    'cancelled', 'refunded'
+  ];
   if (orderBody.status && !VALID_STATUSES.includes(orderBody.status)) {
     return json({ error: 'Invalid status' }, { status: 400 });
   }
@@ -82,14 +102,21 @@ export const POST: RequestHandler = async (event) => {
 
   const createOrder = db.transaction((orderData: any, itemsData: any[]) => {
     const result = db.prepare(`
-      INSERT INTO orders (buyer_ref, channel, status, total, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO orders (
+        buyer_ref, channel, status, total, notes, 
+        delivery_type, payment_provider, payment_instructions,
+        created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       orderData.buyer_ref || null,
       orderData.channel || 'manual',
       orderData.status || 'pending',
       orderData.total || null,
       orderData.notes || null,
+      orderData.delivery_type || 'delivery',
+      orderData.payment_provider || null,
+      orderData.payment_instructions || null,
       now, now
     );
 
