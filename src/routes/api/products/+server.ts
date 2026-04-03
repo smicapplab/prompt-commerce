@@ -16,7 +16,7 @@ export const GET: RequestHandler = async (event) => {
 	// SEC-8: Clamp pagination parameters
 	const rawPage = parseInt(event.url.searchParams.get('page') ?? '1');
 	const rawLimit = parseInt(event.url.searchParams.get('limit') ?? '20');
-	const page = Math.min(Math.max(1, isNaN(rawPage) ? 1 : rawPage), 10000);
+	const page = Math.min(Math.max(1, isNaN(rawPage) ? 1 : rawPage), 500);
 	const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 200);
 	const q = event.url.searchParams.get('q') ?? '';
 	const active = event.url.searchParams.get('active') ?? '';

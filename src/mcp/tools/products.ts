@@ -53,8 +53,9 @@ async function isSsrfSafe(url: string): Promise<boolean> {
   }
 }
 
-export async function downloadAndCacheImages(urls: string[]): Promise<string[]> {
+export async function downloadAndCacheImages(urls: string[]): Promise<{ urls: string[], errors: string[] }> {
   const finalUrls: string[] = [];
+  const errors: string[] = [];
   for (const url of urls) {
     if (!url.startsWith('http')) {
       finalUrls.push(url);
@@ -63,12 +64,17 @@ export async function downloadAndCacheImages(urls: string[]): Promise<string[]> 
     try {
       // SSRF guard: reject requests to internal/private addresses
       if (!(await isSsrfSafe(url))) {
-        console.error(`SSRF blocked: refusing to fetch private/internal URL: ${url}`);
+        const err = `SSRF blocked: refusing to fetch private/internal URL: ${url}`;
+        console.error(err);
+        errors.push(err);
         finalUrls.push(url);
         continue;
       }
-      const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
-      if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+      const response = await fetch(url, { 
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+        signal: AbortSignal.timeout(10000) // M2-like timeout for tool fetches
+      });
+      if (!response.ok) throw new Error(`Failed to fetch ${url} (status: ${res.status})`);
 
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.startsWith('image/')) {
@@ -83,16 +89,29 @@ export async function downloadAndCacheImages(urls: string[]): Promise<string[]> 
       fs.mkdirSync(UPLOAD_DIR, { recursive: true });
       fs.writeFileSync(filepath, buffer);
       finalUrls.push(`/uploads/${filename}`);
-    } catch (e) {
-      console.error(`Error downloading image ${url}:`, e);
+    } catch (e: any) {
+      const err = `Error downloading image ${url}: ${e.message}`;
+      console.error(err);
+      errors.push(err);
       finalUrls.push(url);
     }
   }
-  return finalUrls;
+  return { urls: finalUrls, errors };
 }
 
 function parseProduct(row: ProductRow, baseUrl: string) {
-  const images = row.images ? (JSON.parse(row.images) as string[]) : [];
+  // M9: Safely handle JSON.parse for images and tags
+  const safeParse = (str: string | null) => {
+    if (!str) return [];
+    try {
+      return JSON.parse(str) as string[];
+    } catch {
+      console.error(`Failed to parse JSON column: ${str}`);
+      return [];
+    }
+  };
+
+  const images = safeParse(row.images);
   
   const absoluteImages = images.map(img => {
     if (img.startsWith('/uploads/') && baseUrl) {
@@ -104,7 +123,7 @@ function parseProduct(row: ProductRow, baseUrl: string) {
   return {
     ...row,
     active: Boolean(row.active),
-    tags: row.tags ? (JSON.parse(row.tags) as string[]) : [],
+    tags: safeParse(row.tags),
     images: absoluteImages,
     availability: row.stock_quantity > 0 ? 'in_stock' : 'out_of_stock',
   };
@@ -262,8 +281,11 @@ export function registerProductTools(
       }
 
       let finalImages = images;
+      let downloadErrors: string[] = [];
       if (images && images.length > 0) {
-        finalImages = await downloadAndCacheImages(images);
+        const result = await downloadAndCacheImages(images);
+        finalImages = result.urls;
+        downloadErrors = result.errors;
       }
 
       const result = db
@@ -283,10 +305,14 @@ export function registerProductTools(
         );
 
       const newId = result.lastInsertRowid as number;
+      const errorNote = downloadErrors.length > 0 
+        ? `\n\n⚠️ Note: Some images could not be downloaded and were kept as external links:\n${downloadErrors.map(e => `• ${e}`).join('\n')}`
+        : '';
+
       return {
         content: [{
           type: 'text',
-          text: `✅ Product "${title}" saved successfully with ID ${newId}.`,
+          text: `✅ Product "${title}" saved successfully with ID ${newId}.${errorNote}`,
         }],
       };
     },
@@ -353,9 +379,13 @@ export function registerProductTools(
       if (price !== undefined) { updates.push('price = ?'); params.push(price); }
       if (stock_quantity !== undefined) { updates.push('stock_quantity = ?'); params.push(stock_quantity); }
       if (tags !== undefined) { updates.push('tags = ?'); params.push(JSON.stringify(tags)); }
+      let downloadErrors: string[] = [];
       if (images !== undefined) {
-        const finalImages = images ? await downloadAndCacheImages(images) : [];
-        updates.push('images = ?'); params.push(JSON.stringify(finalImages));
+        const result = await downloadAndCacheImages(images);
+        const finalImages = result.urls;
+        downloadErrors = result.errors;
+        updates.push('images = ?'); 
+        params.push(JSON.stringify(finalImages));
       }
       if (active !== undefined) { updates.push('active = ?'); params.push(active ? 1 : 0); }
 
@@ -374,8 +404,12 @@ export function registerProductTools(
       params.push(id);
       db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
+      const errorNote = downloadErrors.length > 0 
+        ? `\n\n⚠️ Note: Some images could not be downloaded and were kept as external links:\n${downloadErrors.map(e => `• ${e}`).join('\n')}`
+        : '';
+
       return {
-        content: [{ type: 'text', text: `✅ Product ID ${id} updated successfully.` }],
+        content: [{ type: 'text', text: `✅ Product ID ${id} updated successfully.${errorNote}` }],
       };
     },
   );

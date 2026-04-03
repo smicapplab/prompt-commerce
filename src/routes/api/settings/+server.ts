@@ -190,6 +190,7 @@ export const PATCH: RequestHandler = async (event) => {
               await fetch(`${gatewayUrl}/api/stores/${slug}/ai-config`, {
                 method: 'PATCH',
                 headers,
+                signal: AbortSignal.timeout(10000),
                 body: JSON.stringify({
                   aiProvider: provider,
                   aiApiKey: apiKey,
@@ -206,6 +207,7 @@ export const PATCH: RequestHandler = async (event) => {
             await fetch(`${gatewayUrl}/api/stores/${slug}/payment-config`, {
               method: 'PATCH',
               headers,
+              signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
                 paymentProvider: s['payment_provider'] || 'mock',
                 paymentApiKey: s['payment_api_key'] || null,
@@ -224,6 +226,7 @@ export const PATCH: RequestHandler = async (event) => {
             await fetch(`${gatewayUrl}/api/stores/${slug}/store-config`, {
               method: 'PATCH',
               headers,
+              signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
                 allowsPickup: s['allows_pickup'] === '1',
               }),
@@ -235,6 +238,7 @@ export const PATCH: RequestHandler = async (event) => {
             await fetch(`${gatewayUrl}/api/stores/${slug}/telegram-config`, {
               method: 'PATCH',
               headers,
+              signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
                 notifyChatId: s['telegram_notify_chat_id'] || null,
               }),
@@ -246,6 +250,7 @@ export const PATCH: RequestHandler = async (event) => {
             await fetch(`${gatewayUrl}/api/bot/telegram`, {
               method: 'PATCH',
               headers,
+              signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
                 webhookUrl: s['telegram_webhook_url'] || null,
               }),
