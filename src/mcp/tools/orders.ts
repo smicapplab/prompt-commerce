@@ -134,10 +134,16 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       const orderId = placeOrder();
 
       return {
-        content: [{
-          type: 'text',
-          text: `✅ Order #${orderId} placed!\n\n${preview.items.map(i => `• ${i.title} × ${i.quantity}`).join('\n')}\n\nTotal: ₱${total.toFixed(2)}\nChannel: ${channel}\n${notes ? `Notes: ${notes}` : ''}`,
-        }],
+        content: [
+          {
+            type: 'text',
+            text: `✅ Order #${orderId} placed!\n\n${preview.items.map(i => `• ${i.title} × ${i.quantity}`).join('\n')}\n\nTotal: ₱${total.toFixed(2)}\nChannel: ${channel}\n${notes ? `Notes: ${notes}` : ''}`,
+          },
+          {
+            type: 'text',
+            text: JSON.stringify({ order_id: orderId, success: true }),
+          }
+        ],
       };
     },
   );

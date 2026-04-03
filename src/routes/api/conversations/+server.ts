@@ -19,10 +19,7 @@ export const GET: RequestHandler = async (event) => {
   const db = getStoreDb(store);
 
   let query = `
-    SELECT c.*,
-      (SELECT body FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
-      (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
-      (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
+    SELECT c.*
     FROM conversations c
     WHERE 1=1
   `;
@@ -64,7 +61,7 @@ export const POST: RequestHandler = async (event) => {
   if (auth instanceof Response) return auth;
 
   const body = await event.request.json();
-  const { buyer_ref, buyer_name, channel } = body;
+  const { buyer_ref, buyer_name, channel, gateway_id } = body;
   if (!buyer_ref) return json({ error: 'buyer_ref is required' }, { status: 400 });
 
   const db = getStoreDb(store!);
@@ -78,15 +75,29 @@ export const POST: RequestHandler = async (event) => {
 
   if (!conv) {
     const result = db.prepare(`
-      INSERT INTO conversations (buyer_ref, buyer_name, channel, status, mode)
-      VALUES (?, ?, ?, 'open', 'ai')
-    `).run(buyer_ref, buyer_name || null, channel || 'telegram');
+      INSERT INTO conversations (buyer_ref, buyer_name, channel, gateway_id, status, mode)
+      VALUES (?, ?, ?, ?, 'open', 'ai')
+    `).run(buyer_ref, buyer_name || null, channel || 'telegram', gateway_id || null);
     conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(result.lastInsertRowid);
-  } else if (buyer_name && conv.buyer_name !== buyer_name) {
-    // Update name if it changed
-    db.prepare('UPDATE conversations SET buyer_name = ?, updated_at = datetime(\'now\') WHERE id = ?')
-      .run(buyer_name, conv.id);
-    conv.buyer_name = buyer_name;
+  } else {
+    // Update name and gateway_id if they changed
+    const updates: string[] = [];
+    const params: any[] = [];
+    if (buyer_name && conv.buyer_name !== buyer_name) {
+      updates.push('buyer_name = ?');
+      params.push(buyer_name);
+    }
+    if (gateway_id && conv.gateway_id !== gateway_id) {
+      updates.push('gateway_id = ?');
+      params.push(gateway_id);
+    }
+
+    if (updates.length > 0) {
+      updates.push('updated_at = datetime(\'now\')');
+      params.push(conv.id);
+      db.prepare(`UPDATE conversations SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+      conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(conv.id);
+    }
   }
 
   return json(conv);

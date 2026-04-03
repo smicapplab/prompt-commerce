@@ -56,3 +56,10 @@ export async function deliverToTelegram(slug: string, buyerRef: string, body: st
     senderName,
   });
 }
+
+export async function syncModeToGateway(slug: string, gatewayId: number, mode: string, assignedTo?: string) {
+  return callGateway(slug, 'POST', `/api/stores/${slug}/conversations/${gatewayId}/mode`, {
+    mode,
+    assignedTo,
+  });
+}

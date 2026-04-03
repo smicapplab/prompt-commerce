@@ -181,6 +181,7 @@ export function initStoreSchema(db: Database.Database): void {
     -- ─── Conversations ───────────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS conversations (
       id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      gateway_id       INTEGER, -- ID in gateway PostgreSQL
       buyer_ref        TEXT    NOT NULL,
       buyer_name       TEXT,
       telegram_chat_id TEXT,
@@ -188,6 +189,9 @@ export function initStoreSchema(db: Database.Database): void {
       status           TEXT    NOT NULL DEFAULT 'open',
       mode             TEXT    NOT NULL DEFAULT 'ai',
       assigned_to      TEXT,
+      last_message     TEXT,
+      last_message_at  TEXT,
+      message_count    INTEGER NOT NULL DEFAULT 0,
       created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at       TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -207,6 +211,20 @@ export function initStoreSchema(db: Database.Database): void {
     CREATE TRIGGER IF NOT EXISTS settings_updated_at AFTER UPDATE ON settings FOR EACH ROW BEGIN
       UPDATE settings SET updated_at = datetime('now') WHERE key = OLD.key;
     END;
+  `);
+
+  // ─── Indexes: Performance (Created separately to handle migrations) ─────────
+  for (const stmt of [
+    'CREATE INDEX IF NOT EXISTS idx_conversations_buyer_ref ON conversations(buyer_ref, channel)',
+    'CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status)',
+    'CREATE INDEX IF NOT EXISTS idx_conversations_gateway_id ON conversations(gateway_id)',
+    'CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)',
+  ]) {
+    try { db.exec(stmt); } catch { /* column might not exist yet during migration */ }
+  }
+
+  db.exec(`
     CREATE TRIGGER IF NOT EXISTS categories_updated_at AFTER UPDATE ON categories FOR EACH ROW
     WHEN (NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL)
     BEGIN
@@ -235,6 +253,23 @@ export function initStoreSchema(db: Database.Database): void {
     END;
     CREATE TRIGGER IF NOT EXISTS messages_updated_at AFTER UPDATE ON messages FOR EACH ROW BEGIN
       UPDATE messages SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+
+    -- Update last_message and counts on message insert (PERF-3)
+    CREATE TRIGGER IF NOT EXISTS messages_after_insert AFTER INSERT ON messages FOR EACH ROW BEGIN
+      UPDATE conversations SET
+        last_message = NEW.body,
+        last_message_at = NEW.created_at,
+        message_count = message_count + 1,
+        updated_at = NEW.created_at
+      WHERE id = NEW.conversation_id;
+    END;
+
+    -- Update counts on message delete (PERF-3)
+    CREATE TRIGGER IF NOT EXISTS messages_after_delete AFTER DELETE ON messages FOR EACH ROW BEGIN
+      UPDATE conversations SET
+        message_count = message_count - 1
+      WHERE id = OLD.conversation_id;
     END;
 
     -- ─── Triggers: is_synced (Auto-dirty on change) ──────────────────────────

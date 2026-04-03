@@ -237,8 +237,36 @@ if (fs.existsSync(storesDir)) {
       'ALTER TABLE conversations ADD COLUMN mode TEXT NOT NULL DEFAULT \'ai\'',
       'ALTER TABLE conversations ADD COLUMN assigned_to TEXT',
       'ALTER TABLE conversations ADD COLUMN buyer_name TEXT',
+      'ALTER TABLE conversations ADD COLUMN gateway_id INTEGER',
+      'ALTER TABLE conversations ADD COLUMN last_message TEXT',
+      'ALTER TABLE conversations ADD COLUMN last_message_at TEXT',
+      'ALTER TABLE conversations ADD COLUMN message_count INTEGER NOT NULL DEFAULT 0',
     ]) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
+    }
+
+    // Populate denormalized conversation columns if they are empty
+    try {
+      sdb.exec(`
+        UPDATE conversations SET
+          last_message = (SELECT body FROM messages WHERE conversation_id = conversations.id ORDER BY created_at DESC LIMIT 1),
+          last_message_at = (SELECT created_at FROM messages WHERE conversation_id = conversations.id ORDER BY created_at DESC LIMIT 1),
+          message_count = (SELECT COUNT(*) FROM messages WHERE conversation_id = conversations.id)
+        WHERE last_message IS NULL AND message_count = 0;
+      `);
+    } catch (e) {
+      console.warn(`⚠ Failed to populate denormalized conversation columns: ${e}`);
+    }
+
+    // Add indexes if missing
+    for (const stmt of [
+      'CREATE INDEX IF NOT EXISTS idx_conversations_buyer_ref ON conversations(buyer_ref, channel)',
+      'CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status)',
+      'CREATE INDEX IF NOT EXISTS idx_conversations_gateway_id ON conversations(gateway_id)',
+      'CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)',
+    ]) {
+      try { sdb.exec(stmt); } catch { /* index already exists */ }
     }
 
     // Ensure triggers exist in store DB

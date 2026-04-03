@@ -76,12 +76,18 @@
 
   async function refreshMessages() {
     if (!selectedConv) return;
-    const res = await fetch(`/api/conversations/${selectedConv.id}?store=${activeStore.slug}`, { headers: { Authorization: `Bearer ${token()}` } });
+    const lastMsgId = selectedConv.messages.length > 0 ? selectedConv.messages[selectedConv.messages.length - 1].id : 0;
+    const res = await fetch(`/api/conversations/${selectedConv.id}?store=${activeStore.slug}&since_id=${lastMsgId}`, { 
+      headers: { Authorization: `Bearer ${token()}` } 
+    });
     if (res.ok) {
       const data = await res.json();
-      const prevCount = selectedConv.messages.length;
-      selectedConv = data;
-      if (data.messages.length !== prevCount) {
+      if (data.messages.length > 0) {
+        selectedConv.messages = [...selectedConv.messages, ...data.messages];
+        // Update basic conversation metadata
+        const { messages, incremental, ...meta } = data;
+        Object.assign(selectedConv, meta);
+        
         await tick();
         scrollToBottom();
       }
@@ -132,7 +138,10 @@
     if (res.ok) {
       const updated = await res.json();
       conversations = conversations.map(c => c.id === conv.id ? { ...c, ...updated } : c);
-      if (selectedConv?.id === conv.id) selectedConv = { ...selectedConv, ...updated };
+      if (selectedConv?.id === conv.id) {
+        selectedConv = { ...selectedConv, ...updated };
+        await refreshMessages();
+      }
     }
   }
 
@@ -145,7 +154,10 @@
     if (res.ok) {
       const updated = await res.json();
       conversations = conversations.map(c => c.id === conv.id ? { ...c, ...updated } : c);
-      if (selectedConv?.id === conv.id) selectedConv = { ...selectedConv, ...updated };
+      if (selectedConv?.id === conv.id) {
+        selectedConv = { ...selectedConv, ...updated };
+        await refreshMessages();
+      }
     }
   }
 
@@ -190,10 +202,19 @@
   onMount(async () => {
     const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token()}` } });
     if (res.ok) currentUser = await res.json();
-    if (activeStore.slug) { load(activeStore.slug); }
     return () => {
       stopPolling();
     };
+  });
+
+  $effect(() => {
+    const slug = activeStore.slug;
+    if (slug) {
+      page = 1;
+      selectedConv = null;
+      stopPolling();
+      load(slug);
+    }
   });
 </script>
 

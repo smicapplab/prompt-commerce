@@ -24,21 +24,24 @@ export const POST: RequestHandler = async (event) => {
   const body = await event.request.json();
   const { body: messageBody, sender, sender_name } = body;
   if (!messageBody) return json({ error: 'body is required' }, { status: 400 });
+  if (messageBody.length > 4096) return json({ error: 'Message too long (max 4096 characters)' }, { status: 400 });
 
   const db = getStoreDb(store);
   const conversation = db.prepare(`SELECT * FROM conversations WHERE id = ?`).get(conversationId) as any;
   if (!conversation) return json({ error: 'Conversation not found' }, { status: 404 });
 
   const now = new Date().toISOString();
+  // Enforce sender type for security (Bug 6)
+  const finalSender = isSeller ? 'seller' : (sender || 'ai');
   const result = db.prepare(`
     INSERT INTO messages (conversation_id, sender, sender_name, body, created_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(conversationId, sender || (isSeller ? 'seller' : 'ai'), sender_name || null, messageBody, now);
+  `).run(conversationId, finalSender, sender_name || null, messageBody, now);
 
   db.prepare(`UPDATE conversations SET updated_at = ? WHERE id = ?`).run(now, conversationId);
 
   // If this is from a human seller, fire-and-forget to the gateway for Telegram delivery
-  if (isSeller && (sender === 'seller' || !sender)) {
+  if (isSeller) {
     const username = authResult.user?.username || 'Seller';
     deliverToTelegram(store, conversation.buyer_ref, messageBody, sender_name || username)
       .catch(err => console.error(`[Inbox] Failed to deliver message to Telegram: ${err}`));

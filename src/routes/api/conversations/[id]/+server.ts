@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { requireStoreRole, requireGatewayKey } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
-import { deliverToTelegram } from '$lib/server/gateway.js';
+import { deliverToTelegram, syncModeToGateway } from '$lib/server/gateway.js';
 
 export const GET: RequestHandler = async (event) => {
   const id = parseInt(event.params.id);
@@ -16,11 +16,12 @@ export const GET: RequestHandler = async (event) => {
   const conversation = db.prepare(`SELECT * FROM conversations WHERE id = ?`).get(id);
   if (!conversation) return json({ error: 'Conversation not found' }, { status: 404 });
 
+  const sinceId = parseInt(event.url.searchParams.get('since_id') ?? '0');
   const messages = db.prepare(`
-    SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC
-  `).all(id);
+    SELECT * FROM messages WHERE conversation_id = ? AND id > ? ORDER BY created_at ASC
+  `).all(id, sinceId);
 
-  return json({ ...(conversation as any), messages });
+  return json({ ...(conversation as any), messages, incremental: sinceId > 0 });
 };
 
 export const PATCH: RequestHandler = async (event) => {
@@ -75,8 +76,14 @@ export const PATCH: RequestHandler = async (event) => {
   // If seller manually took over, notify the gateway to flip the mode there too
   if (isSeller && mode === 'human') {
     const username = authResult.user?.username || 'Seller';
-    deliverToTelegram(store, existing.buyer_ref, `👨 ${username} has joined the chat and will assist you shortly.`, 'System')
+    // Use generic "Support Agent" to avoid leaking internal username (SEC-4)
+    deliverToTelegram(store, existing.buyer_ref, `👨 A support agent has joined the chat and will assist you shortly.`, 'System')
       .catch(err => console.error(`[Inbox] Failed to notify gateway of handover: ${err}`));
+    
+    if (existing.gateway_id) {
+      syncModeToGateway(store, existing.gateway_id, 'human', assigned_to || username)
+        .catch(err => console.error(`[Inbox] Failed to sync mode to gateway: ${err}`));
+    }
   }
 
   return json(db.prepare(`SELECT * FROM conversations WHERE id = ?`).get(id));

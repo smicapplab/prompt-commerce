@@ -38,6 +38,7 @@ Experience Prompt Commerce in action:
 ###  AI Management & MCP Tools
 - **Conversational CRUD**: Add, update, and manage products, categories, and promotions using natural language via the AI Assistant.
 - **Vision-Powered Search**: Attach product images in chat; the AI uses vision to extract details, identify categories, and suggest descriptions.
+- **Integrated Chat Inbox**: A dedicated interface for human-agent takeover of customer conversations. Supports real-time mirroring of Telegram and Web chats.
 - **Agentic Workflows**: A multi-round tool-use loop executes complex tasks (e.g., "Import these 50 products from this spreadsheet") with a single prompt.
 - **Preview-Before-Commit**: All write operations provide a detailed diff for confirmation before persisting changes to the database.
 
@@ -54,6 +55,8 @@ Experience Prompt Commerce in action:
 
 ###  High-Performance Architecture
 - **Per-Store SQLite Containers**: Each store runs its own dedicated SQLite database file, ensuring total data isolation and extreme performance.
+- **Denormalized Metadata**: Fast inbox loading via denormalized last-message data and message counts, synchronized automatically by SQLite triggers.
+- **Incremental Polling**: UI and API support `since_id` filtering, reducing payload size by only fetching new chat messages.
 - **Delta Sync Engine**: Seamlessly push inventory and configuration updates to customer-facing channels using an efficient "is_synced" dirty-flag system.
 - **RBAC (Role-Based Access Control)**: Granular permissions for Super Admins, Store Admins, Merchandisers, and Operations staff.
 
