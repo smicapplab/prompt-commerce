@@ -1635,7 +1635,7 @@
                 id="p-tmpl"
                 type="text"
                 bind:value={paymentLinkTemplateInput}
-                placeholder="https://pay.me/mystore/{{amount}}"
+                placeholder={"https://pay.me/mystore/{{amount}}"}
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <p class="mt-1 text-xs text-gray-500">Placeholders: <code>{"{{orderId}}"}</code>, <code>{"{{amount}}"}</code>, <code>{"{{currency}}"}</code>, <code>{"{{slug}}"}</code>.</p>
