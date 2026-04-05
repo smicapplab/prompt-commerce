@@ -48,7 +48,8 @@ Experience Prompt Commerce in action:
 - **Shipping Integration**: Capture tracking numbers and courier details at the point of fulfillment, automatically notified to the buyer.
 
 ###  Universal Payment Integration
-- **Flexible Provider Support**: Built-in adapters for **Stripe**, **PayMongo**, **Cash on Delivery (COD)**, and **Assisted Payments** (offline bank transfers/links).
+- **Multi-Provider Support**: Enable any combination of **Stripe**, **PayMongo**, **Cash on Delivery (COD)**, and **Assisted Payments** (offline bank transfers) simultaneously.
+- **Dynamic Selection**: Telegram checkout automatically offers a choice screen when multiple methods are enabled.
 - **Custom Instructions**: Define provider-specific payment instructions shown directly to customers in their Telegram chat.
 - **Dynamic Config Push**: Securely manage and push payment credentials and store policies (like Pickup availability) to your gateway with one click.
 
