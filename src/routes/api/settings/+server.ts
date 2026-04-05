@@ -38,6 +38,7 @@ const STORE_KEYS = [
   'payment_link_template',
   'assisted_label',
   'allow_cod',
+  'payment_methods',
   // Telegram seller notifications
   'telegram_notify_chat_id',
 ] as const;
@@ -132,7 +133,7 @@ export const PATCH: RequestHandler = async (event) => {
   // ── Fire-and-forget: push config changes to gateway ─────────────────────────
   if (slug) {
     const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
-    const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod']);
+    const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod', 'payment_methods']);
     const TELEGRAM_KEYS = new Set(['telegram_notify_chat_id']);
     const TELEGRAM_BOT_KEYS = new Set(['telegram_webhook_url']);
     const STORE_CONFIG_KEYS = new Set(['allows_pickup']);
@@ -163,7 +164,7 @@ export const PATCH: RequestHandler = async (event) => {
           const storeDb = getStoreDb(slug);
           const allKeys = [
             'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
-            'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod',
+            'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod', 'payment_methods',
             'telegram_notify_chat_id', 'telegram_webhook_url',
             'allows_pickup'
           ];
@@ -217,6 +218,7 @@ export const PATCH: RequestHandler = async (event) => {
                 paymentLinkTemplate: s['payment_link_template'] || null,
                 assistedLabel: s['assisted_label'] || null,
                 allowCod: s['allow_cod'] !== '0', // Default true if missing or not '0'
+                paymentMethods: s['payment_methods'] || null,
               }),
             });
           }

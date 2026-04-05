@@ -51,6 +51,9 @@
         ...storeSettings,
         k1: paymentApiKeyInput,
         k2: paymentWebhookSecretInput,
+        k3: paymentInstructionsInput,
+        k4: paymentLinkTemplateInput,
+        k5: assistedLabelInput,
       });
     if (activeTab === "server") return JSON.stringify(serverSettings);
     return "";
@@ -338,6 +341,16 @@
       if (!storeSettings.payment_provider) {
         storeSettings.payment_provider = "none";
       }
+
+      // Initialize payment_methods from legacy if missing
+      if (!storeSettings.payment_methods) {
+        const m: string[] = [];
+        if (val("allow_cod", "1") === "1") m.push("cod");
+        const p = val("payment_provider", "none");
+        if (p !== "none") m.push(p);
+        storeSettings.payment_methods = JSON.stringify([...new Set(m)]);
+      }
+
       // If a custom model name was previously saved (not in any preset list), open custom mode.
       customModelMode = savedModelIsCustom();
       
@@ -518,6 +531,45 @@
     }
   }
 
+  function togglePaymentMethod(id: string) {
+    let m: string[] = [];
+    try {
+      m = JSON.parse(val("payment_methods", "[]"));
+    } catch (e) {
+      m = [];
+    }
+
+    if (m.includes(id)) {
+      m = m.filter((x) => x !== id);
+    } else {
+      m.push(id);
+    }
+
+    // Sync legacy allow_cod and payment_provider for backward compatibility
+    if (id === "cod") {
+      set("allow_cod", m.includes("cod") ? "1" : "0");
+    } else {
+      // payment_provider controls which API key fields are shown in the UI.
+      // We only change it if the current provider is 'none' or 'cod',
+      // or if we just disabled the currently selected provider.
+      const onlineMethods = ["mock", "assisted", "paymongo", "stripe"];
+      const current = val("payment_provider", "none");
+      
+      if (m.includes(id)) {
+        // If we just enabled an online method and nothing was selected before, focus it.
+        if (current === "none" || current === "cod") {
+          set("payment_provider", id);
+        }
+      } else if (current === id) {
+        // If we just disabled the currently focused provider, pick another one from the list.
+        const remainingOnline = m.filter(x => onlineMethods.includes(x));
+        set("payment_provider", remainingOnline[0] || "none");
+      }
+    }
+
+    set("payment_methods", JSON.stringify([...new Set(m)]));
+  }
+
   async function savePayments() {
     if (!activeStore.slug) return;
     saving = true;
@@ -531,6 +583,7 @@
       payment_link_template: paymentLinkTemplateInput.trim(),
       assisted_label: assistedLabelInput.trim(),
       allow_cod: String(storeSettings.allow_cod ?? "1"),
+      payment_methods: val("payment_methods", "[]"),
     };
     if (paymentApiKeyInput) payload.payment_api_key = paymentApiKeyInput.trim();
     if (paymentWebhookSecretInput)
@@ -1530,29 +1583,29 @@
     {:else}
       <div class="space-y-6">
         <div>
-          <p class="block text-sm font-medium text-gray-700 mb-2">Online Gateway</p>
+          <p class="block text-sm font-medium text-gray-700 mb-2">Available Payment Methods</p>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {#each [
-              ["none", "🚫 None"],
+              ["cod", "💵 COD"],
               ["mock", "🧪 Mock"], 
               ["assisted", "🤝 Assisted"], 
               ["paymongo", "🇵🇭 PayMongo"], 
               ["stripe", "🌍 Stripe"]
             ] as [pid, label]}
               <button
-                onclick={() => set("payment_provider", pid)}
+                onclick={() => togglePaymentMethod(pid)}
                 class="rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors
-                  {val('payment_provider', 'none') === pid
+                  {val('payment_methods', '[]').includes(pid)
                   ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                   : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}"
                 >{label}</button
               >
             {/each}
           </div>
-          <p class="mt-2 text-xs text-gray-500">Select which automated or manual payment gateway to offer. You can enable Cash on Delivery separately below.</p>
+          <p class="mt-2 text-xs text-gray-500">Enable one or more payment methods to offer in Telegram checkout. Automated gateways (Mock, PayMongo, Stripe) require configuration below.</p>
         </div>
 
-        {#if val("payment_provider") === "assisted"}
+        {#if val("payment_methods", "[]").includes("assisted")}
           <div class="space-y-4 rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
             <div>
               <label for="p-label" class="block text-sm font-medium text-gray-700 mb-1">Display Label</label>
@@ -1590,7 +1643,7 @@
           </div>
         {/if}
 
-        {#if val("payment_provider") === "paymongo" || val("payment_provider") === "stripe"}
+        {#if val("payment_methods", "[]").includes("paymongo") || val("payment_methods", "[]").includes("stripe")}
           <div>
             <label
               for="p-api"
@@ -1680,37 +1733,19 @@
           </div>
         {/if}
 
-        {#if val("payment_provider") === "mock" || val("payment_provider") === "cod"}
+        {#if val("payment_methods", "[]").includes("mock")}
           <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
             <div class="flex items-center gap-2 text-amber-800 font-medium mb-1">
-              <span class="text-lg">{val("payment_provider") === "mock" ? "🧪" : "💵"}</span> 
-              {val("payment_provider") === "mock" ? "Test Mode" : "Cash on Delivery"}
+              <span class="text-lg">🧪</span> 
+              Mock Payment (Test Mode)
             </div>
             <p class="text-xs text-amber-700 leading-relaxed">
-              {val("payment_provider") === "mock" 
-                ? "Payments are simulated. Buyers will be redirected to a fake checkout page where they can \"pay\" with a test card. No real money will be moved, and no API keys are required."
-                : "Orders will be marked as 'pending_payment'. You must manually mark them as 'paid' once cash is collected from the buyer."}
+              Payments are simulated. Buyers will be redirected to a fake checkout page where they can "pay" with a test card. No real money will be moved, and no API keys are required.
             </p>
           </div>
         {/if}
 
-        <div class="pt-2 border-t border-gray-100">
-          <label class="flex items-center gap-3 cursor-pointer group">
-            <div class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none {val('allow_cod', '1') === '1' ? 'bg-indigo-600' : 'bg-gray-200'}">
-              <input 
-                type="checkbox" 
-                class="sr-only" 
-                checked={val('allow_cod', '1') === '1'} 
-                onchange={(e) => set('allow_cod', (e.target as HTMLInputElement).checked ? '1' : '0')}
-              />
-              <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {val('allow_cod', '1') === '1' ? 'translate-x-5' : 'translate-x-0'}"></span>
-            </div>
-            <div class="flex flex-col">
-              <span class="text-sm font-medium text-gray-900">Always offer Cash on Delivery</span>
-              <span class="text-xs text-gray-500">Allow buyers to pick COD even if you have an online payment gateway active.</span>
-            </div>
-          </label>
-        </div>
+
 
         <button
           onclick={() => savePayments()}
