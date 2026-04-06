@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/smicapplab/prompt-commerce/discussions
+    about: Ask questions, share ideas, and connect with other users.
+  - name: 🛠️ Support
+    url: https://github.com/smicapplab/prompt-commerce/issues
+    about: For support or help, please use discussions first.

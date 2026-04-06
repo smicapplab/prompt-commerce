@@ -1,0 +1,60 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve Prompt Commerce.
+title: "[BUG]: <title>"
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the issue here...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Explain the steps needed to reproduce the bug.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: What should have happened instead?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js version, and any other relevant setup details.
+      placeholder: e.g., macOS Sonoma, Node 20.10.0
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots/Logs
+      description: If applicable, add screenshots or paste error logs to help explain your problem.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Self-Checks
+      description: Please confirm the following.
+      options:
+        - label: I have searched for existing issues.
+          required: true
+        - label: I am using the latest version of Prompt Commerce.
+          required: true
