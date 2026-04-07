@@ -77,9 +77,9 @@
       <div class="p-6 space-y-6">
         <!-- Provider selection -->
         <div class="space-y-3">
-          <label class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <div class="text-sm font-semibold text-gray-700 flex items-center gap-2">
             Active Provider
-          </label>
+          </div>
           <div class="grid grid-cols-3 gap-3">
             {#each [["claude", "🤖 Claude", "purple"], ["gemini", "✨ Gemini", "blue"], ["openai", "⚫️ OpenAI", "gray"]] as [pid, label, color]}
               <button
@@ -285,8 +285,9 @@
       {:else}
         <div class="flex items-center gap-4">
           <div class="flex-1 space-y-1.5">
-             <label class="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">Duration</label>
+             <label for="duration" class="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">Duration</label>
              <select
+                id="duration"
                 bind:value={tempKeyDuration}
                 class="w-full rounded-xl bg-indigo-800 border border-indigo-700 px-4 py-2.5 text-sm font-bold text-white focus:ring-2 focus:ring-indigo-500 outline-none"
               >

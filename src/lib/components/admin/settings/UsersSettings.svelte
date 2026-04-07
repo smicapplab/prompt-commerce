@@ -244,19 +244,19 @@
 
       <div class="grid grid-cols-2 gap-6">
         <div class="space-y-1.5 focus-within:text-indigo-600 transition-colors">
-          <label class="text-[11px] font-black uppercase tracking-widest px-1">First Name</label>
-          <input type="text" bind:value={editingUser.first_name} class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm focus:bg-white focus:border-indigo-500 outline-none transition-all" />
+          <label for="e-fname" class="text-[11px] font-black uppercase tracking-widest px-1">First Name</label>
+          <input id="e-fname" type="text" bind:value={editingUser.first_name} class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm focus:bg-white focus:border-indigo-500 outline-none transition-all" />
         </div>
         <div class="space-y-1.5 focus-within:text-indigo-600 transition-colors">
-          <label class="text-[11px] font-black uppercase tracking-widest px-1">Last Name</label>
-          <input type="text" bind:value={editingUser.last_name} class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm focus:bg-white focus:border-indigo-500 outline-none transition-all" />
+          <label for="e-lname" class="text-[11px] font-black uppercase tracking-widest px-1">Last Name</label>
+          <input id="e-lname" type="text" bind:value={editingUser.last_name} class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm focus:bg-white focus:border-indigo-500 outline-none transition-all" />
         </div>
       </div>
 
       <div class="space-y-1.5 focus-within:text-indigo-600 transition-colors">
-        <label class="text-[11px] font-black uppercase tracking-widest px-1">Reset Password (Blank to keep)</label>
+        <label for="e-pass" class="text-[11px] font-black uppercase tracking-widest px-1">Reset Password (Blank to keep)</label>
         <div class="relative">
-          <input type={showEditUserPass ? "text" : "password"} bind:value={editingUser.newPassword} class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 pr-10 text-sm focus:bg-white focus:border-indigo-500 outline-none transition-all" placeholder="Enter new password..." />
+          <input id="e-pass" type={showEditUserPass ? "text" : "password"} bind:value={editingUser.newPassword} class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 pr-10 text-sm focus:bg-white focus:border-indigo-500 outline-none transition-all" placeholder="Enter new password..." />
            <button onclick={() => (showEditUserPass = !showEditUserPass)} class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600">
                {#if showEditUserPass}<EyeOff size={16} />{:else}<Eye size={16} />{/if}
              </button>
