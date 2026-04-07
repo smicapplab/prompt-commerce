@@ -199,7 +199,7 @@ if (userCount === 0) {
   const hash = bcrypt.hashSync(defaultPass, 10);
 
   db.prepare(
-    `INSERT INTO users (username, password_hash, role, needs_password_change) VALUES (?, ?, 'admin', 1)`
+    `INSERT INTO users (username, password_hash, role, needs_password_change) VALUES (?, ?, 'super_admin', 1)`
   ).run(defaultUser, hash);
 
   console.log(`✔  Default admin user created: ${defaultUser} / ${defaultPass}`);
