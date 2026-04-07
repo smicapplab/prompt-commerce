@@ -47,6 +47,8 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
   <img src="screenshots/TG-4.jpg" alt="Telegram Checkout" width="200">
 </div>
 
+*The Telegram interface features **rich e-commerce photo cards** for product search results (with one-tap action buttons) and a strictly-typed, progressive **Philippine Geographic Data (PSGC)** selection flow for address delivery collection.*
+
 > **Try it now!** Search for **Prompt-Commerce** or **@prompt_comm_bot** on Telegram to explore our test channel.
 
 ---
@@ -79,9 +81,8 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 
 ### High-Performance Architecture
 - **Per-Store SQLite Containers**: Dedicated database files per store ensuring total data isolation and zero-latency queries.
-- **Delta Sync Engine**: Optimized 500-row batch syncing for products, categories, orders, notes, and files.
+- **Delta Sync Engine**: Optimized 500-row batch syncing for products, categories, orders, notes, and files. Automatically maps local relative image uploads (`/uploads/...`) to valid absolute URLs using your `SELLER_PUBLIC_URL` to ensure images render correctly across Telegram and Web.
 - **SQLite Trigger Logic**: Automatic `is_synced` dirty-marking and `updated_at` management powered by database triggers.
-
 ---
 
 ## Architecture Overview
