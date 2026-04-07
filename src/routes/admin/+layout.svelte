@@ -36,11 +36,36 @@
     }
   }
 
+  let activityTimeout: any;
+  const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
+  function resetActivity() {
+    if (!browser || !localStorage.getItem("pc_token")) return;
+    localStorage.setItem("pc_last_activity", Date.now().toString());
+  }
+
+  function checkActivity() {
+    if (!browser || !localStorage.getItem("pc_token")) return;
+    const last = parseInt(localStorage.getItem("pc_last_activity") || "0", 10);
+    if (Date.now() - last > IDLE_TIMEOUT_MS) {
+      logout();
+    }
+  }
+
   onMount(() => {
     if (!localStorage.getItem("pc_token")) {
       goto("/login");
       return;
     }
+
+    resetActivity();
+    
+    // Activity tracking
+    const activityEvents = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
+    const handleActivity = () => resetActivity();
+    activityEvents.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
+    
+    activityTimeout = setInterval(checkActivity, 60000); // Check every minute
 
     // Redirect to last known path if at root admin and a store is selected
     // We do this in onMount to ensure goto works correctly with the router
@@ -52,6 +77,11 @@
         goto(activeStore.lastPath, { replaceState: true });
       }
     }
+
+    return () => {
+      activityEvents.forEach(e => window.removeEventListener(e, handleActivity));
+      clearInterval(activityTimeout);
+    };
   });
 
   // Persist current path whenever it changes, if a store is active

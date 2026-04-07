@@ -18,7 +18,7 @@ const KNOWN_WEAK_SECRETS = new Set([
   'your_secret',
 ]);
 
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '4h';
 
 /** Lazily resolved at call time — never at module load / build-analysis time. */
 function getJwtSecret(): string {
