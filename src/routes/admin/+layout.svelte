@@ -59,12 +59,20 @@
     }
 
     resetActivity();
-    
+
     // Activity tracking
-    const activityEvents = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
+    const activityEvents = [
+      "mousedown",
+      "mousemove",
+      "keydown",
+      "scroll",
+      "touchstart",
+    ];
     const handleActivity = () => resetActivity();
-    activityEvents.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
-    
+    activityEvents.forEach((e) =>
+      window.addEventListener(e, handleActivity, { passive: true }),
+    );
+
     activityTimeout = setInterval(checkActivity, 60000); // Check every minute
 
     // Redirect to last known path if at root admin and a store is selected
@@ -79,7 +87,9 @@
     }
 
     return () => {
-      activityEvents.forEach(e => window.removeEventListener(e, handleActivity));
+      activityEvents.forEach((e) =>
+        window.removeEventListener(e, handleActivity),
+      );
       clearInterval(activityTimeout);
     };
   });
@@ -244,7 +254,7 @@
     <div class="px-2 py-3 border-t border-gray-100">
       <button
         onclick={logout}
-        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full transition-colors"
+        class="flex justify-center items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full transition-colors"
       >
         <LogOut class="w-4 h-4" />
         Sign out
