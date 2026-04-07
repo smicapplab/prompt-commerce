@@ -4,19 +4,20 @@
 		ChevronLeft,
 		ChevronRight,
 		Plus,
-		Edit2,
+		Pencil,
 		Eye,
 		EyeOff,
 		Trash2,
 		X,
 		RefreshCw,
+		Search,
 	} from "@lucide/svelte";
 	import { activeStore } from "$lib/stores/activeStore.svelte.js";
 	import {
 		fetchSyncStatus,
 		syncToGateway as doSync,
 	} from "$lib/syncGateway.js";
-	import type { Product, Category } from "$lib/types/catalog";
+	import type { Product, Category } from "$lib/types/catalog.js";
 
 	let products = $state<Product[]>([]);
 	let loading = $state(true);
@@ -43,7 +44,7 @@
 			syncSuccess = await doSync(activeStore.slug);
 			dirtyCount = 0;
 			setTimeout(() => (syncSuccess = ""), 5000);
-		} catch (e) {
+		} catch (e: any) {
 			syncError = e?.message ?? "Sync failed";
 			setTimeout(() => (syncError = ""), 6000);
 		}
@@ -55,11 +56,11 @@
 
 	let searchQuery = $state("");
 	let activeFilter = $state("all");
-	let searchTimeout = $state(null);
+	let searchTimeout = $state<number | null>(null);
 
 	let showModal = $state(false);
 	let isEditing = $state(false);
-	let editingProductId = $state(null);
+	let editingProductId = $state<number | null>(null);
 
 	let formData = $state<{
 		title: string;
@@ -87,12 +88,12 @@
 	let erroredFields = $state(new Set<string>());
 
 	let categories = $state<Category[]>([]);
-	let newImageFiles = $state([]);
-	let imagePreviewUrls = $state([]);
+	let newImageFiles = $state<File[]>([]);
+	let imagePreviewUrls = $state<string[]>([]);
 
-	let toasts = $state([]);
+	let toasts = $state<{ id: number; message: string; type: string }[]>([]);
 
-	const showToast = (message, type = "success") => {
+	const showToast = (message: string, type: "success" | "error" = "success") => {
 		const id = Date.now();
 		toasts = [...toasts, { id, message, type }];
 		setTimeout(() => {
@@ -127,9 +128,9 @@
 		loading = true;
 		try {
 			const params = new URLSearchParams({
-				store: activeStore.slug,
-				page: currentPage,
-				limit: itemsPerPage,
+				store: activeStore.slug || "",
+				page: String(currentPage),
+				limit: String(itemsPerPage),
 				q: searchQuery,
 			});
 
@@ -154,7 +155,7 @@
 		}
 	};
 
-	let dirtyBreakdown = $derived(() => {
+	let dirtyBreakdown = $derived.by(() => {
 		const deletedCount = products.filter(
 			(p) => !p.is_synced && p.deleted_at,
 		).length;
@@ -165,14 +166,15 @@
 	});
 
 	const debouncedSearch = () => {
-		clearTimeout(searchTimeout);
-		searchTimeout = setTimeout(() => {
+		if (searchTimeout) clearTimeout(searchTimeout);
+		searchTimeout = window.setTimeout(() => {
 			currentPage = 1;
 			loadProducts();
+			searchTimeout = null;
 		}, 300);
 	};
 
-	const handleFilterChange = (e) => {
+	const handleFilterChange = (e: any) => {
 		activeFilter = e.target.value;
 		currentPage = 1;
 		loadProducts();
@@ -199,7 +201,7 @@
 		erroredFields.clear();
 	};
 
-	const openEditModal = async (productId) => {
+	const openEditModal = async (productId: number) => {
 		isEditing = true;
 		editingProductId = productId;
 		loading = true;
@@ -221,11 +223,11 @@
 					category_id: product.category_id || "",
 					price: product.price || "",
 					stock_quantity: product.stock_quantity || "",
-					active: product.active !== false,
+					active: !!product.active,
 					tags: (product.tags || []).join(", "),
 					images: product.images || [],
 					images_urls: (product.images || []).map(
-						(img) => img.url || img,
+						(img: any) => img.url || img,
 					),
 				};
 				newImageFiles = [];
@@ -241,26 +243,29 @@
 		}
 	};
 
-	const handleImageSelect = (e) => {
-		const files = Array.from(e.target.files || []);
+	const handleImageSelect = (e: any) => {
+		const files = Array.from(e.target.files || []) as File[];
 		newImageFiles = [...newImageFiles, ...files];
 
 		files.forEach((file) => {
 			const reader = new FileReader();
 			reader.onload = (event) => {
-				imagePreviewUrls = [...imagePreviewUrls, event.target.result];
+				const res = event.target?.result;
+				if (typeof res === "string") {
+					imagePreviewUrls = [...imagePreviewUrls, res];
+				}
 			};
 			reader.readAsDataURL(file);
 		});
 	};
 
-	const removeExistingImage = (index) => {
+	const removeExistingImage = (index: number) => {
 		formData.images_urls = formData.images_urls.filter(
 			(_, i) => i !== index,
 		);
 	};
 
-	const removeNewImage = (index) => {
+	const removeNewImage = (index: number) => {
 		newImageFiles = newImageFiles.filter((_, i) => i !== index);
 		imagePreviewUrls = imagePreviewUrls.filter((_, i) => i !== index);
 	};
@@ -277,10 +282,10 @@
 		data.append("title", formData.title);
 		data.append("sku", formData.sku);
 		data.append("description", formData.description);
-		data.append("category_id", formData.category_id);
-		data.append("price", parseFloat(formData.price) || 0);
-		data.append("stock_quantity", parseInt(formData.stock_quantity) || 0);
-		data.append("active", formData.active ? 1 : 0);
+		data.append("category_id", String(formData.category_id));
+		data.append("price", String(parseFloat(String(formData.price)) || 0));
+		data.append("stock_quantity", String(parseInt(String(formData.stock_quantity)) || 0));
+		data.append("active", formData.active ? "1" : "0");
 		data.append("tags", formData.tags);
 
 		newImageFiles.forEach((file) => {
@@ -324,7 +329,7 @@
 		}
 	};
 
-	const deleteProduct = async (productId) => {
+	const deleteProduct = async (productId: number) => {
 		if (!confirm("Are you sure you want to delete this product?")) return;
 
 		try {
@@ -349,11 +354,11 @@
 		}
 	};
 
-	const toggleProductVisibility = async (product) => {
+	const toggleProductVisibility = async (product: Product) => {
 		const newStatus = !product.active;
 		try {
 			const formDataObj = new FormData();
-			formDataObj.append("active", newStatus ? 1 : 0);
+			formDataObj.append("active", String(newStatus ? 1 : 0));
 
 			const response = await fetch(
 				`/api/products/${product.id}?store=${activeStore.slug}`,
@@ -446,7 +451,7 @@
 					<span class="font-medium">
 						{dirtyCount} item{dirtyCount === 1 ? "" : "s"} not yet synced.
 						<span class="text-orange-600/70 font-normal ml-1">
-							({dirtyBreakdown().activeDirty} new/edited · {dirtyBreakdown()
+							({dirtyBreakdown.activeDirty} new/edited · {dirtyBreakdown
 								.deletedCount} deleted)
 						</span>
 					</span>
@@ -611,7 +616,7 @@
 								>
 								<td class="px-6 py-4 font-medium text-gray-900">
 									₱{parseFloat(
-										product.price || 0,
+										product.price?.toString() || "0",
 									).toLocaleString("en-PH", {
 										minimumFractionDigits: 2,
 										maximumFractionDigits: 2,
@@ -647,7 +652,7 @@
 											class="p-1.5 hover:bg-gray-100 rounded text-gray-600"
 											title="Edit"
 										>
-											<Edit2 size={16} />
+											<Pencil size={16} />
 										</button>
 										<button
 											onclick={() =>

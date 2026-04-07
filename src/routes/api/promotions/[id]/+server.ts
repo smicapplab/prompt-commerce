@@ -49,7 +49,8 @@ export const PATCH: RequestHandler = async (event) => {
     WHERE pr.id = ?
   `).get(id);
 
-  return json(promotion);
+  const normalizedPromotion = promotion ? { ...promotion as any, active: !!(promotion as any).active } : null;
+  return json(normalizedPromotion);
 };
 
 export const DELETE: RequestHandler = async (event) => {

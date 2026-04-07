@@ -74,7 +74,7 @@ export async function downloadAndCacheImages(urls: string[]): Promise<{ urls: st
         headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
         signal: AbortSignal.timeout(10000) // M2-like timeout for tool fetches
       });
-      if (!response.ok) throw new Error(`Failed to fetch ${url} (status: ${res.status})`);
+      if (!response.ok) throw new Error(`Failed to fetch ${url} (status: ${response.status})`);
 
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.startsWith('image/')) {

@@ -39,8 +39,9 @@ const STORE_KEYS = [
   'assisted_label',
   'allow_cod',
   'payment_methods',
-  // Telegram seller notifications
+  // Telegram and WhatsApp seller notifications
   'telegram_notify_chat_id',
+  'whatsapp_notify_number',
 ] as const;
 
 type ServerKey = typeof SERVER_KEYS[number];
@@ -134,17 +135,17 @@ export const PATCH: RequestHandler = async (event) => {
   if (slug) {
     const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
     const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod', 'payment_methods']);
-    const TELEGRAM_KEYS = new Set(['telegram_notify_chat_id']);
+    const MESSAGING_KEYS = new Set(['telegram_notify_chat_id', 'whatsapp_notify_number']);
     const TELEGRAM_BOT_KEYS = new Set(['telegram_webhook_url']);
     const STORE_CONFIG_KEYS = new Set(['allows_pickup']);
 
     const hasAiChange = entries.some(([key]) => AI_KEYS.has(key));
     const hasPaymentChange = entries.some(([key]) => PAYMENT_KEYS.has(key));
-    const hasTelegramChange = entries.some(([key]) => TELEGRAM_KEYS.has(key));
+    const hasMessagingChange = entries.some(([key]) => MESSAGING_KEYS.has(key));
     const hasTelegramBotChange = entries.some(([key]) => TELEGRAM_BOT_KEYS.has(key));
     const hasStoreConfigChange = entries.some(([key]) => STORE_CONFIG_KEYS.has(key));
 
-    if (hasAiChange || hasPaymentChange || hasTelegramChange || hasTelegramBotChange || hasStoreConfigChange) {
+    if (hasAiChange || hasPaymentChange || hasMessagingChange || hasTelegramBotChange || hasStoreConfigChange) {
       void (async () => {
         try {
           const registry = getDb();
@@ -165,7 +166,7 @@ export const PATCH: RequestHandler = async (event) => {
           const allKeys = [
             'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
             'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod', 'payment_methods',
-            'telegram_notify_chat_id', 'telegram_webhook_url',
+            'telegram_notify_chat_id', 'telegram_webhook_url', 'whatsapp_notify_number',
             'allows_pickup'
           ];
           const settingRows = storeDb
@@ -235,14 +236,15 @@ export const PATCH: RequestHandler = async (event) => {
             });
           }
 
-          // ── Push Telegram notify config ────────────────────────────────────
-          if (hasTelegramChange) {
-            await fetch(`${gatewayUrl}/api/stores/${slug}/telegram-config`, {
+          // ── Push Messaging notification config ────────────────────────────────────
+          if (hasMessagingChange) {
+            await fetch(`${gatewayUrl}/api/stores/${slug}/messaging-config`, {
               method: 'PATCH',
               headers,
               signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
-                notifyChatId: s['telegram_notify_chat_id'] || null,
+                telegramChatId: s['telegram_notify_chat_id'] || null,
+                whatsappNumber: s['whatsapp_notify_number'] || null,
               }),
             });
           }

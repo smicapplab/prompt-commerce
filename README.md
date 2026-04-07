@@ -75,6 +75,7 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 
 ### Enterprise-Grade Security
 - **RBAC (Role-Based Access Control)**: Granular permissions for Super Admins, Store Admins, Merchandisers, and Operations staff.
+- **Session Security**: 1-hour inactivity timeout and 4-hour absolute session limit across both Seller and Gateway admin dashboards.
 - **SSRF & Auth Protection**: Advanced DNS resolution filters and secure cross-order authorization checks for attachments and notes.
 - **Image Sanitization**: Strict MIME-type validation, extension checks, and size capping on all uploads.
 - **Brute-Force Protection**: 5 failed login attempts triggers a 15-minute lockout.
@@ -232,9 +233,9 @@ pm2 save && pm2 startup
 
 ## Roadmap
 
-- [ ] **Omnichannel Support**: Integration for **WhatsApp**, **Facebook Messenger**, and **Viber**.
+- [ ] **WhatsApp Business Bot** — Full parity with Telegram (search, cart, checkout, AI chat) using Meta Cloud API. Architecture planned; implementation pending.
 - [ ] **Vector / Semantic Search**: Product embeddings via HuggingFace (`all-MiniLM-L6-v2`) for intent-based search.
-- [ ] **Telegram Webhook Mode**: Replace long-polling with proper webhooks for production scale.
+- [x] **Telegram Webhook Mode**: Supported alongside polling. Configure the webhook URL via Settings → Telegram in the admin panel.
 - [ ] **Multi-Language Support**: AI-assisted localization for product catalogs and customer messages.
 - [ ] **Web Storefront Cart & Checkout**: Full shopping flow in the browser (currently Telegram-only).
 

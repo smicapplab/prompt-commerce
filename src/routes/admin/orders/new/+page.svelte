@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
   import { goto } from '$app/navigation';
-  import type { Product, OrderItem } from '$lib/types/orders';
+  import type { Product, OrderItem } from '$lib/types/orders.js';
 
   let buyer_ref = $state('');
   let notes = $state('');
@@ -45,7 +45,7 @@
       items.push({
         product_id: p.id,
         title: p.title,
-        price: p.price,
+        price: p.price ?? 0,
         quantity: 1
       });
     }
@@ -250,7 +250,7 @@
                   <p class="text-sm font-bold text-gray-900 {outOfStock ? '' : 'group-hover:text-indigo-700'}">{p.title}</p>
                   <div class="flex items-center gap-2 mt-0.5">
                     {#if p.sku}<span class="text-xs font-mono text-gray-400">{p.sku}</span>{/if}
-                    <span class="text-xs font-bold text-emerald-600">{formatCurrency(p.price)}</span>
+                    <span class="text-xs font-bold text-emerald-600">{formatCurrency(p.price ?? 0)}</span>
                     <span class="text-[10px] font-bold {outOfStock ? 'text-red-400' : 'text-gray-400'}">
                       {outOfStock ? 'Out of stock' : `${p.stock_quantity} left`}
                     </span>

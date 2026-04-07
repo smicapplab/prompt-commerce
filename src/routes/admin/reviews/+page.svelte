@@ -1,15 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
-  import type { Review } from '$lib/types/catalog';
+  import type { Review } from '$lib/types/catalog.js';
 
   let reviews = $state<Review[]>([]);
   let totalCount = $state(0);
   let loading = $state(false);
   let page = $state(1);
-  const limit = 20;
-  let q = $state('');
-  let filterRating = $state('');
+  const limit: number = 20;
+  let q = $state("");
+  let filterRating = $state("");
 
   // Delete confirm
   let deleteId = $state<number | null>(null);

@@ -49,7 +49,8 @@ export const GET: RequestHandler = async (event) => {
 	const parsedProducts = products.map((p) => ({
 		...p,
 		images: p.images ? JSON.parse(p.images) : [],
-		tags: p.tags ? JSON.parse(p.tags) : []
+		tags: p.tags ? JSON.parse(p.tags) : [],
+		active: !!p.active
 	}));
 
 	let countQuery = `SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL`;
@@ -153,6 +154,7 @@ export const POST: RequestHandler = async (event) => {
 	return json({
 		...product,
 		images: product.images ? JSON.parse(product.images) : [],
-		tags: product.tags ? JSON.parse(product.tags) : []
+		tags: product.tags ? JSON.parse(product.tags) : [],
+		active: !!product.active
 	}, { status: 201 });
 };

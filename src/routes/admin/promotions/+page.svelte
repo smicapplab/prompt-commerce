@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { RefreshCw } from "@lucide/svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
-  import type { Promotion, Product } from "$lib/types/catalog";
+  import type { Promotion, Product } from "$lib/types/catalog.js";
 
   let promotions = $state<Promotion[]>([]);
   let products = $state<Product[]>([]);
@@ -90,7 +90,7 @@
     fDiscountValue = String(p.discount_value);
     fStartDate = p.start_date ? p.start_date.slice(0, 10) : "";
     fEndDate = p.end_date ? p.end_date.slice(0, 10) : "";
-    fActive = p.active === 1;
+    fActive = p.active;
     formError = "";
     showModal = true;
   }
@@ -137,7 +137,7 @@
       await load();
     } else {
       const data = await res.json();
-      formError = data.error ?? "Failed to save";
+      formError = (data as any).error ?? "Failed to save";
     }
   }
 
@@ -358,7 +358,7 @@
                     class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
                     >Active</span
                   >
-                {:else if promo.active === 0}
+                {:else if !promo.active}
                   <span
                     class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
                     >Disabled</span

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { Plus, Edit2, Trash2, X, RefreshCw } from "@lucide/svelte";
+	import { Plus, Trash2, X, RefreshCw, Pencil } from "@lucide/svelte";
 	import { activeStore } from "$lib/stores/activeStore.svelte.js";
 	import {
 		fetchSyncStatus,
 		syncToGateway as doSync,
 	} from "$lib/syncGateway.js";
-	import type { Category } from "$lib/types/catalog";
+	import type { Category } from "$lib/types/catalog.js";
 
 	let categories = $state<Category[]>([]);
 	let loading = $state(true);
@@ -18,7 +18,7 @@
 	let syncError = $state("");
 	let saving = $state(false);
 
-	let dirtyBreakdown = $derived(() => {
+	let dirtyBreakdown = $derived.by(() => {
 		const deletedCount = categories.filter(
 			(c) => !c.is_synced && c.deleted_at,
 		).length;
@@ -43,7 +43,7 @@
 			syncSuccess = await doSync(activeStore.slug);
 			dirtyCount = 0;
 			setTimeout(() => (syncSuccess = ""), 5000);
-		} catch (e) {
+		} catch (e: any) {
 			syncError = e?.message ?? "Sync failed";
 			setTimeout(() => (syncError = ""), 6000);
 		}
@@ -52,18 +52,21 @@
 
 	let showModal = $state(false);
 	let isEditing = $state(false);
-	let editingCategoryId = $state(null);
+	let editingCategoryId = $state<number | null>(null);
 
 	let formData = $state({
 		name: "",
-		parent_id: "",
+		parent_id: "" as string,
 	});
-	let erroredFields = $state(new Set());
+	let erroredFields = $state<Set<string>>(new Set());
 
-	let productCounts = $state({});
-	let toasts = $state([]);
+	let productCounts = $state<Record<number, number>>({});
+	let toasts = $state<{ id: number; message: string; type: string }[]>([]);
 
-	const showToast = (message, type = "success") => {
+	const showToast = (
+		message: string,
+		type: "success" | "error" = "success",
+	) => {
 		const id = Date.now();
 		toasts = [...toasts, { id, message, type }];
 		setTimeout(() => {
@@ -111,9 +114,9 @@
 
 			if (response.ok) {
 				const data = await response.json();
-				const products = data.products || [];
+				const products: any[] = data.products || [];
 
-				const counts = {};
+				const counts: Record<number, number> = {};
 				categories.forEach((cat) => {
 					counts[cat.id] = products.filter(
 						(p) => p.category_id === cat.id,
@@ -137,12 +140,12 @@
 		showModal = true;
 	};
 
-	const openEditModal = (category) => {
+	const openEditModal = (category: Category) => {
 		isEditing = true;
 		editingCategoryId = category.id;
 		formData = {
 			name: category.name,
-			parent_id: category.parent_id || "",
+			parent_id: category.parent_id?.toString() || "",
 		};
 		showModal = true;
 	};
@@ -194,7 +197,7 @@
 		}
 	};
 
-	const deleteCategory = async (categoryId) => {
+	const deleteCategory = async (categoryId: number) => {
 		const count = productCounts[categoryId] || 0;
 
 		let message = "Are you sure you want to delete this category?";
@@ -237,7 +240,7 @@
 		}
 	});
 
-	const getCategoryParentName = (parentId) => {
+	const getCategoryParentName = (parentId: number | null) => {
 		if (!parentId) return "—";
 		const parent = categories.find((c) => c.id === parentId);
 		return parent ? parent.name : "—";
@@ -297,8 +300,8 @@
 					<span class="font-medium">
 						{dirtyCount} item{dirtyCount === 1 ? "" : "s"} not yet synced.
 						<span class="text-orange-600/70 font-normal ml-1">
-							({dirtyBreakdown().activeDirty} new/edited · {dirtyBreakdown()
-								.deletedCount} deleted)
+							({dirtyBreakdown.activeDirty} new/edited · {dirtyBreakdown.deletedCount}
+							deleted)
 						</span>
 					</span>
 				</div>
@@ -374,7 +377,7 @@
 											class="p-1.5 hover:bg-gray-100 rounded text-gray-600"
 											title="Edit"
 										>
-											<Edit2 size={16} />
+											<Pencil size={16} />
 										</button>
 										<button
 											onclick={() =>

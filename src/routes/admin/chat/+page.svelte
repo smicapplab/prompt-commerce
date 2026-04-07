@@ -6,6 +6,7 @@
     id: number;
     conversation_id: number;
     sender: string;
+    sender_name: string | null;
     body: string;
     created_at: string;
   }
@@ -202,9 +203,11 @@
   onMount(async () => {
     const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token()}` } });
     if (res.ok) currentUser = await res.json();
-    return () => {
-      stopPolling();
-    };
+  });
+
+  import { onDestroy } from 'svelte';
+  onDestroy(() => {
+    stopPolling();
   });
 
   $effect(() => {

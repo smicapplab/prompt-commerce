@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import { goto } from "$app/navigation";
-  import type { Order } from "$lib/types/orders";
+  import type { Order } from "$lib/types/orders.js";
 
   const STATUS_OPTIONS = [
     "pending_payment",
@@ -105,7 +105,8 @@
   }
   const totalPages = $derived(Math.ceil(totalCount / limit));
 
-  function formatDate(d: string) {
+  function formatDate(d: string | null) {
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-PH", {
       year: "numeric",
       month: "short",

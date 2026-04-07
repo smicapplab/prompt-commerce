@@ -31,7 +31,8 @@ export const GET: RequestHandler = async (event) => {
 	return json({
 		...product,
 		images: product.images ? JSON.parse(product.images) : [],
-		tags: product.tags ? JSON.parse(product.tags) : []
+		tags: product.tags ? JSON.parse(product.tags) : [],
+		active: !!product.active
 	});
 };
 
@@ -123,7 +124,8 @@ export const PATCH: RequestHandler = async (event) => {
 	return json({
 		...product,
 		images: product.images ? JSON.parse(product.images) : [],
-		tags: product.tags ? JSON.parse(product.tags) : []
+		tags: product.tags ? JSON.parse(product.tags) : [],
+		active: !!product.active
 	});
 };
 

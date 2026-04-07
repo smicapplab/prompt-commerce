@@ -275,7 +275,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
 
       // Build update
       const fields = ['status = ?', 'updated_at = datetime(\'now\')', 'is_synced = 0'];
-      const values = [to];
+      const values: (string | number | null)[] = [to];
 
       if (tracking_number) { fields.push('tracking_number = ?'); values.push(tracking_number); }
       if (courier_name)    { fields.push('courier_name = ?');    values.push(courier_name); }

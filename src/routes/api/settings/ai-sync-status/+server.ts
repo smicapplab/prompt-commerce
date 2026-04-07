@@ -19,7 +19,7 @@
  *   "no_api_key"        — gateway OK but no AI key stored yet
  */
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from './$types.js';
 import { requireAuth } from '$lib/server/auth.js';
 import { getDb } from '$lib/server/db.js';
 

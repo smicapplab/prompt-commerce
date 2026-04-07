@@ -11,7 +11,7 @@
  *   { error: string, reason: string }
  */
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from './$types.js';
 import { requireAuth } from '$lib/server/auth.js';
 import { getDb } from '$lib/server/db.js';
 

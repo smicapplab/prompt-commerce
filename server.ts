@@ -35,6 +35,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 if (isProduction) {
   // Production: serve the compiled SvelteKit build
+  // @ts-ignore - Only exists after build
   const { handler } = await import('./build/handler.js');
   app.use(handler);
 } else {

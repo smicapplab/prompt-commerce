@@ -41,7 +41,7 @@ export const GET: RequestHandler = async (event) => {
   query += ` ORDER BY pr.created_at DESC LIMIT ? OFFSET ?`;
   params.push(limit, offset);
 
-  const promotions = db.prepare(query).all(...params);
+  const promotions = db.prepare(query).all(...params).map((p: any) => ({ ...p, active: !!p.active }));
 
   let countQuery = `SELECT COUNT(*) as count FROM promotions WHERE 1=1`;
   const countParams: any[] = [];
@@ -111,9 +111,9 @@ export const POST: RequestHandler = async (event) => {
       FROM promotions pr
       LEFT JOIN products p ON pr.product_id = p.id
       WHERE pr.id = ?
-    `).get(result.lastInsertRowid);
+    `).get(result.lastInsertRowid) as any;
 
-    return json(promotion, { status: 201 });
+    return json({ ...promotion, active: !!promotion.active }, { status: 201 });
   } catch (e: any) {
     if (e.message?.includes('UNIQUE')) {
       return apiError(400, 'Voucher code already exists');

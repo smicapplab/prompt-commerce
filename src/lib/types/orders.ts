@@ -1,4 +1,4 @@
-import type { Product } from './catalog';
+import type { Product } from './catalog.js';
 
 export interface OrderItem {
   id?: number;

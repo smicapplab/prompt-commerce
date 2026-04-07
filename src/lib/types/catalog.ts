@@ -8,8 +8,10 @@ export interface Product {
   price: number | null;
   stock_quantity: number;
   tags?: string[] | null;
-  images?: string[] | null;
-  active: boolean | number;
+  images?: any[] | null;
+  active: boolean;
+  is_synced?: number;
+  deleted_at?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -33,7 +35,9 @@ export interface Promotion {
   discount_value: number;
   start_date: string | null;
   end_date: string | null;
-  active: boolean | number;
+  active: boolean;
+  is_synced?: number;
+  deleted_at?: string | null;
   created_at: string;
 }
 
