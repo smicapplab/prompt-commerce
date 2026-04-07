@@ -414,7 +414,7 @@
 <div class="min-h-screen bg-gray-50 p-8">
 	<div class="max-w-7xl mx-auto">
 		<div class="flex items-center justify-between mb-4">
-			<h1 class="text-3xl font-bold text-gray-900">Products</h1>
+			<h1 class="text-2xl font-bold text-gray-900">Products</h1>
 		</div>
 
 		<!-- Sync banner -->

@@ -187,7 +187,7 @@
 
 <div class="flex h-screen bg-gray-50 overflow-hidden">
   <!-- Sidebar -->
-  <aside class="w-56 shrink-0 bg-white border-r border-gray-200 flex flex-col">
+  <aside class="w-64 shrink-0 bg-white border-r border-gray-200 flex flex-col">
     <!-- Brand -->
     <div class="flex items-center gap-2 px-4 py-4 border-b border-gray-100">
       <img src="/logo-2.png" alt="Prompt Commerce" class="h-8" />
@@ -200,8 +200,8 @@
         onclick={switchStore}
         class="mx-3 mt-3 flex items-center justify-between gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-left hover:bg-blue-100 transition-colors group"
       >
-        <div class="flex items-center gap-2 min-w-0">
-          <Store class="w-3.5 h-3.5 text-blue-500 shrink-0" />
+        <div class="flex items-center gap-2.5 min-w-0">
+          <Store class="w-4 h-4 text-blue-500 shrink-0" />
           <span class="text-xs font-medium text-blue-800 truncate"
             >{activeStore.name || activeStore.slug}</span
           >
@@ -225,12 +225,12 @@
         {#each storeNav as item}
           <a
             href={item.href}
-            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors
+            class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-[15px] transition-colors
               {isActive(item.href)
               ? 'bg-blue-50 text-blue-700 font-medium'
               : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
           >
-            <item.icon class="w-4 h-4 shrink-0" />
+            <item.icon class="w-5 h-5 shrink-0" />
             {item.label}
           </a>
         {/each}
@@ -240,12 +240,12 @@
       {#each globalNav as item}
         <a
           href={item.href}
-          class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors
+          class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-[15px] transition-colors
             {isActive(item.href)
             ? 'bg-blue-50 text-blue-700 font-medium'
             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}"
         >
-          <item.icon class="w-4 h-4 shrink-0" />
+          <item.icon class="w-5 h-5 shrink-0" />
           {item.label}
         </a>
       {/each}
@@ -254,9 +254,9 @@
     <div class="px-2 py-3 border-t border-gray-100">
       <button
         onclick={logout}
-        class="flex justify-center items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full transition-colors"
+        class="flex justify-center items-center gap-3 px-4 py-3 rounded-lg text-[15px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full transition-colors"
       >
-        <LogOut class="w-4 h-4" />
+        <LogOut class="w-5 h-5" />
         Sign out
       </button>
     </div>

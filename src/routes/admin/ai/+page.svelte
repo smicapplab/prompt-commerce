@@ -11,6 +11,11 @@
     Settings,
     X,
     ChevronDown,
+    Link2,
+    BarChart2,
+    Package,
+    ShoppingCart,
+    Tag,
   } from "@lucide/svelte";
   import { marked } from "marked";
 
@@ -206,13 +211,13 @@
       } else {
         chatStore.addMessage(activeStore.slug, {
           role: "assistant",
-          content: `⚠️ Error: ${data.error ?? "Unknown error"}`,
+          content: `Error: ${data.error ?? "Unknown error"}`,
         });
       }
     } catch (err: any) {
       chatStore.addMessage(activeStore.slug, {
         role: "assistant",
-        content: `⚠️ Network error: ${err.message}`,
+        content: `Network error: ${err.message}`,
       });
     } finally {
       sending = false;
@@ -265,19 +270,23 @@
 
   const quickActions = [
     {
-      label: "📊 Store overview",
+      icon: BarChart2,
+      label: "Store overview",
       text: "Give me a full overview of the store — products, orders, revenue, and any items needing attention.",
     },
     {
-      label: "📦 Low stock alert",
+      icon: Package,
+      label: "Low stock alert",
       text: "Which products are running low on stock (5 or fewer units)? Show me the details and suggest reorder quantities.",
     },
     {
-      label: "🛒 Recent orders",
+      icon: ShoppingCart,
+      label: "Recent orders",
       text: "Show me the most recent 10 orders. Highlight any that are still pending or have issues.",
     },
     {
-      label: "🏷️ Active promotions",
+      icon: Tag,
+      label: "Active promotions",
       text: "What promotions and voucher codes are currently active? Are any expiring soon?",
     },
   ];
@@ -432,8 +441,9 @@
             {#each quickActions as qa}
               <button
                 onclick={() => sendQuick(qa.text)}
-                class="text-left px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 hover:border-violet-300 hover:bg-violet-50 transition-colors"
+                class="text-left px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 hover:border-violet-300 hover:bg-violet-50 transition-colors flex items-center gap-2"
               >
+                <qa.icon class="w-4 h-4 text-violet-500 shrink-0" />
                 {qa.label}
               </button>
             {/each}
@@ -609,8 +619,8 @@
         {#if models.length > 0}
           Using <span class="font-medium">{modelLabel(selectedModel)}</span>
           ·
-          <span class="text-violet-500 font-medium"
-            >🔗 Connected to {activeStore.name}</span
+          <span class="text-violet-500 font-medium inline-flex items-center gap-1"
+            ><Link2 class="w-3 h-3" /> Connected to {activeStore.name}</span
           >
           · AI can make mistakes — verify important info
         {:else if settingsChecked && (hasClaudeKey || hasGeminiKey || hasOpenaiKey)}

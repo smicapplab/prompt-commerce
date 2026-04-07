@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
+  import { Send as SendIcon, MessageCircle, Mail, User, Bot, Check } from '@lucide/svelte';
 
   interface Message {
     id: number;
@@ -195,9 +196,9 @@
   }
 
   function channelIcon(ch: string) {
-    if (ch === 'telegram') return '✈';
-    if (ch === 'whatsapp') return '💬';
-    return '📨';
+    if (ch === 'telegram') return SendIcon;
+    if (ch === 'whatsapp') return MessageCircle;
+    return Mail;
   }
 
   onMount(async () => {
@@ -259,13 +260,14 @@
         <div class="py-8 text-center text-sm text-gray-400">No conversations found.</div>
       {:else}
         {#each conversations as conv}
+          {@const ChannelIcon = channelIcon(conv.channel)}
           <button
             onclick={() => openConversation(conv)}
             class="w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors {selectedConv?.id === conv.id ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''}"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="flex items-center gap-1.5 min-w-0">
-                <span class="text-base leading-none flex-shrink-0">{channelIcon(conv.channel)}</span>
+                <span class="text-base leading-none flex-shrink-0 mt-0.5"><ChannelIcon class="w-4 h-4 text-gray-400" /></span>
                 <span class="text-sm font-medium text-gray-900 truncate">{conv.buyer_name || conv.buyer_ref}</span>
               </div>
               <span class="text-xs text-gray-400 flex-shrink-0">{relativeTime(conv.last_message_at ?? conv.updated_at)}</span>
@@ -275,11 +277,17 @@
             {/if}
             <div class="flex items-center gap-2 mt-1.5 pl-5">
               {#if conv.mode === 'human'}
-                <span class="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">👤 Human</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
+                  <User class="w-2.5 h-2.5" /> Human
+                </span>
               {:else if conv.mode === 'ai'}
-                <span class="inline-flex items-center rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">🤖 AI</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
+                  <Bot class="w-2.5 h-2.5" /> AI
+                </span>
               {:else}
-                <span class="inline-flex items-center rounded-full bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-700">✅ Closed</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-700">
+                  <Check class="w-2.5 h-2.5" /> Closed
+                </span>
               {/if}
               
               {#if conv.status === 'resolved'}
@@ -307,12 +315,15 @@
     {#if !selectedConv}
       <div class="flex-1 flex items-center justify-center">
         <div class="text-center text-gray-400">
-          <div class="text-4xl mb-3">💬</div>
+          <div class="mb-3 flex justify-center text-gray-300">
+            <MessageCircle class="w-10 h-10" />
+          </div>
           <p class="text-sm">Select a conversation to start</p>
         </div>
       </div>
     {:else}
       <!-- Thread Header -->
+      {@const SelectedChannelIcon = channelIcon(selectedConv.channel)}
       <div class="px-5 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-semibold text-indigo-700">
@@ -321,7 +332,9 @@
           <div>
             <p class="text-sm font-semibold text-gray-900">{selectedConv.buyer_name || selectedConv.buyer_ref}</p>
             <p class="text-xs text-gray-500 flex items-center gap-1.5">
-              <span>{channelIcon(selectedConv.channel)} {selectedConv.channel}</span>
+              <span class="flex items-center gap-1">
+                <SelectedChannelIcon class="w-3 h-3" /> {selectedConv.channel}
+              </span>
               {#if selectedConv.buyer_name}
                 <span class="text-gray-300">|</span>
                 <span class="font-mono text-[10px]">ID: {selectedConv.buyer_ref}</span>
@@ -378,7 +391,7 @@
                   </div>
                   <div class="flex items-center gap-1 mt-1 {msg.sender === 'seller' ? 'justify-end mr-1' : 'ml-1'}">
                     {#if msg.sender === 'ai'}
-                      <span class="text-xs text-purple-400">🤖 AI</span>
+                      <span class="text-xs text-purple-400 inline-flex items-center gap-1"><Bot class="w-3 h-3" /> AI</span>
                     {/if}
                     <span class="text-xs text-gray-400">{formatTime(msg.created_at)}</span>
                   </div>

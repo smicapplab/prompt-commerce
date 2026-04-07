@@ -254,7 +254,7 @@
   }
 
   async function loadServer() {
-    const res = await fetch("/api/settings/server", {
+    const res = await fetch("/api/settings", {
       headers: { Authorization: `Bearer ${token()}` },
     });
     if (res.ok) {
@@ -455,7 +455,7 @@
     saving = true;
     saved = "";
     error = "";
-    const res = await fetch("/api/settings/server", {
+    const res = await fetch("/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
       body: JSON.stringify(serverSettings),
@@ -583,7 +583,7 @@
   <!-- Top Bar -->
   <div class="flex items-center justify-between mb-8">
     <div>
-       <h1 class="text-3xl font-black text-gray-900 tracking-tight">System Control</h1>
+       <h1 class="text-2xl font-black text-gray-900 tracking-tight">System Control</h1>
        <div class="flex items-center gap-2 mt-1">
           <div class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
           <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Admin Dashboard / Configuration</span>

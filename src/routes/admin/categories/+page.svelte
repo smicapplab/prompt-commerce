@@ -256,7 +256,7 @@
 <div class="min-h-screen bg-gray-50 p-8">
 	<div class="max-w-4xl mx-auto">
 		<div class="flex items-center justify-between mb-4">
-			<h1 class="text-3xl font-bold text-gray-900">Categories</h1>
+			<h1 class="text-2xl font-bold text-gray-900">Categories</h1>
 			<button
 				onclick={openAddModal}
 				class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
