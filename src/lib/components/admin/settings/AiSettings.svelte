@@ -262,6 +262,46 @@
           </div>
         </div>
 
+        <!-- OpenAI Key -->
+        <div
+          class="bg-white rounded-2xl border border-gray-200 p-5 space-y-4 hover:shadow-sm transition-shadow"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div
+                class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600"
+              >
+                <Key size={16} />
+              </div>
+              <span class="text-sm font-bold text-gray-900">OpenAI</span>
+            </div>
+            {#if storeSettings.openai_api_key_set}
+              <span
+                class="px-2 py-0.5 rounded-full bg-green-100 text-[10px] font-bold text-green-700 uppercase tracking-tight"
+                >Active</span
+              >
+            {/if}
+          </div>
+          <div class="relative">
+            <input
+              type={showOpenaiKey ? "text" : "password"}
+              bind:value={openaiKeyInput}
+              placeholder={storeSettings.openai_api_key_set
+                ? "••••••••••••••••"
+                : "sk-..."}
+              class="w-full rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-2 text-xs font-mono focus:bg-white focus:border-gray-200 outline-none"
+            />
+            <button
+              onclick={() => (showOpenaiKey = !showOpenaiKey)}
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+            >
+              {#if showOpenaiKey}<EyeOff size={14} />{:else}<Eye
+                  size={14}
+                />{/if}
+            </button>
+          </div>
+        </div>
+
         <!-- Serper Key -->
         <div
           class="bg-white rounded-2xl border border-gray-200 p-5 space-y-4 hover:shadow-sm transition-shadow"
