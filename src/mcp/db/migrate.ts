@@ -248,6 +248,8 @@ if (fs.existsSync(storesDir)) {
       'ALTER TABLE orders ADD COLUMN cancellation_reason TEXT',
       'ALTER TABLE orders ADD COLUMN payment_provider TEXT',
       'ALTER TABLE orders ADD COLUMN payment_instructions TEXT',
+      'ALTER TABLE orders ADD COLUMN lat REAL',
+      'ALTER TABLE orders ADD COLUMN lng REAL',
       'ALTER TABLE orders ADD COLUMN is_synced INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE orders ADD COLUMN deleted_at TEXT DEFAULT NULL',
     ]) {

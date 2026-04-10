@@ -17,6 +17,8 @@ export interface Order {
   status: string;
   total: number | null;
   notes: string | null;
+  lat: number | null;
+  lng: number | null;
   items: OrderItem[];
   item_count?: number;
   created_at: string;

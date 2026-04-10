@@ -10,6 +10,8 @@ interface OrderRow {
   status: string;
   total: number | null;
   notes: string | null;
+  lat: number | null;
+  lng: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,12 +48,14 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       buyer_ref: z.string().optional().describe('Customer identifier (e.g. Telegram user ID)'),
       channel: z.string().default('telegram').describe('Sales channel: telegram, web, etc.'),
       notes: z.string().optional().describe('Delivery notes, name, address, etc.'),
+      lat: z.number().optional().describe('Latitude coordinate'),
+      lng: z.number().optional().describe('Longitude coordinate'),
       confirm: z.boolean().default(false).describe('Set true to actually place the order. False returns a preview.'),
       delivery_type: z.enum(['delivery', 'pickup']).default('delivery'),
       payment_provider: z.string().optional(),
       payment_instructions: z.string().optional(),
     },
-    async ({ items, buyer_ref, channel, notes, confirm, delivery_type, payment_provider, payment_instructions }) => {
+    async ({ items, buyer_ref, channel, notes, confirm, delivery_type, payment_provider, payment_instructions, lat, lng }) => {
       // Resolve products and validate stock
       const resolved: Array<{ product: ProductRow; quantity: number }> = [];
       const errors: string[] = [];
@@ -115,9 +119,9 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
         const initialStatus = (payment_provider === 'cod' || payment_provider === 'assisted') ? 'pending_payment' : 'pending';
 
         const orderResult = db.prepare(`
-          INSERT INTO orders (buyer_ref, channel, status, total, notes, delivery_type, payment_provider, payment_instructions, is_synced)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-        `).run(buyer_ref ?? null, channel, initialStatus, total, notes ?? null, delivery_type, payment_provider ?? null, payment_instructions ?? null);
+          INSERT INTO orders (buyer_ref, channel, status, total, notes, lat, lng, delivery_type, payment_provider, payment_instructions, is_synced)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `).run(buyer_ref ?? null, channel, initialStatus, total, notes ?? null, lat ?? null, lng ?? null, delivery_type, payment_provider ?? null, payment_instructions ?? null);
 
         const orderId = orderResult.lastInsertRowid as number;
 
