@@ -84,7 +84,8 @@ export const PATCH: RequestHandler = async (event) => {
   const allowed = [
     'status', 'notes', 'total', 'buyer_ref', 'channel',
     'delivery_type', 'tracking_number', 'courier_name', 'tracking_url', 
-    'cancellation_reason', 'payment_provider', 'payment_instructions'
+    'cancellation_reason', 'payment_provider', 'payment_instructions',
+    'lat', 'lng'
   ];
 
   for (const key of allowed) {

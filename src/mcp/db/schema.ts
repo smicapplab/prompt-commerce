@@ -171,6 +171,8 @@ export function initStoreSchema(db: Database.Database): void {
       payment_instructions TEXT,
       total        REAL,
       notes        TEXT,
+      lat          REAL,
+      lng          REAL,
       is_synced    INTEGER NOT NULL DEFAULT 0,
       deleted_at   TEXT    DEFAULT NULL,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
