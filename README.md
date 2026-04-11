@@ -40,17 +40,17 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 
 ### WhatsApp Customer Interface & Fulfillment
 *Ordering via WhatsApp*
-<video src="screenshots/whatsapp.mp4" controls width="350"></video>
+<video src="https://github.com/smicapplab/prompt-commerce/raw/main/prompt-commerce/screenshots/whatsapp.mp4" controls width="350"></video>
 
 *Fulfillment of WhatsApp order*
-<video src="screenshots/whatsapp-order.mp4" controls width="350"></video>
+<video src="https://github.com/smicapplab/prompt-commerce/raw/main/prompt-commerce/screenshots/whatsapp-order.mp4" controls width="350"></video>
 
 ### Telegram Customer Interface & Fulfillment
 *Ordering via Telegram*
-<video src="screenshots/telegram.mp4" controls width="350"></video>
+<video src="https://github.com/smicapplab/prompt-commerce/raw/main/prompt-commerce/screenshots/telegram.mp4" controls width="350"></video>
 
 *Fulfillment of Telegram order*
-<video src="screenshots/telegram-order.mp4" controls width="350"></video>
+<video src="https://github.com/smicapplab/prompt-commerce/raw/main/prompt-commerce/screenshots/telegram-order.mp4" controls width="350"></video>
 
 ---
 
