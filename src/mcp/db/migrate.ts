@@ -34,6 +34,13 @@ const KNOWN_WEAK_SECRETS = new Set([
   '',
 ]);
 
+const KNOWN_WEAK_PASSWORDS = new Set([
+  'admin123',
+  'password',
+  '123456',
+  '',
+]);
+
 function ensureEnvFile(): void {
   // Create .env from .env.example if it doesn't exist yet
   if (!fs.existsSync(ENV_PATH)) {
@@ -65,6 +72,17 @@ if (!currentSecret || currentSecret.length < 32 || KNOWN_WEAK_SECRETS.has(curren
   patchEnvValue('JWT_SECRET', generated);
   process.env.JWT_SECRET = generated;   // apply to current process too
   console.log('✔  Generated and saved JWT_SECRET to .env (you do not need to do anything).');
+}
+
+// ── Ensure ADMIN_PASSWORD is set and strong ──────────────────────────────────
+const currentPassword = process.env.ADMIN_PASSWORD ?? '';
+if (!currentPassword || currentPassword.length < 8 || KNOWN_WEAK_PASSWORDS.has(currentPassword.toLowerCase())) {
+  // Generate a shorter but secure password for readability
+  const generated = crypto.randomBytes(12).toString('base64').replace(/[/+=]/g, 'x');
+  patchEnvValue('ADMIN_PASSWORD', generated);
+  process.env.ADMIN_PASSWORD = generated; // apply to current process too
+  console.log(`✔  Generated and saved strong ADMIN_PASSWORD to .env: ${generated}`);
+  console.log('   !!! Write this password down! You will need it to login to the admin panel. !!!');
 }
 
 // ── Load seller.config.json if present ───────────────────────────────────────
@@ -195,15 +213,28 @@ const userCount = (db.prepare('SELECT COUNT(*) as n FROM users').get() as { n: n
 
 if (userCount === 0) {
   const defaultUser = process.env.ADMIN_USERNAME ?? 'admin';
-  const defaultPass = process.env.ADMIN_PASSWORD ?? 'admin123';
+  const defaultPass = process.env.ADMIN_PASSWORD;
+
+  if (!defaultPass || defaultPass === 'admin123' || defaultPass === 'password') {
+    throw new Error('CRITICAL: ADMIN_PASSWORD is not set or is set to an insecure default. Please set a strong ADMIN_PASSWORD in your .env file.');
+  }
+
   const hash = bcrypt.hashSync(defaultPass, 10);
 
-  db.prepare(
-    `INSERT INTO users (username, password_hash, role, needs_password_change) VALUES (?, ?, 'super_admin', 1)`
-  ).run(defaultUser, hash);
+  try {
+    db.prepare(
+      `INSERT INTO users (username, password_hash, role, needs_password_change) VALUES (?, ?, 'super_admin', 1)`
+    ).run(defaultUser, hash);
 
-  console.log(`✔  Default admin user created: ${defaultUser} / ${defaultPass}`);
-  console.log('   ⚠  Change this password in Settings before going live!');
+    console.log(`✔  Default admin user created: ${defaultUser}`);
+  } catch (error) {
+    // Check if another instance already created the admin
+    const countAfter = (db.prepare('SELECT COUNT(*) as n FROM users').get() as { n: number }).n;
+    if (countAfter === 0) {
+      throw error;
+    }
+    console.log('ℹ  Admin user already exists (likely created by another instance).');
+  }
 }
 
 db.close();

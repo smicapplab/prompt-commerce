@@ -14,12 +14,17 @@ interface Attempt { count: number; firstAt: number; lockedUntil?: number }
 const attempts = new Map<string, Attempt>();
 
 function getClientIp(event: Parameters<RequestHandler>[0]): string {
-  // SvelteKit exposes the real IP when the platform adapter sets it.
-  // Fall back to the X-Forwarded-For header (set by reverse proxies).
-  return (
-    (event.request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
-    '0.0.0.0'
-  );
+  // event.getClientAddress() is the recommended way in SvelteKit to get the 
+  // trusted client IP. It relies on the adapter's trust configuration.
+  try {
+    return event.getClientAddress();
+  } catch (e) {
+    // Fallback if getClientAddress() is not available or fails
+    return (
+      (event.request.headers.get('x-forwarded-for') ?? '').split(',').pop()?.trim() ||
+      '0.0.0.0'
+    );
+  }
 }
 
 function checkRateLimit(ip: string): { blocked: boolean; retryAfterSec?: number } {
