@@ -141,7 +141,6 @@ export function mountMcp(app: Application): void {
       return;
     }
 
-    // SEC-R2-1: Validate that the sessionId belongs to the requested store slug
     if ((transport as any).slug !== req.params.slug) {
       res.status(403).json({ error: 'Forbidden: Session does not match store slug.' });
       return;

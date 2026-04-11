@@ -86,7 +86,6 @@ export function requireAuth(event: RequestEvent): JwtPayload | Response {
     return apiError(401, 'Unauthorised');
   }
 
-  // SEC-R2-6: Enforce password change if flagged.
   // Exempt password update (PATCH /api/users/[id]) and logout (DELETE /api/auth).
   const isPasswordUpdate = event.url.pathname.startsWith('/api/users/') && event.request.method === 'PATCH';
   const isLogout = event.url.pathname === '/api/auth' && event.request.method === 'DELETE';

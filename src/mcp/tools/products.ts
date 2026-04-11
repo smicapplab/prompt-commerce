@@ -21,8 +21,7 @@ export async function downloadAndCacheImages(urls: string[]): Promise<{ urls: st
       continue;
     }
     try {
-      // SEC-2: SSRF guard with pinned IP to prevent DNS rebinding
-      const response = await safeFetch(url, { 
+      const response = await safeFetch(url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
         // @ts-ignore
         signal: AbortSignal.timeout(10000)
@@ -65,7 +64,7 @@ function parseProduct(row: ProductRow, baseUrl: string) {
   };
 
   const images = safeParse(row.images);
-  
+
   const absoluteImages = images.map(img => {
     if (img.startsWith('/uploads/') && baseUrl) {
       return `${baseUrl}${img}`;
@@ -258,7 +257,7 @@ export function registerProductTools(
         );
 
       const newId = result.lastInsertRowid as number;
-      const errorNote = downloadErrors.length > 0 
+      const errorNote = downloadErrors.length > 0
         ? `\n\n⚠️ Note: Some images could not be downloaded and were kept as external links:\n${downloadErrors.map(e => `• ${e}`).join('\n')}`
         : '';
 
@@ -337,7 +336,7 @@ export function registerProductTools(
         const result = await downloadAndCacheImages(images);
         const finalImages = result.urls;
         downloadErrors = result.errors;
-        updates.push('images = ?'); 
+        updates.push('images = ?');
         params.push(JSON.stringify(finalImages));
       }
       if (active !== undefined) { updates.push('active = ?'); params.push(active ? 1 : 0); }
@@ -357,7 +356,7 @@ export function registerProductTools(
       params.push(id);
       db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
-      const errorNote = downloadErrors.length > 0 
+      const errorNote = downloadErrors.length > 0
         ? `\n\n⚠️ Note: Some images could not be downloaded and were kept as external links:\n${downloadErrors.map(e => `• ${e}`).join('\n')}`
         : '';
 
@@ -501,7 +500,7 @@ export function registerProductTools(
         row.tags = typeof row.tags === 'string' ? row.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
         row.images = typeof row.images === 'string' ? row.images.split(',').map((u: string) => u.trim()).filter(Boolean) : [];
         row.sku = row.sku ? String(row.sku) : undefined;
-        
+
         rows.push(row);
       }
 
@@ -613,7 +612,7 @@ export function registerProductTools(
 
       try {
         transaction();
-        const errorNote = downloadErrorsList.length > 0 
+        const errorNote = downloadErrorsList.length > 0
           ? `\n\n⚠️ Note: Some images could not be downloaded and were kept as external links:\n${downloadErrorsList.map(e => `• ${e}`).join('\n')}`
           : '';
 

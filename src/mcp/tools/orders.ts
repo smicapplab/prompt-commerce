@@ -147,18 +147,18 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
           INSERT INTO orders (buyer_ref, buyer_name, buyer_email, delivery_address, channel, status, total, notes, lat, lng, delivery_type, payment_provider, payment_instructions, idempotency_key, is_synced)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         `).run(
-          buyer_ref ?? null, 
-          buyer_name ?? null, 
-          buyer_email ?? null, 
-          delivery_address ?? null, 
-          channel, 
-          initialStatus, 
-          total, 
-          notes ?? null, 
-          lat ?? null, 
-          lng ?? null, 
-          delivery_type, 
-          payment_provider ?? null, 
+          buyer_ref ?? null,
+          buyer_name ?? null,
+          buyer_email ?? null,
+          delivery_address ?? null,
+          channel,
+          initialStatus,
+          total,
+          notes ?? null,
+          lat ?? null,
+          lng ?? null,
+          delivery_type,
+          payment_provider ?? null,
           payment_instructions ?? null,
           idempotency_key ?? null
         );
@@ -172,7 +172,6 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
           `).run(orderId, product.id, product.title, product.price ?? 0, quantity);
 
           // Deduct stock
-          // SEC-11: Atomic stock decrement with check to prevent negative stock.
           // We don't manually set updated_at here so that the products_sync_dirty 
           // trigger can catch the change and set is_synced = 0 automatically.
           const updateResult = db.prepare(
@@ -302,7 +301,6 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
         return { content: [{ type: 'text', text: `❌ Invalid status transition from "${from}" to "${to}".` }] };
       }
 
-      // SEC-10: Pickup orders cannot transition to in_transit
       if (to === 'in_transit' && order.delivery_type === 'pickup') {
         return { content: [{ type: 'text', text: `❌ Pickup orders cannot go "in_transit".` }] };
       }
@@ -317,8 +315,8 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       const values: (string | number | null)[] = [to];
 
       if (tracking_number) { fields.push('tracking_number = ?'); values.push(tracking_number); }
-      if (courier_name)    { fields.push('courier_name = ?');    values.push(courier_name); }
-      if (tracking_url)    { fields.push('tracking_url = ?');    values.push(tracking_url); }
+      if (courier_name) { fields.push('courier_name = ?'); values.push(courier_name); }
+      if (tracking_url) { fields.push('tracking_url = ?'); values.push(tracking_url); }
       if (cancellation_reason) { fields.push('cancellation_reason = ?'); values.push(cancellation_reason); }
 
       values.push(id);
