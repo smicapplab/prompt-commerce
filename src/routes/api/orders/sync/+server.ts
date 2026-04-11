@@ -63,6 +63,8 @@ export const POST: RequestHandler = async (event) => {
         cancellation_reason: o.cancellation_reason,
         payment_provider: o.payment_provider,
         payment_instructions: o.payment_instructions,
+        buyer_ref: o.buyer_ref,
+        total: o.total,
         created_at: o.created_at,
         updated_at: o.updated_at,
         deleted_at: o.deleted_at
