@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { browser } from "$app/environment";
   import { goto } from "$app/navigation";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import {
@@ -205,6 +206,7 @@
   }
 
   onMount(async () => {
+    if (!browser) return;
     if (!activeStore.id) {
       goto("/admin");
       return;
@@ -284,6 +286,10 @@
   {:else if stats}
     <!-- ── Setup Checklist ────────────────────────────────────────────────── -->
     {#if !setupLoading && storeSettings}
+      {@const hasAiKey = storeSettings.claude_api_key_set || storeSettings.gemini_api_key_set || storeSettings.openai_api_key_set}
+      {@const aiDone = hasAiKey && storeSettings.ai_enabled === "1"}
+      {@const hasMessaging = (storeSettings.telegram_bot_token_set && storeSettings.telegram_enabled === "1") || (!!storeSettings.whatsapp_notify_number && storeSettings.whatsapp_enabled === "1")}
+      {@const hasPayment = storeSettings.payment_api_key_set || (storeSettings.payment_methods && (() => { try { return JSON.parse(storeSettings.payment_methods).length > 0; } catch { return false; } })())}
       {@const steps = [
         {
           id: "products",
@@ -294,19 +300,19 @@
         {
           id: "ai",
           label: "Configure AI",
-          done: storeSettings.ai_api_key_set,
+          done: !!aiDone,
           href: "/admin/settings?tab=ai",
         },
         {
-          id: "telegram",
-          label: "Setup Telegram",
-          done: storeSettings.telegram_bot_token_set,
+          id: "messaging",
+          label: "Messaging Setup",
+          done: !!hasMessaging,
           href: "/admin/settings?tab=telegram",
         },
         {
           id: "payments",
           label: "Enable Payments",
-          done: storeSettings.payment_api_key_set,
+          done: !!hasPayment,
           href: "/admin/settings?tab=payments",
         },
       ]}

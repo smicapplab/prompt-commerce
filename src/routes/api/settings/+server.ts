@@ -30,6 +30,8 @@ const STORE_KEYS = [
   // Telegram
   'telegram_bot_token',
   'telegram_webhook_url',
+  'telegram_enabled',
+  'whatsapp_enabled',
   // Payments
   'payment_provider',
   'payment_api_key',
@@ -137,9 +139,9 @@ export const PATCH: RequestHandler = async (event) => {
 
   // ── Fire-and-forget: push config changes to gateway ─────────────────────────
   if (slug) {
-    const AI_KEYS = new Set(['ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
+    const AI_KEYS = new Set(['ai_enabled', 'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key']);
     const PAYMENT_KEYS = new Set(['payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod', 'payment_methods']);
-    const MESSAGING_KEYS = new Set(['telegram_notify_chat_id', 'whatsapp_notify_number']);
+    const MESSAGING_KEYS = new Set(['telegram_enabled', 'whatsapp_enabled', 'telegram_notify_chat_id', 'whatsapp_notify_number']);
     const TELEGRAM_BOT_KEYS = new Set(['telegram_webhook_url']);
     const STORE_CONFIG_KEYS = new Set(['allows_pickup']);
     const GOOGLE_KEYS = new Set(['google_places_browser_key', 'google_maps_embed_key']);
@@ -170,9 +172,9 @@ export const PATCH: RequestHandler = async (event) => {
           // Read all relevant settings from the store DB (post-save)
           const storeDb = getStoreDb(slug);
           const allKeys = [
-            'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
+            'ai_enabled', 'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
             'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod', 'payment_methods',
-            'telegram_notify_chat_id', 'telegram_webhook_url', 'whatsapp_notify_number',
+            'telegram_enabled', 'whatsapp_enabled', 'telegram_notify_chat_id', 'telegram_webhook_url', 'whatsapp_notify_number',
             'allows_pickup',
             'google_places_browser_key', 'google_maps_embed_key'
           ];
@@ -201,6 +203,7 @@ export const PATCH: RequestHandler = async (event) => {
                 headers,
                 signal: AbortSignal.timeout(10000),
                 body: JSON.stringify({
+                  aiEnabled: s['ai_enabled'] === '1',
                   aiProvider: provider,
                   aiApiKey: apiKey,
                   aiModel: s['ai_model'] || null,
@@ -250,6 +253,8 @@ export const PATCH: RequestHandler = async (event) => {
               headers,
               signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
+                telegramEnabled: s['telegram_enabled'] === '1',
+                whatsappEnabled: s['whatsapp_enabled'] === '1',
                 telegramChatId: s['telegram_notify_chat_id'] || null,
                 whatsappNumber: s['whatsapp_notify_number'] || null,
               }),

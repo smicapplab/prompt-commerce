@@ -20,11 +20,10 @@
     set, 
     saving, 
     saved, 
-    saveMessaging, // We'll reuse the save function or create a new one
-    googlePlacesBrowserKeyInput,
-    googleMapsEmbedKeyInput,
-    showGooglePlacesKey,
-    showGoogleMapsKey,
+    googlePlacesBrowserKeyInput = $bindable(),
+    googleMapsEmbedKeyInput = $bindable(),
+    showGooglePlacesKey = $bindable(),
+    showGoogleMapsKey = $bindable(),
     onSave
   } = $props();
 

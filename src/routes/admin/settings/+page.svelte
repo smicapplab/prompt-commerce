@@ -233,6 +233,7 @@
     if (!activeStore.slug) {
       storeSettings = {};
     } else {
+      // Ensure we don't call this during SSR (though $effect shouldn't run there)
       loadStore();
     }
   });
@@ -343,6 +344,7 @@
     saved = "";
     error = "";
     const payload: Record<string, string> = {
+      ai_enabled: val("ai_enabled", "0"),
       ai_provider: val("ai_provider", "claude"),
       ai_model: val("ai_model"),
       ai_system_prompt: val("ai_system_prompt"),
@@ -390,6 +392,8 @@
     error = "";
     const webhookUrl = telegramMode === "webhook" ? telegramCustomUrl.trim() || defaultTelegramWebhookUrl || null : null;
     const payload: Record<string, string | null> = {
+      telegram_enabled: val("telegram_enabled", "0"),
+      whatsapp_enabled: val("whatsapp_enabled", "0"),
       telegram_webhook_url: webhookUrl,
       telegram_notify_chat_id: String(storeSettings.telegram_notify_chat_id ?? ""),
       whatsapp_notify_number: String(storeSettings.whatsapp_notify_number ?? ""),
@@ -472,7 +476,7 @@
     saving = true;
     saved = "";
     error = "";
-    const payload: Record<string, string | null> = {
+    const payload: Record<string, string | null | undefined> = {
       google_places_browser_key: googlePlacesBrowserKeyInput.trim() || (storeSettings.google_places_browser_key_set ? undefined : null),
       google_maps_embed_key: googleMapsEmbedKeyInput.trim() || (storeSettings.google_maps_embed_key_set ? undefined : null),
     };

@@ -89,6 +89,32 @@
       </div>
 
       <div class="p-6 space-y-6">
+        <!-- AI Enabled Toggle -->
+        <div class="flex items-center justify-between p-4 rounded-xl bg-purple-50 border border-purple-100 mb-2">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-purple-600 shadow-sm">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <p class="text-sm font-bold text-purple-900">AI Assistant Status</p>
+              <p class="text-[10px] text-purple-600 uppercase font-black tracking-wider">
+                {val('ai_enabled', '0') === '1' ? 'Active' : 'Disabled'}
+              </p>
+            </div>
+          </div>
+          <button
+            onclick={() => set('ai_enabled', val('ai_enabled', '0') === '1' ? '0' : '1')}
+            aria-label="Toggle AI Assistant"
+            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
+              {val('ai_enabled', '0') === '1' ? 'bg-purple-600' : 'bg-gray-200'}"
+          >
+            <span
+              class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                {val('ai_enabled', '0') === '1' ? 'translate-x-6' : 'translate-x-1'}"
+            ></span>
+          </button>
+        </div>
+
         <!-- Provider selection -->
         <div class="space-y-3">
           <div

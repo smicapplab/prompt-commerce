@@ -47,7 +47,7 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
   <img src="screenshots/TG-4.jpg" alt="Telegram Checkout" width="200">
 </div>
 
-*The Telegram interface features **rich e-commerce photo cards** for product search results (with one-tap action buttons) and a strictly-typed, progressive **Philippine Geographic Data (PSGC)** selection flow for address delivery collection.*
+*The Telegram and WhatsApp interfaces feature **rich e-commerce photo cards** for product search results (with one-tap action buttons) and a **Google Places Mini App** for precise, structured delivery address collection including lat/lng coordinates.*
 
 > **Try it now!** Search for **Prompt-Commerce** or **@prompt_comm_bot** on Telegram to explore our test channel.
 
@@ -62,16 +62,17 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 - **Enhanced Order Tools**: AI-driven order creation and status management with built-in transition validation and mandatory shipping details.
 
 ### Collaborative Order Fulfillment
-- **State-Machine Workflow**: Robust order status lifecycle (`pending` → `picking` → `packing` → `in_transit` → `delivered`) with specific flows for **Store Pickup**.
+- **State-Machine Workflow**: Robust order status lifecycle (`pending` → `picking` → `packing` → `in_transit` → `delivered`) with specific flows for **Store Pickup** and validation rules enforced in the MCP `update_order_status` tool.
 - **Internal Timeline**: A collaborative note system for order-level communication among staff with full history and soft-delete support.
 - **Order Attachments**: Securely upload and manage receipts, shipping labels, and documents (PDF, Excel, Images up to 20MB).
-- **Shipping Integration**: Capture tracking numbers and courier details at the point of fulfillment, automatically notified to the buyer.
+- **Shipping Integration**: Capture tracking numbers and courier details at the point of fulfillment, automatically notified to the buyer via Telegram or WhatsApp.
+- **Order Sync to Gateway**: Dirty orders, notes, and files are pushed to the gateway via `POST /api/orders/sync`. The payload includes `buyer_ref` and `total` so the gateway can create notification-capable records even for manually-entered orders.
 
 ### Universal Payment Integration
 - **Multi-Provider Support**: Enable any combination of **Stripe**, **PayMongo**, **Cash on Delivery (COD)**, **Assisted Payments** (offline bank transfers), and **Mock** (for testing) simultaneously.
-- **Dynamic Selection**: Telegram checkout automatically offers a choice screen when multiple methods are enabled.
-- **Custom Instructions**: Define provider-specific payment instructions shown directly to customers in their Telegram chat.
-- **Dynamic Config Push**: Securely manage and push payment credentials and store policies (like Pickup availability) to your gateway with one click.
+- **Dynamic Selection**: Telegram and WhatsApp checkout automatically offers a choice screen when multiple methods are enabled.
+- **Custom Instructions**: Define provider-specific payment instructions shown directly to customers in their Telegram or WhatsApp chat.
+- **Dynamic Config Push**: Securely manage and push payment credentials, store policies (like Pickup availability), and Google Maps API keys to your gateway with one click.
 
 ### Enterprise-Grade Security
 - **RBAC (Role-Based Access Control)**: Granular permissions for Super Admins, Store Admins, Merchandisers, and Operations staff.
@@ -101,7 +102,7 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 The system uses a dual-layer SQLite strategy:
 
 1. **The Registry (`catalog.db`)**: Manages global users, system-wide settings, and the registry of active stores.
-2. **Per-Store DBs (`stores/<slug>.db`)**: Contains all products, categories, orders, reviews, and conversations for that store. The "One File Per Store" architecture allows trivial backups, migrations, and zero-latency queries.
+2. **Per-Store DBs (`stores/<slug>.db`)**: Contains all products, categories, orders, order items, order notes, order files, reviews, and conversations for that store. The "One File Per Store" architecture allows trivial backups, migrations, and zero-latency queries. Orders, notes, and files have `is_synced` dirty flags — updates set `is_synced = 0` and the sync endpoint pushes only dirty rows to the gateway.
 
 ---
 
@@ -233,11 +234,12 @@ pm2 save && pm2 startup
 
 ## Roadmap
 
-- [ ] **WhatsApp Business Bot** — Full parity with Telegram (search, cart, checkout, AI chat) using Meta Cloud API. Architecture planned; implementation pending.
-- [ ] **Vector / Semantic Search**: Product embeddings via HuggingFace (`all-MiniLM-L6-v2`) for intent-based search.
+- [x] **WhatsApp Business Bot** — Full parity with Telegram (search, cart, checkout via Google Places address picker, AI chat, order notifications) using Meta Cloud API.
 - [x] **Telegram Webhook Mode**: Supported alongside polling. Configure the webhook URL via Settings → Telegram in the admin panel.
+- [x] **Google Places Address Picker** — Token-gated Mini App for structured address collection (street, barangay, city, province, postal code, lat/lng). Replaces legacy PSGC step flow. Addresses saved with user-defined labels for 1-tap reuse on future orders.
+- [ ] **Vector / Semantic Search**: Product embeddings via HuggingFace (`all-MiniLM-L6-v2`) for intent-based search.
 - [ ] **Multi-Language Support**: AI-assisted localization for product catalogs and customer messages.
-- [ ] **Web Storefront Cart & Checkout**: Full shopping flow in the browser (currently Telegram-only).
+- [ ] **Web Storefront Cart & Checkout**: Full shopping flow in the browser (currently Telegram/WhatsApp-only).
 
 ---
 

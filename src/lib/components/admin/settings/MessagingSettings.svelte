@@ -62,18 +62,31 @@
         class="flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
       >
         <div class="p-6 border-b border-gray-100 bg-gray-50/50">
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600"
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600"
+              >
+                <Send size={20} />
+              </div>
+              <div>
+                <h3 class="font-bold text-gray-900">Telegram Bot</h3>
+                <p class="text-xs text-gray-500">
+                  Enable AI chat and order tracking on Telegram.
+                </p>
+              </div>
+            </div>
+            <button
+              onclick={() => set('telegram_enabled', val('telegram_enabled', '0') === '1' ? '0' : '1')}
+              aria-label="Toggle Telegram Bot"
+              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                {val('telegram_enabled', '0') === '1' ? 'bg-blue-600' : 'bg-gray-200'}"
             >
-              <Send size={20} />
-            </div>
-            <div>
-              <h3 class="font-bold text-gray-900">Telegram Bot</h3>
-              <p class="text-xs text-gray-500">
-                Enable AI chat and order tracking on Telegram.
-              </p>
-            </div>
+              <span
+                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                  {val('telegram_enabled', '0') === '1' ? 'translate-x-6' : 'translate-x-1'}"
+              ></span>
+            </button>
           </div>
         </div>
 
@@ -265,18 +278,31 @@
         class="flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
       >
         <div class="p-6 border-b border-gray-100 bg-emerald-50/30">
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600"
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600"
+              >
+                <MessageCircle size={20} />
+              </div>
+              <div>
+                <h3 class="font-bold text-gray-900">WhatsApp Business</h3>
+                <p class="text-xs text-gray-500">
+                  Connect with customers via the world's most popular app.
+                </p>
+              </div>
+            </div>
+            <button
+              onclick={() => set('whatsapp_enabled', val('whatsapp_enabled', '0') === '1' ? '0' : '1')}
+              aria-label="Toggle WhatsApp Business"
+              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
+                {val('whatsapp_enabled', '0') === '1' ? 'bg-emerald-600' : 'bg-gray-200'}"
             >
-              <MessageCircle size={20} />
-            </div>
-            <div>
-              <h3 class="font-bold text-gray-900">WhatsApp Business</h3>
-              <p class="text-xs text-gray-500">
-                Connect with customers via the world's most popular app.
-              </p>
-            </div>
+              <span
+                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                  {val('whatsapp_enabled', '0') === '1' ? 'translate-x-6' : 'translate-x-1'}"
+              ></span>
+            </button>
           </div>
         </div>
 
