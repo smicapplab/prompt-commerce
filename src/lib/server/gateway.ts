@@ -1,6 +1,6 @@
 import { getDb } from './db.js';
 
-export async function callGateway(slug: string, method: string, path: string, body: any) {
+export async function callGateway(slug: string, method: string, path: string, body: any, timeoutMs = 10000) {
   const registry = getDb();
   
   const store = registry
@@ -30,7 +30,7 @@ export async function callGateway(slug: string, method: string, path: string, bo
         'x-gateway-key': store.gateway_key,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (!res.ok) {

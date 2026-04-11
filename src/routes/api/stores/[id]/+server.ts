@@ -16,7 +16,7 @@ export const PATCH: RequestHandler = async (event) => {
   if (!body) return json({ error: 'Invalid body' }, { status: 400 });
 
   const db = getDb();
-  const store = db.prepare('SELECT id FROM stores WHERE id = ?').get(id);
+  const store = db.prepare('SELECT id, slug FROM stores WHERE id = ?').get(id) as { id: number, slug: string } | undefined;
   if (!store) return json({ error: 'Store not found' }, { status: 404 });
 
   const fields: string[] = [];
@@ -32,10 +32,12 @@ export const PATCH: RequestHandler = async (event) => {
     values.push(body.gateway_key); 
   }
   if (body.active !== undefined)      { fields.push('active = ?');      values.push(body.active ? 1 : 0); }
+  
   if (body.slug !== undefined) {
-    const slug = String(body.slug).toLowerCase().replace(/[^a-z0-9-]/g, '-');
-    fields.push('slug = ?');
-    values.push(slug);
+    const newSlug = String(body.slug).toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    if (newSlug !== store.slug) {
+      return json({ error: 'Store slug cannot be changed after creation to prevent data loss.' }, { status: 400 });
+    }
   }
 
   if (!fields.length) return json({ error: 'No fields to update' }, { status: 400 });

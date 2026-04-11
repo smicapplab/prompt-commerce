@@ -35,4 +35,27 @@ export interface Order {
   payment_instructions?: string;
 }
 
+export const ORDER_STATUSES = [
+  'pending_payment', 'pending', 'paid', 'picking', 'packing', 
+  'ready_for_pickup', 'picked_up', 'in_transit', 'delivered', 
+  'cancelled', 'refunded'
+] as const;
+
+export type OrderStatus = typeof ORDER_STATUSES[number];
+
+export const ORDER_STATUS_TRANSITIONS: Record<string, string[]> = {
+  'pending_payment': ['paid', 'cancelled'],
+  'pending':         ['picking', 'cancelled', 'refunded'],
+  'paid':            ['picking', 'cancelled', 'refunded'],
+  'picking':         ['packing', 'cancelled', 'refunded'],
+  'packing':         ['in_transit', 'ready_for_pickup', 'cancelled', 'refunded'],
+  'in_transit':      ['delivered', 'cancelled', 'refunded'],
+  'ready_for_pickup': ['picked_up', 'cancelled', 'refunded'],
+  // Terminal statuses can only go to refunded
+  'delivered':       ['refunded'],
+  'picked_up':       ['refunded'],
+  'cancelled':       [],
+  'refunded':        [],
+};
+
 export type { Product };

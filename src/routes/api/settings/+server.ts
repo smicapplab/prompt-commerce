@@ -285,6 +285,23 @@ export const PATCH: RequestHandler = async (event) => {
               }),
             });
           }
+
+          // ── Push Server config (seller_public_url) ────────────────────────
+          const sellerPublicUrlRow = registry
+            .prepare('SELECT value FROM settings WHERE key = ?')
+            .get('seller_public_url') as { value: string } | undefined;
+          const sellerPublicUrl = sellerPublicUrlRow?.value;
+
+          if (sellerPublicUrl) {
+            await fetch(`${gatewayUrl}/api/stores/${slug}/server-config`, {
+              method: 'PATCH',
+              headers,
+              signal: AbortSignal.timeout(10000),
+              body: JSON.stringify({
+                publicUrl: sellerPublicUrl,
+              }),
+            });
+          }
         } catch {
           // Non-blocking — log but don't fail the response
           console.error('[settings] Failed to push config to gateway');

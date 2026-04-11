@@ -20,7 +20,10 @@ function authHeader() {
 
 /** Returns the number of unsynced items for this store. */
 export async function fetchSyncStatus(slug: string): Promise<SyncStatus> {
-  const res = await fetch(`/api/sync/status?store=${slug}`, { headers: authHeader() });
+  const res = await fetch(`/api/sync/status?store=${slug}`, { 
+    headers: authHeader(),
+    signal: AbortSignal.timeout(10000)
+  });
   if (!res.ok) return { dirty: 0, products: 0, categories: 0 };
   return res.json();
 }
@@ -33,6 +36,7 @@ export async function syncToGateway(slug: string): Promise<string> {
   const res = await fetch(`/api/sync?store=${slug}`, {
     method: 'POST',
     headers: authHeader(),
+    signal: AbortSignal.timeout(35000) // Slightly longer than server-side 30s
   });
   const d = await res.json();
   if (!res.ok) throw new Error(d.error ?? 'Sync failed');

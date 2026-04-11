@@ -445,7 +445,7 @@ export function registerProductTools(
       }
 
       // Block path traversal — the resolved path must not escape to sensitive dirs
-      const allowedDirs = ['/home', '/tmp', '/var/tmp', process.cwd()];
+      const allowedDirs = ['/home', '/Users', '/tmp', '/var/tmp', process.cwd()];
       const pathIsSafe = allowedDirs.some(dir => resolvedPath.startsWith(dir + path.sep) || resolvedPath.startsWith(dir));
       if (!pathIsSafe) {
         return {
@@ -482,65 +482,80 @@ export function registerProductTools(
         };
       }
 
-      let newCount = 0;
-      let updateCount = 0;
       let errors: string[] = [];
 
-      // Validate and collect updates/inserts
-      const inserts: any[] = [];
-      const updates: any[] = [];
-
+      // Validate and collect inserts/updates (no DB/IO work yet)
+      const rows: any[] = [];
       for (let i = 0; i < data.length; i++) {
         const row = data[i];
         const title = row.title;
-        const sku = row.sku ? String(row.sku) : undefined;
-        let price = parseFloat(row.price);
-        price = isNaN(price) ? 0 : price;
-        let stock_quantity = parseInt(row.stock_quantity, 10);
-        stock_quantity = isNaN(stock_quantity) ? 0 : stock_quantity;
-
         if (!title) {
           errors.push(`Row ${i + 2}: Missing required 'title'`);
           continue;
         }
 
-        const tags = typeof row.tags === 'string' ? row.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
-        let images = typeof row.images === 'string' ? row.images.split(',').map((u: string) => u.trim()).filter(Boolean) : [];
-        if (images.length > 0) {
-          images = await downloadAndCacheImages(images);
-        }
-
-        // Check if SKU exists to determine if it's an update
-        let existing;
-        if (sku) {
-          existing = db.prepare(`SELECT id FROM products WHERE sku = ?`).get(sku) as { id: number } | undefined;
-        }
-
-        // Just push to arrays
-        if (existing) {
-          updates.push({ id: existing.id, row: { ...row, tags, images, price, stock_quantity, sku } });
-        } else {
-          inserts.push({ row: { ...row, tags, images, price, stock_quantity, sku } });
-        }
+        let price = parseFloat(row.price);
+        row.price = isNaN(price) ? 0 : price;
+        let stock_quantity = parseInt(row.stock_quantity, 10);
+        row.stock_quantity = isNaN(stock_quantity) ? 0 : stock_quantity;
+        row.tags = typeof row.tags === 'string' ? row.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+        row.images = typeof row.images === 'string' ? row.images.split(',').map((u: string) => u.trim()).filter(Boolean) : [];
+        row.sku = row.sku ? String(row.sku) : undefined;
+        
+        rows.push(row);
       }
 
       if (!confirm) {
+        // O(1) stats for preview
         return {
           content: [{
             type: 'text',
-            text: `📋 PREVIEW — no changes saved yet\n\nFile parsed successfully with ${data.length} rows.\n- ${inserts.length} new products will be created.\n- ${updates.length} existing products will be updated based on SKU match.\n- ${errors.length} errors found.\n\nErrors:\n${errors.join('\\n')}\n\nCall import_products again with confirm=true to save.`,
+            text: `📋 PREVIEW — no changes saved yet\n\nFile parsed successfully with ${data.length} rows.\n- ${rows.length} products will be processed.\n- ${errors.length} validation errors found.\n\nErrors:\n${errors.join('\\n')}\n\nCall import_products again with confirm=true to save.`,
           }],
         };
       }
 
-      // Execute inside a transaction
+      // Execute: Download images and update DB
+      let newCount = 0;
+      let updateCount = 0;
+      const downloadErrorsList: string[] = [];
+
+      // We process row by row for image downloads (IO)
+      const processedInserts: any[] = [];
+      const processedUpdates: any[] = [];
+
+      for (const row of rows) {
+        // 1. Download images for this row
+        let finalImages = row.images;
+        if (row.images && row.images.length > 0) {
+          const res = await downloadAndCacheImages(row.images);
+          finalImages = res.urls;
+          if (res.errors.length > 0) downloadErrorsList.push(...res.errors);
+        }
+
+        // 2. Check SKU for insert/update
+        let existingId: number | null = null;
+        if (row.sku) {
+          const existing = db.prepare(`SELECT id FROM products WHERE sku = ?`).get(row.sku) as { id: number } | undefined;
+          existingId = existing ? existing.id : null;
+        }
+
+        const processedRow = { ...row, images: finalImages };
+        if (existingId) {
+          processedUpdates.push({ id: existingId, row: processedRow });
+        } else {
+          processedInserts.push({ row: processedRow });
+        }
+      }
+
+      // Execute inside a transaction (CPU/DB work only)
       const transaction = db.transaction(() => {
         // Handle Inserts
         const insertStmt = db.prepare(
           `INSERT INTO products (title, description, sku, category_id, price, stock_quantity, tags, images)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         );
-        for (const { row } of inserts) {
+        for (const { row } of processedInserts) {
           let categoryId: number | null = null;
           if (row.category) {
             const cat = db.prepare(`SELECT id FROM categories WHERE name = ?`).get(row.category) as { id: number } | undefined;
@@ -562,7 +577,7 @@ export function registerProductTools(
         }
 
         // Handle Updates
-        for (const { id, row } of updates) {
+        for (const { id, row } of processedUpdates) {
           const updateParts: string[] = [`updated_at = datetime('now')`];
           const updateParams: any[] = [];
 
@@ -598,10 +613,14 @@ export function registerProductTools(
 
       try {
         transaction();
+        const errorNote = downloadErrorsList.length > 0 
+          ? `\n\n⚠️ Note: Some images could not be downloaded and were kept as external links:\n${downloadErrorsList.map(e => `• ${e}`).join('\n')}`
+          : '';
+
         return {
           content: [{
             type: 'text',
-            text: `Bulk import successful.\n- ${newCount} products created.\n- ${updateCount} products updated.\n\nErrors encountered during parse:\n${errors.join('\\n')}`,
+            text: `Bulk import successful.\n- ${newCount} products created.\n- ${updateCount} products updated.\n\nErrors encountered during parse:\n${errors.join('\\n')}${errorNote}`,
           }],
         };
       } catch (e: any) {

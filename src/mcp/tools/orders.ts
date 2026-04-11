@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type Database from 'better-sqlite3';
+import { ORDER_STATUSES, ORDER_STATUS_TRANSITIONS } from '../../lib/types/orders.js';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface OrderRow {
@@ -247,7 +248,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
     'list_orders',
     'List recent orders for this store. Optionally filter by status or channel.',
     {
-      status: z.enum(['pending', 'paid', 'picking', 'packing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled', 'refunded']).optional(),
+      status: z.enum(ORDER_STATUSES).optional(),
       channel: z.string().optional().describe('Filter by channel (telegram, web, etc.)'),
       limit: z.number().int().min(1).max(100).default(20),
     },
@@ -282,11 +283,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
     'Update the status of an order. Enforces transition rules and requires tracking info for shipping.',
     {
       id: z.number().int().describe('Order ID'),
-      status: z.enum([
-        'pending_payment', 'pending', 'paid', 'picking', 'packing', 
-        'ready_for_pickup', 'picked_up', 'in_transit', 'delivered', 
-        'cancelled', 'refunded'
-      ]).describe('New status'),
+      status: z.enum(ORDER_STATUSES).describe('New status'),
       tracking_number: z.string().optional().describe('Required when status is in_transit'),
       courier_name: z.string().optional().describe('Courier name (e.g. J&T)'),
       tracking_url: z.string().optional().describe('Optional tracking link'),
@@ -301,21 +298,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       // ── Transition Validation ──────────────────────────────────────────────
       const from = order.status;
       const to = status;
-      const allowedTransitions: Record<string, string[]> = {
-        'pending_payment': ['paid', 'cancelled'],
-        'pending':         ['picking', 'cancelled', 'refunded'],
-        'paid':            ['picking', 'cancelled', 'refunded'],
-        'picking':         ['packing', 'cancelled', 'refunded'],
-        'packing':         ['in_transit', 'ready_for_pickup', 'cancelled', 'refunded'],
-        'in_transit':      ['delivered', 'cancelled', 'refunded'],
-        'ready_for_pickup': ['picked_up', 'cancelled', 'refunded'],
-        'delivered':       ['refunded'],
-        'picked_up':       ['refunded'],
-        'cancelled':       [],
-        'refunded':        [],
-      };
-
-      if (from !== to && !allowedTransitions[from]?.includes(to)) {
+      if (from !== to && !ORDER_STATUS_TRANSITIONS[from]?.includes(to)) {
         return { content: [{ type: 'text', text: `❌ Invalid status transition from "${from}" to "${to}".` }] };
       }
 

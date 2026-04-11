@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { requireAuth, requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
+import { ORDER_STATUS_TRANSITIONS } from '$lib/types/orders.js';
 
 export const GET: RequestHandler = async (event) => {
   const store = event.url.searchParams.get('store');
@@ -49,22 +50,8 @@ export const PATCH: RequestHandler = async (event) => {
   if (body.status && body.status !== existing.status) {
     const from = existing.status;
     const to = body.status;
-    const allowedTransitions: Record<string, string[]> = {
-      'pending_payment': ['paid', 'cancelled'],
-      'pending':         ['picking', 'cancelled', 'refunded'],
-      'paid':            ['picking', 'cancelled', 'refunded'],
-      'picking':         ['packing', 'cancelled', 'refunded'],
-      'packing':         ['in_transit', 'ready_for_pickup', 'cancelled', 'refunded'],
-      'in_transit':      ['delivered', 'cancelled', 'refunded'],
-      'ready_for_pickup': ['picked_up', 'cancelled', 'refunded'],
-      // Terminal statuses can only go to refunded
-      'delivered':       ['refunded'],
-      'picked_up':       ['refunded'],
-      'cancelled':       [],
-      'refunded':        [],
-    };
 
-    if (!allowedTransitions[from]?.includes(to)) {
+    if (!ORDER_STATUS_TRANSITIONS[from]?.includes(to)) {
       return json({ error: `Invalid transition from "${from}" to "${to}"` }, { status: 400 });
     }
 

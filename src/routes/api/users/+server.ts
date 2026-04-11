@@ -13,13 +13,24 @@ export const GET: RequestHandler = async (event) => {
 
   const db = getDb();
   // Select users, but mask password hashes
-  const rows = db.prepare('SELECT id, username, first_name, last_name, email, mobile, role, created_at FROM users ORDER BY username ASC').all();
+  const rows = db.prepare('SELECT id, username, first_name, last_name, email, mobile, role, created_at FROM users ORDER BY username ASC').all() as any[];
   
-  // For each user, also fetch their store assignments
-  const users = rows.map((u: any) => {
-    const stores = db.prepare('SELECT store_slug, role FROM user_stores WHERE user_id = ?').all(u.id);
-    return { ...u, stores };
-  });
+  // Fetch all store assignments in one go to avoid N+1 query
+  const allAssignments = db.prepare('SELECT user_id, store_slug, role FROM user_stores').all() as any[];
+  
+  // Map assignments to users in memory
+  const assignmentsByUser = new Map<number, any[]>();
+  for (const a of allAssignments) {
+    if (!assignmentsByUser.has(a.user_id)) {
+      assignmentsByUser.set(a.user_id, []);
+    }
+    assignmentsByUser.get(a.user_id)!.push({ store_slug: a.store_slug, role: a.role });
+  }
+
+  const users = rows.map(u => ({
+    ...u,
+    stores: assignmentsByUser.get(u.id) || []
+  }));
 
   return json(users);
 };

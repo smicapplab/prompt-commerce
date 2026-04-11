@@ -40,7 +40,24 @@ const _storeCache = new Map<string, Database.Database>();
 
 export function getStoreDb(slug: string): Database.Database {
   const cached = _storeCache.get(slug);
-  if (cached) return cached;
+  if (cached) {
+    // Re-insert to move to the end of the Map (most recently used)
+    _storeCache.delete(slug);
+    _storeCache.set(slug, cached);
+    return cached;
+  }
+
+  // Evict oldest connection if we've hit the limit (prevent file descriptor exhaustion)
+  if (_storeCache.size >= 50) {
+    const oldestKey = _storeCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      const dbToClose = _storeCache.get(oldestKey);
+      if (dbToClose) {
+        try { dbToClose.close(); } catch {}
+        _storeCache.delete(oldestKey);
+      }
+    }
+  }
 
   const storesDir = path.join(DATA_DIR, 'stores');
   fs.mkdirSync(storesDir, { recursive: true });

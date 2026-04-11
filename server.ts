@@ -16,7 +16,16 @@ const db = getRegistryDb();
 
 // ─── Express app ──────────────────────────────────────────────────────────────
 const app = express();
-// Global body parser removed — SvelteKit handles its own body parsing
+
+// ─── Logging middleware ───────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.path} → ${res.statusCode} in ${duration}ms`);
+  });
+  next();
+});
 
 // Serve uploaded product images from _data/uploads/
 const UPLOAD_DIR = getUploadDir();
