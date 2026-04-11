@@ -22,7 +22,9 @@ export const GET: RequestHandler = async (event) => {
 
   let res: Response;
   try {
-    res = await fetch(`${gatewayUrl}/api/stores/lookup?key=${encodeURIComponent(key)}`);
+    res = await fetch(`${gatewayUrl}/api/stores/lookup?key=${encodeURIComponent(key)}`, {
+      signal: AbortSignal.timeout(5000)
+    });
   } catch {
     return json({ error: 'Could not reach the gateway. Is it running?' }, { status: 502 });
   }

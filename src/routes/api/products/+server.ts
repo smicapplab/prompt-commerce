@@ -33,8 +33,9 @@ export const GET: RequestHandler = async (event) => {
 	const params: any[] = [];
 
 	if (q) {
-		query += ` AND (p.title LIKE ? OR p.sku LIKE ? OR p.description LIKE ?)`;
-		const s = `%${q}%`;
+		const escaped = q.replace(/[%_\\]/g, '\\$&');
+		query += ` AND (p.title LIKE ? ESCAPE '\\' OR p.sku LIKE ? ESCAPE '\\' OR p.description LIKE ? ESCAPE '\\')`;
+		const s = `%${escaped}%`;
 		params.push(s, s, s);
 	}
 	if (active !== '') {
@@ -56,8 +57,9 @@ export const GET: RequestHandler = async (event) => {
 	let countQuery = `SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL`;
 	const countParams: any[] = [];
 	if (q) {
-		countQuery += ` AND (title LIKE ? OR sku LIKE ? OR description LIKE ?)`;
-		const s = `%${q}%`;
+		const escaped = q.replace(/[%_\\]/g, '\\$&');
+		countQuery += ` AND (title LIKE ? ESCAPE '\\' OR sku LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')`;
+		const s = `%${escaped}%`;
 		countParams.push(s, s, s);
 	}
 	if (active !== '') {

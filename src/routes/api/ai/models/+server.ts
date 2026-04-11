@@ -20,7 +20,8 @@ export const GET: RequestHandler = async (event) => {
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(row.value)}`
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(row.value)}`,
+      { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

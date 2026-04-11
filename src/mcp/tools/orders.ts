@@ -171,9 +171,22 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
           `).run(orderId, product.id, product.title, product.price ?? 0, quantity);
 
           // Deduct stock
-          db.prepare(
-            'UPDATE products SET stock_quantity = stock_quantity - ?, updated_at = datetime(\'now\') WHERE id = ?'
-          ).run(quantity, product.id);
+          // SEC-11: Atomic stock decrement with check to prevent negative stock.
+          // We don't manually set updated_at here so that the products_sync_dirty 
+          // trigger can catch the change and set is_synced = 0 automatically.
+          const updateResult = db.prepare(
+            'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?'
+          ).run(quantity, product.id, quantity);
+
+          if (updateResult.changes === 0) {
+            // Check if product exists to give a better error message
+            const p = db.prepare('SELECT title, stock_quantity FROM products WHERE id = ?').get(product.id) as any;
+            if (!p) {
+              throw new Error(`Product ID ${product.id} not found`);
+            } else {
+              throw new Error(`Insufficient stock for "${p.title}" (requested ${quantity}, available ${p.stock_quantity})`);
+            }
+          }
         }
 
         return orderId;

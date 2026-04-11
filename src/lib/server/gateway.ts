@@ -30,6 +30,7 @@ export async function callGateway(slug: string, method: string, path: string, bo
         'x-gateway-key': store.gateway_key,
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!res.ok) {

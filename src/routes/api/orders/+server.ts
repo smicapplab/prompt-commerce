@@ -29,8 +29,10 @@ export const GET: RequestHandler = async (event) => {
     query += ` AND deleted_at IS NULL`;
   }
   if (q) {
-    query += ` AND (buyer_ref LIKE ? OR notes LIKE ?)`;
-    params.push(`%${q}%`, `%${q}%`);
+    const escaped = q.replace(/[%_\\]/g, '\\$&');
+    query += ` AND (buyer_ref LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\')`;
+    const s = `%${escaped}%`;
+    params.push(s, s);
   }
   if (status) {
     query += ` AND status = ?`;
@@ -62,8 +64,10 @@ export const GET: RequestHandler = async (event) => {
     countQuery += ` AND deleted_at IS NULL`;
   }
   if (q) {
-    countQuery += ` AND (buyer_ref LIKE ? OR notes LIKE ?)`;
-    countParams.push(`%${q}%`, `%${q}%`);
+    const escaped = q.replace(/[%_\\]/g, '\\$&');
+    countQuery += ` AND (buyer_ref LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\')`;
+    const s = `%${escaped}%`;
+    countParams.push(s, s);
   }
   if (status) {
     countQuery += ` AND status = ?`;
@@ -133,9 +137,22 @@ export const POST: RequestHandler = async (event) => {
         `).run(orderId, item.product_id || null, item.title, price, qty);
         
         if (item.product_id) {
-          db.prepare(
-            'UPDATE products SET stock_quantity = stock_quantity - ?, updated_at = datetime(\'now\') WHERE id = ?'
-          ).run(qty, item.product_id);
+          // SEC-11: Atomic stock decrement with check to prevent negative stock.
+          // We don't manually set updated_at here so that the products_sync_dirty 
+          // trigger can catch the change and set is_synced = 0 automatically.
+          const updateResult = db.prepare(
+            'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?'
+          ).run(qty, item.product_id, qty);
+          
+          if (updateResult.changes === 0) {
+            // Check if product exists to give a better error message
+            const p = db.prepare('SELECT title, stock_quantity FROM products WHERE id = ?').get(item.product_id) as any;
+            if (!p) {
+              throw new Error(`Product ID ${item.product_id} not found`);
+            } else {
+              throw new Error(`Insufficient stock for "${p.title}" (requested ${qty}, available ${p.stock_quantity})`);
+            }
+          }
         }
         
         calculatedTotal += price * qty;
