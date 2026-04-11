@@ -176,6 +176,7 @@ export function initStoreSchema(db: Database.Database): void {
       notes        TEXT,
       lat          REAL,
       lng          REAL,
+      idempotency_key TEXT,
       is_synced    INTEGER NOT NULL DEFAULT 0,
       deleted_at   TEXT    DEFAULT NULL,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),

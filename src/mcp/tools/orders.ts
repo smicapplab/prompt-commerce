@@ -57,8 +57,9 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       delivery_type: z.enum(['delivery', 'pickup']).default('delivery'),
       payment_provider: z.string().optional(),
       payment_instructions: z.string().optional(),
+      idempotency_key: z.string().optional().describe('Unique key to prevent duplicate orders'),
     },
-    async ({ items, buyer_ref, buyer_name, buyer_email, delivery_address, channel, notes, confirm, delivery_type, payment_provider, payment_instructions, lat, lng }) => {
+    async ({ items, buyer_ref, buyer_name, buyer_email, delivery_address, channel, notes, confirm, delivery_type, payment_provider, payment_instructions, lat, lng, idempotency_key }) => {
       // Resolve products and validate stock
       const resolved: Array<{ product: ProductRow; quantity: number }> = [];
       const errors: string[] = [];
@@ -117,13 +118,33 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
         };
       }
 
+      // Check for existing order with same idempotency_key
+      if (idempotency_key) {
+        const existing = db.prepare('SELECT id, total FROM orders WHERE idempotency_key = ?').get(idempotency_key) as { id: number, total: number } | undefined;
+        if (existing) {
+          const orderItems = db.prepare('SELECT title, quantity FROM order_items WHERE order_id = ?').all(existing.id) as { title: string, quantity: number }[];
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✅ Order #${existing.id} already exists (idempotent recovery).\n\n${orderItems.map(i => `• ${i.title} × ${i.quantity}`).join('\n')}\n\nTotal: ₱${(existing.total ?? 0).toFixed(2)}\nChannel: ${channel}\nBuyer: ${buyer_name || 'Guest'}\nAddress: ${delivery_address || 'None'}`,
+              },
+              {
+                type: 'text',
+                text: JSON.stringify({ order_id: existing.id, success: true, idempotent: true }),
+              }
+            ],
+          };
+        }
+      }
+
       // Place the order in a transaction
       const placeOrder = db.transaction(() => {
         const initialStatus = (payment_provider === 'cod' || payment_provider === 'assisted') ? 'pending_payment' : 'pending';
 
         const orderResult = db.prepare(`
-          INSERT INTO orders (buyer_ref, buyer_name, buyer_email, delivery_address, channel, status, total, notes, lat, lng, delivery_type, payment_provider, payment_instructions, is_synced)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+          INSERT INTO orders (buyer_ref, buyer_name, buyer_email, delivery_address, channel, status, total, notes, lat, lng, delivery_type, payment_provider, payment_instructions, idempotency_key, is_synced)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         `).run(
           buyer_ref ?? null, 
           buyer_name ?? null, 
@@ -137,7 +158,8 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
           lng ?? null, 
           delivery_type, 
           payment_provider ?? null, 
-          payment_instructions ?? null
+          payment_instructions ?? null,
+          idempotency_key ?? null
         );
 
         const orderId = orderResult.lastInsertRowid as number;

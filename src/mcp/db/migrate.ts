@@ -255,6 +255,7 @@ if (fs.existsSync(storesDir)) {
       'ALTER TABLE orders ADD COLUMN lng REAL',
       'ALTER TABLE orders ADD COLUMN is_synced INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE orders ADD COLUMN deleted_at TEXT DEFAULT NULL',
+      'ALTER TABLE orders ADD COLUMN idempotency_key TEXT DEFAULT NULL',
     ]) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
     }
@@ -333,6 +334,7 @@ if (fs.existsSync(storesDir)) {
       'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
       'CREATE INDEX IF NOT EXISTS idx_order_notes_order_id ON order_notes(order_id)',
       'CREATE INDEX IF NOT EXISTS idx_order_files_order_id ON order_files(order_id)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL',
       ]) {
 
       try { sdb.exec(stmt); } catch { /* index already exists */ }

@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { getUploadDir } from '../db/client.js';
+import { safeFetch } from '../utils/ssrf.js';
 
 // ─── Shared JSON-Schema helpers ──────────────────────────────────────────────
 
@@ -478,8 +479,10 @@ export async function executeStoreTool(
       if (!confirm) return `📋 PREVIEW — Download image from ${url} and attach to "${product.title}" (ID ${product_id}).\n\nCall download_image with confirm=true to execute.`;
 
       try {
-        const response = await fetch(url, {
+        const response = await safeFetch(url, {
           headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+          // @ts-ignore
+          signal: AbortSignal.timeout(10000)
         });
         if (!response.ok) throw new Error(`HTTP ${response.status} from ${url}`);
         const contentType = response.headers.get('content-type') ?? '';
@@ -532,12 +535,13 @@ export async function executeStoreTool(
       const { url } = args;
       if (!url?.startsWith('http')) return 'Error: URL must start with https://';
       try {
-        const res = await fetch(url, {
+        const res = await safeFetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,*/*',
             'Accept-Language': 'en-US,en;q=0.9',
           },
+          // @ts-ignore
           signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) return `Error: HTTP ${res.status} from ${url}`;
