@@ -38,18 +38,19 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 *Configure Claude, Gemini, or OpenAI models and customize your store's AI persona.*
 <img src="screenshots/ai-settings.png" alt="AI Settings" width="800">
 
-### Telegram Customer Interface
-*Your customers can browse, search, and checkout directly within Telegram using our AI-powered bot.*
-<div style="display: flex; flex-wrap: wrap; gap: 10px;">
-  <img src="screenshots/TG-1.jpg" alt="Telegram Storefront" width="200">
-  <img src="screenshots/TG-2.jpg" alt="Telegram Product Search" width="200">
-  <img src="screenshots/TG-3.jpg" alt="Telegram Shopping Cart" width="200">
-  <img src="screenshots/TG-4.jpg" alt="Telegram Checkout" width="200">
-</div>
+### WhatsApp Customer Interface & Fulfillment
+*Ordering via WhatsApp*
+<video src="screenshots/whatsapp.mp4" controls width="350"></video>
 
-*The Telegram and WhatsApp interfaces feature **rich e-commerce photo cards** for product search results (with one-tap action buttons) and a **Google Places Mini App** for precise, structured delivery address collection including lat/lng coordinates.*
+*Fulfillment of WhatsApp order*
+<video src="screenshots/whatsapp-order.mp4" controls width="350"></video>
 
-> **Try it now!** Search for **Prompt-Commerce** or **@prompt_comm_bot** on Telegram to explore our test channel.
+### Telegram Customer Interface & Fulfillment
+*Ordering via Telegram*
+<video src="screenshots/telegram.mp4" controls width="350"></video>
+
+*Fulfillment of Telegram order*
+<video src="screenshots/telegram-order.mp4" controls width="350"></video>
 
 ---
 
