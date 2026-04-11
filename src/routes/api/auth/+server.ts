@@ -13,6 +13,19 @@ const LOCKOUT_MS    = 15 * 60 * 1000; // 15 minutes
 interface Attempt { count: number; firstAt: number; lockedUntil?: number }
 const attempts = new Map<string, Attempt>();
 
+// ─── Map Eviction (Memory Safety) ──────────────────────────────────────────
+// Periodically prune expired entries to prevent the Map from growing forever.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of attempts.entries()) {
+    const isExpired = now - entry.firstAt > WINDOW_MS;
+    const isLocked = entry.lockedUntil && now < entry.lockedUntil;
+    if (isExpired && !isLocked) {
+      attempts.delete(ip);
+    }
+  }
+}, 60 * 60 * 1000).unref(); // Run every hour, don't block process exit
+
 function getClientIp(event: Parameters<RequestHandler>[0]): string {
   // event.getClientAddress() is the recommended way in SvelteKit to get the 
   // trusted client IP. It relies on the adapter's trust configuration.

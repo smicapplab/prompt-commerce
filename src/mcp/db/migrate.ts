@@ -354,6 +354,15 @@ if (fs.existsSync(storesDir)) {
       console.warn(`⚠ Failed to populate denormalized conversation columns: ${e}`);
     }
 
+    // Add updated_at to order related tables
+    for (const stmt of [
+      "ALTER TABLE order_notes ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      "ALTER TABLE order_files ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      "ALTER TABLE order_items ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+    ]) {
+      try { sdb.exec(stmt); } catch { /* column already exists */ }
+    }
+
     // Add indexes if missing
     for (const stmt of [
       'CREATE INDEX IF NOT EXISTS idx_conversations_buyer_ref ON conversations(buyer_ref, channel)',
@@ -405,6 +414,15 @@ if (fs.existsSync(storesDir)) {
       CREATE TRIGGER IF NOT EXISTS messages_updated_at AFTER UPDATE ON messages FOR EACH ROW BEGIN
         UPDATE messages SET updated_at = datetime('now') WHERE id = OLD.id;
       END;
+      CREATE TRIGGER IF NOT EXISTS order_notes_updated_at AFTER UPDATE ON order_notes FOR EACH ROW BEGIN
+        UPDATE order_notes SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS order_files_updated_at AFTER UPDATE ON order_files FOR EACH ROW BEGIN
+        UPDATE order_files SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS order_items_updated_at AFTER UPDATE ON order_items FOR EACH ROW BEGIN
+        UPDATE order_items SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
 
       -- Sync dirty triggers
       CREATE TRIGGER IF NOT EXISTS categories_sync_dirty AFTER UPDATE ON categories FOR EACH ROW
@@ -419,10 +437,28 @@ if (fs.existsSync(storesDir)) {
         UPDATE products SET is_synced = 0 WHERE id = OLD.id;
       END;
 
+      CREATE TRIGGER IF NOT EXISTS orders_sync_dirty AFTER UPDATE ON orders FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+      BEGIN
+        UPDATE orders SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
       CREATE TRIGGER IF NOT EXISTS promotions_sync_dirty AFTER UPDATE ON promotions FOR EACH ROW
       WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
       BEGIN
         UPDATE promotions SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS order_notes_sync_dirty AFTER UPDATE ON order_notes FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+      BEGIN
+        UPDATE order_notes SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS order_files_sync_dirty AFTER UPDATE ON order_files FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+      BEGIN
+        UPDATE order_files SET is_synced = 0 WHERE id = OLD.id;
       END;
     `);
     sdb.close();

@@ -64,6 +64,7 @@ export async function safeFetch(url: string, init?: RequestInit): Promise<Respon
   const hostname = parsed.hostname;
   const ip = await resolveSafeIp(hostname);
 
+  // We use the original URL but inject a custom lookup function to the agent
   const lookup = (_hostname: string, _options: any, callback: any) => {
     callback(null, ip, 4);
   };
@@ -73,13 +74,16 @@ export async function safeFetch(url: string, init?: RequestInit): Promise<Respon
     ? new https.Agent(agentOptions)
     : new http.Agent(agentOptions);
 
+  // Use global fetch with the custom dispatcher if available (Node 18+)
+  // or fallback to a custom implementation.
   try {
-    // @ts-ignore
+    // @ts-ignore - 'dispatcher' is supported in undici-based fetch
     return await fetch(url, {
       ...init,
       dispatcher: agent,
     } as any);
   } catch (e) {
+    // If 'dispatcher' is not supported or fails, fallback to manual http/https request
     return new Promise((resolve, reject) => {
       const module = parsed.protocol === 'https:' ? https : http;
       const headers = init?.headers ? (init.headers as any) : {};

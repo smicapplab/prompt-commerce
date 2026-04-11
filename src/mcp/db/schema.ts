@@ -190,6 +190,7 @@ export function initStoreSchema(db: Database.Database): void {
       note        TEXT    NOT NULL,
       created_by  TEXT    NOT NULL,
       created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
       deleted_at  TEXT    DEFAULT NULL,
       deleted_by  TEXT    DEFAULT NULL,
       is_synced   INTEGER NOT NULL DEFAULT 0
@@ -206,6 +207,7 @@ export function initStoreSchema(db: Database.Database): void {
       size_bytes    INTEGER NOT NULL,
       uploaded_by   TEXT    NOT NULL,
       uploaded_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT    NOT NULL DEFAULT (datetime('now')),
       deleted_at    TEXT    DEFAULT NULL,
       deleted_by    TEXT    DEFAULT NULL,
       is_synced     INTEGER NOT NULL DEFAULT 0
@@ -218,7 +220,8 @@ export function initStoreSchema(db: Database.Database): void {
       product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
       title      TEXT    NOT NULL,
       price      REAL    NOT NULL,
-      quantity   INTEGER NOT NULL DEFAULT 1
+      quantity   INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
 
     -- ─── Conversations ───────────────────────────────────────────────────────
@@ -297,6 +300,15 @@ export function initStoreSchema(db: Database.Database): void {
     CREATE TRIGGER IF NOT EXISTS messages_updated_at AFTER UPDATE ON messages FOR EACH ROW BEGIN
       UPDATE messages SET updated_at = datetime('now') WHERE id = OLD.id;
     END;
+    CREATE TRIGGER IF NOT EXISTS order_notes_updated_at AFTER UPDATE ON order_notes FOR EACH ROW BEGIN
+      UPDATE order_notes SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS order_files_updated_at AFTER UPDATE ON order_files FOR EACH ROW BEGIN
+      UPDATE order_files SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS order_items_updated_at AFTER UPDATE ON order_items FOR EACH ROW BEGIN
+      UPDATE order_items SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
 
     -- Update last_message and counts on message insert (PERF-3)
     CREATE TRIGGER IF NOT EXISTS messages_after_insert AFTER INSERT ON messages FOR EACH ROW BEGIN
@@ -338,6 +350,18 @@ export function initStoreSchema(db: Database.Database): void {
     WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
     BEGIN
       UPDATE promotions SET is_synced = 0 WHERE id = OLD.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS order_notes_sync_dirty AFTER UPDATE ON order_notes FOR EACH ROW
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE order_notes SET is_synced = 0 WHERE id = OLD.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS order_files_sync_dirty AFTER UPDATE ON order_files FOR EACH ROW
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE order_files SET is_synced = 0 WHERE id = OLD.id;
     END;
   `);
 }
