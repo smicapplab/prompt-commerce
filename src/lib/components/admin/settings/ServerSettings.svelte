@@ -152,6 +152,97 @@
         </div>
       </div>
     </div>
+
+    <!-- External Services Card -->
+    <div
+      class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow"
+    >
+      <div
+        class="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3"
+      >
+        <div
+          class="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+            /><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            /></svg
+          >
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900 leading-none">Global Google Cloud</h3>
+          <p
+            class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-black"
+          >
+            System Defaults
+          </p>
+        </div>
+      </div>
+
+      <div class="p-6 space-y-4 flex-1">
+        <div class="space-y-1.5 transition-all focus-within:text-orange-600">
+          <label
+            for="g-places-key"
+            class="text-[11px] font-black uppercase tracking-widest px-1"
+            >Default Address Picker Key</label
+          >
+          <input
+            id="g-places-key"
+            type="text"
+            disabled={userRole !== "super_admin"}
+            value={serverSettings.google_places_browser_key || serverSettings.google_places_api_key || ""}
+            oninput={(e) =>
+              setServer(
+                "google_places_browser_key",
+                (e.target as HTMLInputElement).value,
+              )}
+            placeholder="AIzaSy... (Client-side)"
+            class="w-full rounded-2xl border border-gray-100 bg-gray-50/30 px-4 py-3 text-sm font-mono focus:bg-white focus:border-orange-500 outline-none transition-all disabled:opacity-50"
+          />
+        </div>
+
+        <div class="space-y-1.5 transition-all focus-within:text-orange-600">
+          <label
+            for="g-maps-key"
+            class="text-[11px] font-black uppercase tracking-widest px-1"
+            >Default Order Map Key</label
+          >
+          <input
+            id="g-maps-key"
+            type="text"
+            disabled={userRole !== "super_admin"}
+            value={serverSettings.google_maps_embed_key || serverSettings.google_places_api_key || ""}
+            oninput={(e) =>
+              setServer(
+                "google_maps_embed_key",
+                (e.target as HTMLInputElement).value,
+              )}
+            placeholder="AIzaSy... (Staff-only)"
+            class="w-full rounded-2xl border border-gray-100 bg-gray-50/30 px-4 py-3 text-sm font-mono focus:bg-white focus:border-orange-500 outline-none transition-all disabled:opacity-50"
+          />
+        </div>
+
+        <div
+          class="p-4 rounded-2xl bg-orange-50/50 border border-orange-100"
+        >
+          <p class="text-[10px] text-orange-800 font-medium leading-relaxed italic">
+            These keys serve as global fallbacks. Individual sellers can override these in their own <strong>Maintenance</strong> tab using domain-restricted keys.
+          </p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Actions -->

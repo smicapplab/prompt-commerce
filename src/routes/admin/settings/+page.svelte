@@ -10,6 +10,7 @@
   import PaymentSettings from "$lib/components/admin/settings/PaymentSettings.svelte";
   import UsersSettings from "$lib/components/admin/settings/UsersSettings.svelte";
   import ServerSettings from "$lib/components/admin/settings/ServerSettings.svelte";
+  import MaintenanceSettings from "$lib/components/admin/settings/MaintenanceSettings.svelte";
 
   // Per-store settings (require a store is selected)
   let storeSettings = $state<Record<string, string | boolean>>({});
@@ -36,6 +37,12 @@
   let paymentInstructionsInput = $state("");
   let paymentLinkTemplateInput = $state("");
   let assistedLabelInput = $state("");
+
+  // Google Keys specific state
+  let googlePlacesBrowserKeyInput = $state("");
+  let googleMapsEmbedKeyInput = $state("");
+  let showGooglePlacesKey = $state(false);
+  let showGoogleMapsKey = $state(false);
 
   // Visibility toggles for keys
   let showClaudeKey = $state(false);
@@ -117,6 +124,12 @@
         k4: paymentLinkTemplateInput,
         k5: assistedLabelInput,
       });
+    if (activeTab === "maintenance")
+      return JSON.stringify({
+        ...storeSettings,
+        k1: googlePlacesBrowserKeyInput,
+        k2: googleMapsEmbedKeyInput,
+      });
     if (activeTab === "server") return JSON.stringify(serverSettings);
     return "";
   }
@@ -146,6 +159,7 @@
         ["ai", "AI / LLM"],
         ["telegram", "Messaging"],
         ["payments", "Payments"],
+        ["maintenance", "Maintenance"],
       );
     }
     tabs.push(["server", "Server"]);
@@ -234,6 +248,8 @@
       paymentInstructionsInput = val("payment_instructions");
       paymentLinkTemplateInput = val("payment_link_template");
       assistedLabelInput = val("assisted_label");
+      googlePlacesBrowserKeyInput = ""; // Masked on server
+      googleMapsEmbedKeyInput = ""; // Masked on server
 
       // Set connection mode based on derived state
       telegramMode = val("telegram_webhook_url") ? "webhook" : "polling";
@@ -443,6 +459,37 @@
       storeSettings = await res.json();
       paymentApiKeyInput = paymentWebhookSecretInput = "";
       saved = "payments";
+      updateSnap();
+      setTimeout(() => (saved = ""), 3000);
+    } else {
+      const d = await res.json();
+      error = d.error ?? "Save failed";
+    }
+  }
+
+  async function saveMaintenance() {
+    if (!activeStore.slug) return;
+    saving = true;
+    saved = "";
+    error = "";
+    const payload: Record<string, string | null> = {
+      google_places_browser_key: googlePlacesBrowserKeyInput.trim() || (storeSettings.google_places_browser_key_set ? undefined : null),
+      google_maps_embed_key: googleMapsEmbedKeyInput.trim() || (storeSettings.google_maps_embed_key_set ? undefined : null),
+    };
+    
+    // Remove undefined values (they mean keep existing)
+    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
+    const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+      body: JSON.stringify(payload),
+    });
+    saving = false;
+    if (res.ok) {
+      storeSettings = await res.json();
+      googlePlacesBrowserKeyInput = googleMapsEmbedKeyInput = "";
+      saved = "maintenance";
       updateSnap();
       setTimeout(() => (saved = ""), 3000);
     } else {
@@ -667,6 +714,13 @@
         bind:newUserName bind:newUserPass bind:newUserFirstName bind:newUserLastName bind:newUserEmail bind:newUserMobile bind:newUserRole
         bind:showNewUserPass bind:editingUser bind:showEditUserPass
         {saving} {error} {addUser} {updateUser} {deleteUser} {openEditModal}
+      />
+    {:else if activeTab === "maintenance"}
+      <MaintenanceSettings
+        {activeStore} {storeSettings} {val} {set} {saving} {saved}
+        bind:googlePlacesBrowserKeyInput bind:googleMapsEmbedKeyInput
+        bind:showGooglePlacesKey bind:showGoogleMapsKey
+        onSave={saveMaintenance}
       />
     {:else if activeTab === "server"}
       <ServerSettings

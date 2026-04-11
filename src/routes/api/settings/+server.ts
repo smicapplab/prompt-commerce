@@ -8,6 +8,7 @@ const SERVER_KEYS = [
   'gateway_url',
   'seller_public_url',
   'admin_base_url',
+  'google_places_api_key',
 ] as const;
 
 // ─── Per-store settings (store DB) ───────────────────────────────────────────
@@ -42,6 +43,9 @@ const STORE_KEYS = [
   // Telegram and WhatsApp seller notifications
   'telegram_notify_chat_id',
   'whatsapp_notify_number',
+  // Google Cloud
+  'google_places_browser_key',
+  'google_maps_embed_key',
 ] as const;
 
 type ServerKey = typeof SERVER_KEYS[number];
@@ -67,7 +71,7 @@ function readSettings(db: ReturnType<typeof getDb>, isStore: boolean): Record<st
     // Mask sensitive keys — return _set boolean instead of value
     const sensitive = new Set<StoreKey>([
       'claude_api_key', 'gemini_api_key', 'openai_api_key', 'serper_api_key', 'telegram_bot_token',
-      'payment_api_key', 'payment_webhook_secret',
+      'payment_api_key', 'payment_webhook_secret', 'google_places_browser_key', 'google_maps_embed_key',
     ]);
     for (const key of STORE_KEYS) {
       if (sensitive.has(key)) {
@@ -138,14 +142,16 @@ export const PATCH: RequestHandler = async (event) => {
     const MESSAGING_KEYS = new Set(['telegram_notify_chat_id', 'whatsapp_notify_number']);
     const TELEGRAM_BOT_KEYS = new Set(['telegram_webhook_url']);
     const STORE_CONFIG_KEYS = new Set(['allows_pickup']);
+    const GOOGLE_KEYS = new Set(['google_places_browser_key', 'google_maps_embed_key']);
 
     const hasAiChange = entries.some(([key]) => AI_KEYS.has(key));
     const hasPaymentChange = entries.some(([key]) => PAYMENT_KEYS.has(key));
     const hasMessagingChange = entries.some(([key]) => MESSAGING_KEYS.has(key));
     const hasTelegramBotChange = entries.some(([key]) => TELEGRAM_BOT_KEYS.has(key));
     const hasStoreConfigChange = entries.some(([key]) => STORE_CONFIG_KEYS.has(key));
+    const hasGoogleChange = entries.some(([key]) => GOOGLE_KEYS.has(key));
 
-    if (hasAiChange || hasPaymentChange || hasMessagingChange || hasTelegramBotChange || hasStoreConfigChange) {
+    if (hasAiChange || hasPaymentChange || hasMessagingChange || hasTelegramBotChange || hasStoreConfigChange || hasGoogleChange) {
       void (async () => {
         try {
           const registry = getDb();
@@ -167,7 +173,8 @@ export const PATCH: RequestHandler = async (event) => {
             'ai_provider', 'gemini_api_key', 'claude_api_key', 'openai_api_key', 'ai_model', 'ai_system_prompt', 'serper_api_key',
             'payment_provider', 'payment_api_key', 'payment_public_key', 'payment_webhook_secret', 'payment_instructions', 'payment_link_template', 'assisted_label', 'allow_cod', 'payment_methods',
             'telegram_notify_chat_id', 'telegram_webhook_url', 'whatsapp_notify_number',
-            'allows_pickup'
+            'allows_pickup',
+            'google_places_browser_key', 'google_maps_embed_key'
           ];
           const settingRows = storeDb
             .prepare(`SELECT key, value FROM settings WHERE key IN (${allKeys.map(() => '?').join(',')})`)
@@ -257,6 +264,19 @@ export const PATCH: RequestHandler = async (event) => {
               signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
                 webhookUrl: s['telegram_webhook_url'] || null,
+              }),
+            });
+          }
+
+          // ── Push Google Cloud config ───────────────────────────────────────
+          if (hasGoogleChange) {
+            await fetch(`${gatewayUrl}/api/stores/${slug}/google-config`, {
+              method: 'PATCH',
+              headers,
+              signal: AbortSignal.timeout(10000),
+              body: JSON.stringify({
+                googlePlacesBrowserKey: s['google_places_browser_key'] || null,
+                googleMapsEmbedKey:     s['google_maps_embed_key']     || null,
               }),
             });
           }
