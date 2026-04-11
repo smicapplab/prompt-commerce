@@ -3,6 +3,31 @@ import type { RequestHandler } from './$types.js';
 import { requireAuth, requireStoreRole } from '$lib/server/auth.js';
 import { getStoreDb } from '$lib/server/db.js';
 
+interface SQLiteOrder {
+  id: number;
+  buyer_ref: string | null;
+  channel: string;
+  status: string;
+  total: number | null;
+  notes: string | null;
+  delivery_type: string;
+  payment_provider: string | null;
+  payment_instructions: string | null;
+  created_at: string;
+  updated_at: string;
+  is_synced: number;
+  deleted_at: string | null;
+}
+
+interface SQLiteCountResult {
+  count: number;
+}
+
+interface SQLiteItemCount {
+  order_id: number;
+  count: number;
+}
+
 export const GET: RequestHandler = async (event) => {
   const store = event.url.searchParams.get('store');
   const auth = await requireStoreRole(event, store, ['ops']);
@@ -23,7 +48,7 @@ export const GET: RequestHandler = async (event) => {
   const db = getStoreDb(store);
 
   let query = `SELECT * FROM orders WHERE 1=1`;
-  const params: any[] = [];
+  const params: (string | number)[] = [];
 
   if (!showDeleted) {
     query += ` AND deleted_at IS NULL`;
@@ -45,21 +70,21 @@ export const GET: RequestHandler = async (event) => {
   query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
   params.push(limit, offset);
 
-  const orders = db.prepare(query).all(...params) as any[];
+  const orders = db.prepare(query).all(...params) as SQLiteOrder[];
 
   const orderIds = orders.map((o) => o.id);
-  let itemCounts: Record<number, number> = {};
+  const itemCounts: Record<number, number> = {};
   if (orderIds.length > 0) {
     const placeholders = orderIds.map(() => '?').join(',');
     const counts = db.prepare(
       `SELECT order_id, COUNT(*) as count FROM order_items WHERE order_id IN (${placeholders}) GROUP BY order_id`
-    ).all(...orderIds) as any[];
+    ).all(...orderIds) as SQLiteItemCount[];
     for (const row of counts) itemCounts[row.order_id] = row.count;
   }
   const enriched = orders.map((o) => ({ ...o, item_count: itemCounts[o.id] ?? 0 }));
 
   let countQuery = `SELECT COUNT(*) as count FROM orders WHERE 1=1`;
-  const countParams: any[] = [];
+  const countParams: (string | number)[] = [];
   if (!showDeleted) {
     countQuery += ` AND deleted_at IS NULL`;
   }
@@ -77,10 +102,29 @@ export const GET: RequestHandler = async (event) => {
     countQuery += ` AND delivery_type = ?`;
     countParams.push(deliveryType);
   }
-  const { count } = db.prepare(countQuery).get(...countParams) as any;
+  const countRow = db.prepare(countQuery).get(...countParams) as SQLiteCountResult;
+  const count = countRow?.count ?? 0;
 
   return json({ orders: enriched, totalCount: count });
 };
+
+interface CreateOrderBody {
+  buyer_ref?: string | null;
+  channel?: string;
+  status?: string;
+  total?: number | null;
+  notes?: string | null;
+  delivery_type?: string;
+  payment_provider?: string | null;
+  payment_instructions?: string | null;
+}
+
+interface CreateOrderItem {
+  product_id?: number | null;
+  title: string;
+  price?: number;
+  quantity?: number;
+}
 
 export const POST: RequestHandler = async (event) => {
   const store = event.url.searchParams.get('store');
@@ -89,7 +133,7 @@ export const POST: RequestHandler = async (event) => {
 
   if (!store) return json({ error: 'store is required' }, { status: 400 });
 
-  const body = await event.request.json();
+  const body = await event.request.json() as { items: CreateOrderItem[] } & CreateOrderBody;
   const { items, ...orderBody } = body;
 
   const VALID_STATUSES = [
@@ -104,7 +148,7 @@ export const POST: RequestHandler = async (event) => {
   const db = getStoreDb(store);
   const now = new Date().toISOString();
 
-  const createOrder = db.transaction((orderData: any, itemsData: any[]) => {
+  const createOrder = db.transaction((orderData: CreateOrderBody, itemsData: CreateOrderItem[]) => {
     const result = db.prepare(`
       INSERT INTO orders (
         buyer_ref, channel, status, total, notes, 
@@ -138,15 +182,13 @@ export const POST: RequestHandler = async (event) => {
         
         if (item.product_id) {
           // SEC-11: Atomic stock decrement with check to prevent negative stock.
-          // We don't manually set updated_at here so that the products_sync_dirty 
-          // trigger can catch the change and set is_synced = 0 automatically.
           const updateResult = db.prepare(
             'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?'
           ).run(qty, item.product_id, qty);
           
           if (updateResult.changes === 0) {
             // Check if product exists to give a better error message
-            const p = db.prepare('SELECT title, stock_quantity FROM products WHERE id = ?').get(item.product_id) as any;
+            const p = db.prepare('SELECT title, stock_quantity FROM products WHERE id = ?').get(item.product_id) as { title: string; stock_quantity: number };
             if (!p) {
               throw new Error(`Product ID ${item.product_id} not found`);
             } else {
@@ -167,7 +209,7 @@ export const POST: RequestHandler = async (event) => {
   });
 
   const orderId = createOrder(orderBody, items);
-  const order = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(orderId);
+  const order = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(orderId) as SQLiteOrder;
   const orderItems = db.prepare(`
     SELECT oi.*, p.title as product_title
     FROM order_items oi
@@ -175,5 +217,5 @@ export const POST: RequestHandler = async (event) => {
     WHERE oi.order_id = ?
   `).all(orderId);
 
-  return json({ ...(order as any), items: orderItems }, { status: 201 });
+  return json({ ...order, items: orderItems }, { status: 201 });
 };
