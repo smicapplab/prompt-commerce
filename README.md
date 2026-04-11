@@ -40,7 +40,7 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 
 ### WhatsApp Customer Interface & Fulfillment
 *Ordering via WhatsApp*
-<video src="screenshots/whatsapp.mp4" controls width="350"></video>
+[![Watch Demo](screenshots/whatsapp-thumbnail.png)](https://github.com/smicapplab/prompt-commerce/blob/main/screenshots/whatsapp.mp4?raw=true)
 
 *Fulfillment of WhatsApp order*
 <video src="screenshots/whatsapp-order.mp4" controls width="350"></video>
