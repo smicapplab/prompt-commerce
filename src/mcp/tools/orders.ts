@@ -46,6 +46,9 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
         quantity: z.number().int().min(1).describe('Quantity'),
       })).min(1).describe('Items to order'),
       buyer_ref: z.string().optional().describe('Customer identifier (e.g. Telegram user ID)'),
+      buyer_name: z.string().optional().describe('Customer name'),
+      buyer_email: z.string().optional().describe('Customer email'),
+      delivery_address: z.string().optional().describe('Clean delivery address string'),
       channel: z.string().default('telegram').describe('Sales channel: telegram, web, etc.'),
       notes: z.string().optional().describe('Delivery notes, name, address, etc.'),
       lat: z.number().optional().describe('Latitude coordinate'),
@@ -55,7 +58,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       payment_provider: z.string().optional(),
       payment_instructions: z.string().optional(),
     },
-    async ({ items, buyer_ref, channel, notes, confirm, delivery_type, payment_provider, payment_instructions, lat, lng }) => {
+    async ({ items, buyer_ref, buyer_name, buyer_email, delivery_address, channel, notes, confirm, delivery_type, payment_provider, payment_instructions, lat, lng }) => {
       // Resolve products and validate stock
       const resolved: Array<{ product: ProductRow; quantity: number }> = [];
       const errors: string[] = [];
@@ -119,9 +122,23 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
         const initialStatus = (payment_provider === 'cod' || payment_provider === 'assisted') ? 'pending_payment' : 'pending';
 
         const orderResult = db.prepare(`
-          INSERT INTO orders (buyer_ref, channel, status, total, notes, lat, lng, delivery_type, payment_provider, payment_instructions, is_synced)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-        `).run(buyer_ref ?? null, channel, initialStatus, total, notes ?? null, lat ?? null, lng ?? null, delivery_type, payment_provider ?? null, payment_instructions ?? null);
+          INSERT INTO orders (buyer_ref, buyer_name, buyer_email, delivery_address, channel, status, total, notes, lat, lng, delivery_type, payment_provider, payment_instructions, is_synced)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `).run(
+          buyer_ref ?? null, 
+          buyer_name ?? null, 
+          buyer_email ?? null, 
+          delivery_address ?? null, 
+          channel, 
+          initialStatus, 
+          total, 
+          notes ?? null, 
+          lat ?? null, 
+          lng ?? null, 
+          delivery_type, 
+          payment_provider ?? null, 
+          payment_instructions ?? null
+        );
 
         const orderId = orderResult.lastInsertRowid as number;
 
@@ -146,7 +163,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
         content: [
           {
             type: 'text',
-            text: `✅ Order #${orderId} placed!\n\n${preview.items.map(i => `• ${i.title} × ${i.quantity}`).join('\n')}\n\nTotal: ₱${total.toFixed(2)}\nChannel: ${channel}\n${notes ? `Notes: ${notes}` : ''}`,
+            text: `✅ Order #${orderId} placed!\n\n${preview.items.map(i => `• ${i.title} × ${i.quantity}`).join('\n')}\n\nTotal: ₱${total.toFixed(2)}\nChannel: ${channel}\nBuyer: ${buyer_name || 'Guest'}\nAddress: ${delivery_address || 'None'}\n${notes ? `Notes: ${notes}` : ''}`,
           },
           {
             type: 'text',
@@ -184,7 +201,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       return {
         content: [{
           type: 'text',
-          text: `Order #${order.id}\nStatus: ${order.status}\nChannel: ${order.channel}\nTotal: ₱${(order.total ?? 0).toFixed(2)}\n${order.notes ? `Notes: ${order.notes}\n` : ''}Created: ${order.created_at}\n\nItems:\n${itemLines}`,
+          text: `Order #${order.id}\nStatus: ${order.status}\nChannel: ${order.channel}\nCustomer: ${(order as any).buyer_name || 'Guest'} (${(order as any).buyer_email || 'No email'})\nAddress: ${(order as any).delivery_address || 'None'}\nTotal: ₱${(order.total ?? 0).toFixed(2)}\n${order.notes ? `Notes: ${order.notes}\n` : ''}Created: ${order.created_at}\n\nItems:\n${itemLines}`,
         }],
       };
     },

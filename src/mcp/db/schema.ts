@@ -160,6 +160,9 @@ export function initStoreSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS orders (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       buyer_ref    TEXT,
+      buyer_name   TEXT,
+      buyer_email  TEXT,
+      delivery_address TEXT,
       channel      TEXT    NOT NULL DEFAULT 'telegram',
       status       TEXT    NOT NULL DEFAULT 'pending',
       delivery_type TEXT   NOT NULL DEFAULT 'delivery',

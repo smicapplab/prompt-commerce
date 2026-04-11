@@ -13,6 +13,9 @@ export interface OrderItem {
 export interface Order {
   id: number;
   buyer_ref: string | null;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  delivery_address: string | null;
   channel: string;
   status: string;
   total: number | null;

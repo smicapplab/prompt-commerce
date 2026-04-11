@@ -15,11 +15,14 @@
   // ── Inline edit state ───────────────────────────────────────────
   let editingBuyer = $state(false);
   let editBuyerRef = $state("");
+  let editBuyerName = $state("");
+  let editBuyerEmail = $state("");
   let editChannel = $state("");
   let savingBuyer = $state(false);
 
   let editingDelivery = $state(false);
   let editDeliveryType = $state("");
+  let editDeliveryAddress = $state("");
   let savingDelivery = $state(false);
 
   let editingPayment = $state(false);
@@ -304,6 +307,8 @@
 
   function startEditBuyer() {
     editBuyerRef = order?.buyer_ref ?? "";
+    editBuyerName = (order as any)?.buyer_name ?? "";
+    editBuyerEmail = (order as any)?.buyer_email ?? "";
     editChannel = order?.channel ?? "manual";
     editingBuyer = true;
   }
@@ -312,6 +317,8 @@
     savingBuyer = true;
     const ok = await patch({
       buyer_ref: editBuyerRef || null,
+      buyer_name: editBuyerName || null,
+      buyer_email: editBuyerEmail || null,
       channel: editChannel,
     });
     savingBuyer = false;
@@ -320,12 +327,16 @@
 
   function startEditDelivery() {
     editDeliveryType = (order as any)?.delivery_type ?? "delivery";
+    editDeliveryAddress = (order as any)?.delivery_address ?? "";
     editingDelivery = true;
   }
 
   async function saveDelivery() {
     savingDelivery = true;
-    const ok = await patch({ delivery_type: editDeliveryType });
+    const ok = await patch({ 
+      delivery_type: editDeliveryType,
+      delivery_address: editDeliveryAddress || null
+    });
     savingDelivery = false;
     if (ok) editingDelivery = false;
   }
@@ -1408,14 +1419,41 @@
               <div class="space-y-3">
                 <div>
                   <label
+                    for="edit-buyer-name"
+                    class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
+                    >Customer Name</label
+                  >
+                  <input
+                    id="edit-buyer-name"
+                    bind:value={editBuyerName}
+                    placeholder="e.g. John Dela Cruz"
+                    class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label
+                    for="edit-buyer-email"
+                    class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
+                    >Email Address</label
+                  >
+                  <input
+                    id="edit-buyer-email"
+                    type="email"
+                    bind:value={editBuyerEmail}
+                    placeholder="e.g. john@example.com"
+                    class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label
                     for="edit-buyer-ref"
                     class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                    >Buyer Name / Ref</label
+                    >Platform Ref / ID</label
                   >
                   <input
                     id="edit-buyer-ref"
                     bind:value={editBuyerRef}
-                    placeholder="e.g. John Dela Cruz"
+                    placeholder="e.g. TG-123456"
                     class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
                   />
                 </div>
@@ -1461,16 +1499,19 @@
                 <div
                   class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-lg flex-shrink-0"
                 >
-                  {(order.buyer_ref ?? "G")[0].toUpperCase()}
+                  {((order as any).buyer_name || order.buyer_ref || "G")[0].toUpperCase()}
                 </div>
                 <div>
-                  <p class="font-bold text-gray-900">
-                    {order.buyer_ref ?? "Guest Buyer"}
+                  <p class="font-bold text-gray-900 leading-none">
+                    {(order as any).buyer_name || "Guest Buyer"}
                   </p>
+                  {#if (order as any).buyer_email}
+                    <p class="text-xs text-gray-500 mt-1">{ (order as any).buyer_email }</p>
+                  {/if}
                   <div
-                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-600 mt-1"
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-600 mt-2"
                   >
-                    {order.channel}
+                    {order.channel} {order.buyer_ref ? `• ${order.buyer_ref}` : ''}
                   </div>
                 </div>
               </div>
@@ -1481,7 +1522,7 @@
                   <p
                     class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
                   >
-                    Delivery Type
+                    Delivery Details
                   </p>
                   {#if !editingDelivery}
                     <button
@@ -1492,14 +1533,28 @@
                   {/if}
                 </div>
                 {#if editingDelivery}
-                  <div class="space-y-2">
-                    <select
-                      bind:value={editDeliveryType}
-                      class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                    >
-                      <option value="delivery">🚚 Home Delivery</option>
-                      <option value="pickup">🏪 Store Pickup</option>
-                    </select>
+                  <div class="space-y-3">
+                    <div>
+                      <label for="delivery-type" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Type</label>
+                      <select
+                        id="delivery-type"
+                        bind:value={editDeliveryType}
+                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
+                      >
+                        <option value="delivery">🚚 Home Delivery</option>
+                        <option value="pickup">🏪 Store Pickup</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="delivery-address" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clean Address</label>
+                      <textarea
+                        id="delivery-address"
+                        bind:value={editDeliveryAddress}
+                        placeholder="Complete address for delivery..."
+                        rows="3"
+                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none"
+                      ></textarea>
+                    </div>
                     <div class="flex justify-end gap-2">
                       <button
                         onclick={() => (editingDelivery = false)}
@@ -1516,11 +1571,18 @@
                     </div>
                   </div>
                 {:else}
-                  <p class="text-sm font-semibold text-gray-900">
-                    {(order as any).delivery_type === "pickup"
-                      ? "🏪 Store Pickup"
-                      : "🚚 Home Delivery"}
-                  </p>
+                  <div class="space-y-2">
+                    <p class="text-sm font-semibold text-gray-900">
+                      {(order as any).delivery_type === "pickup"
+                        ? "🏪 Store Pickup"
+                        : "🚚 Home Delivery"}
+                    </p>
+                    {#if (order as any).delivery_address}
+                      <p class="text-xs text-gray-600 leading-relaxed font-medium">
+                        {(order as any).delivery_address}
+                      </p>
+                    {/if}
+                  </div>
                 {/if}
               </div>
 
