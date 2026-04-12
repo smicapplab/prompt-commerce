@@ -49,6 +49,22 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 
 *The Telegram and WhatsApp interfaces feature **rich e-commerce photo cards** for product search results (with one-tap action buttons) and a **Google Places Mini App** for precise, structured delivery address collection including lat/lng coordinates.*
 
+## 📺 Video Demos
+
+Experience the full journey of Prompt Commerce, from conversational ordering to administrative fulfillment.
+
+### 🟢 WhatsApp Integration
+| Customer Ordering Experience | Admin Order Tracking & Logistics |
+| :--- | :--- |
+| [![WhatsApp Order](https://img.youtube.com/vi/Mfg_ycp5vWI/0.jpg)](https://www.youtube.com/watch?v=Mfg_ycp5vWI) | [![WhatsApp Tracking](https://img.youtube.com/vi/i97QXhYbc9Y/0.jpg)](https://www.youtube.com/watch?v=i97QXhYbc9Y) |
+| *Browsing & Checkout via WhatsApp* | *Fulfillment & Map Coordination* |
+
+### 🔵 Telegram Integration
+| Customer Ordering Experience | Admin Order Tracking & Logistics |
+| :--- | :--- |
+| [![Telegram Order](https://img.youtube.com/vi/Kh1RxYtABXE/0.jpg)](https://www.youtube.com/watch?v=Kh1RxYtABXE) | [![Telegram Tracking](https://img.youtube.com/vi/g65nxIKT1KM/0.jpg)](https://www.youtube.com/watch?v=g65nxIKT1KM) |
+| *AI-Powered Search & Payments* | *Merchant Dashboard Management* |
+
 > **Try it now!** Search for **Prompt-Commerce** or **@prompt_comm_bot** on Telegram to explore our test channel.
 
 ---
