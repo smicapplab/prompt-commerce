@@ -5,10 +5,25 @@ export interface Product {
   description: string | null;
   category_id: number | null;
   category_name: string | null;
+  product_type: string;
   price: number | null;
-  stock_quantity: number;
+  stock_quantity: number | null;
+  metadata: Record<string, any>;
   tags: string[] | null;    // stored as JSON text in SQLite
   images: string[] | null;  // stored as JSON text in SQLite
+  active: boolean;
+  variants?: Variant[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Variant {
+  id: number;
+  product_id: number;
+  sku: string | null;
+  price: number;
+  stock: number;
+  attributes: Record<string, any>;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -51,10 +66,24 @@ export interface ProductRow {
   description: string | null;
   category_id: number | null;
   category_name: string | null;
+  product_type: string;
   price: number | null;
-  stock_quantity: number;
+  stock_quantity: number | null;
+  metadata: string | null;
   tags: string | null;
   images: string | null;
+  active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VariantRow {
+  id: number;
+  product_id: number;
+  sku: string | null;
+  price: number;
+  stock: number;
+  attributes: string;
   active: number;
   created_at: string;
   updated_at: string;

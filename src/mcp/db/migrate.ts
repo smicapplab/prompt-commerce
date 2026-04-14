@@ -252,6 +252,8 @@ if (fs.existsSync(storesDir)) {
     // Add new columns to existing tables — SQLite doesn't support IF NOT EXISTS
     // for ALTER TABLE, so we catch the "duplicate column" error and continue.
     for (const stmt of [
+      'ALTER TABLE products   ADD COLUMN product_type TEXT    NOT NULL DEFAULT \'generic\'',
+      'ALTER TABLE products   ADD COLUMN metadata     TEXT    DEFAULT \'{}\'',
       'ALTER TABLE products   ADD COLUMN is_synced  INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE products   ADD COLUMN deleted_at TEXT    DEFAULT NULL',
       'ALTER TABLE products   ADD COLUMN updated_at TEXT    NOT NULL DEFAULT (datetime(\'now\'))',
@@ -291,8 +293,21 @@ if (fs.existsSync(storesDir)) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
     }
 
-    // New tables: order_notes and order_files
+    // New tables: product_variants, order_notes and order_files
     sdb.exec(`
+      CREATE TABLE IF NOT EXISTS product_variants (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id     INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        sku            TEXT    UNIQUE,
+        price          REAL    NOT NULL,
+        stock          INTEGER NOT NULL DEFAULT 0,
+        attributes     TEXT    NOT NULL DEFAULT '{}',
+        active         INTEGER NOT NULL DEFAULT 1,
+        is_synced      INTEGER NOT NULL DEFAULT 0,
+        created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+        updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+      );
+
       CREATE TABLE IF NOT EXISTS order_notes (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         order_id    INTEGER NOT NULL REFERENCES orders(id),
@@ -359,6 +374,7 @@ if (fs.existsSync(storesDir)) {
       "ALTER TABLE order_notes ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
       "ALTER TABLE order_files ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
       "ALTER TABLE order_items ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))",
+      "ALTER TABLE order_items ADD COLUMN variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL",
     ]) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
     }
@@ -374,6 +390,8 @@ if (fs.existsSync(storesDir)) {
       'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
       'CREATE INDEX IF NOT EXISTS idx_order_notes_order_id ON order_notes(order_id)',
       'CREATE INDEX IF NOT EXISTS idx_order_files_order_id ON order_files(order_id)',
+      'CREATE INDEX IF NOT EXISTS idx_product_variants_product_id ON product_variants(product_id)',
+      'CREATE INDEX IF NOT EXISTS idx_product_variants_sku ON product_variants(sku)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL',
       ]) {
 
@@ -424,6 +442,12 @@ if (fs.existsSync(storesDir)) {
         UPDATE order_items SET updated_at = datetime('now') WHERE id = OLD.id;
       END;
 
+      CREATE TRIGGER IF NOT EXISTS product_variants_updated_at AFTER UPDATE ON product_variants FOR EACH ROW
+      WHEN (NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL)
+      BEGIN
+        UPDATE product_variants SET updated_at = datetime('now') WHERE id = OLD.id;
+      END;
+
       -- Sync dirty triggers
       CREATE TRIGGER IF NOT EXISTS categories_sync_dirty AFTER UPDATE ON categories FOR EACH ROW
       WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
@@ -459,6 +483,18 @@ if (fs.existsSync(storesDir)) {
       WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
       BEGIN
         UPDATE order_files SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS product_variants_sync_dirty AFTER UPDATE ON product_variants FOR EACH ROW
+      WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+      BEGIN
+        UPDATE product_variants SET is_synced = 0 WHERE id = OLD.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS product_variants_parent_dirty AFTER UPDATE ON product_variants FOR EACH ROW
+      WHEN NEW.is_synced = 0 AND OLD.is_synced = 1
+      BEGIN
+        UPDATE products SET is_synced = 0 WHERE id = NEW.product_id;
       END;
     `);
     sdb.close();

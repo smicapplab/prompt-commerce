@@ -32,6 +32,7 @@ interface ProductRow {
   price: number | null;
   stock_quantity: number;
   active: number;
+  product_type: string;
 }
 
 // ─── Register tools ─────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
     {
       items: z.array(z.object({
         product_id: z.number().int().describe('Product ID'),
+        variant_id: z.number().int().optional().describe('Variant ID (optional)'),
         quantity: z.number().int().min(1).describe('Quantity'),
       })).min(1).describe('Items to order'),
       buyer_ref: z.string().optional().describe('Customer identifier (e.g. Telegram user ID)'),
@@ -62,12 +64,18 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
     },
     async ({ items, buyer_ref, buyer_name, buyer_email, delivery_address, channel, notes, confirm, delivery_type, payment_provider, payment_instructions, lat, lng, idempotency_key }) => {
       // Resolve products and validate stock
-      const resolved: Array<{ product: ProductRow; quantity: number }> = [];
+      const resolved: Array<{ 
+        product: ProductRow; 
+        variant?: any;
+        quantity: number;
+        title: string;
+        price: number;
+      }> = [];
       const errors: string[] = [];
 
       for (const item of items) {
         const product = db.prepare(
-          'SELECT id, title, price, stock_quantity, active FROM products WHERE id = ?'
+          'SELECT id, title, price, stock_quantity, active, product_type FROM products WHERE id = ?'
         ).get(item.product_id) as ProductRow | undefined;
 
         if (!product) {
@@ -78,11 +86,51 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
           errors.push(`"${product.title}" is not available.`);
           continue;
         }
-        if (product.stock_quantity < item.quantity) {
-          errors.push(`"${product.title}" only has ${product.stock_quantity} in stock (requested ${item.quantity}).`);
-          continue;
+
+        if (item.variant_id) {
+          const variant = db.prepare(
+            'SELECT id, price, stock, active, attributes FROM product_variants WHERE id = ? AND product_id = ?'
+          ).get(item.variant_id, item.product_id) as any;
+
+          if (!variant) {
+            errors.push(`Variant ID ${item.variant_id} not found for product "${product.title}".`);
+            continue;
+          }
+          if (!variant.active) {
+            errors.push(`Selected variant for "${product.title}" is not available.`);
+            continue;
+          }
+          if (variant.stock < item.quantity) {
+            errors.push(`Selected variant for "${product.title}" only has ${variant.stock} in stock (requested ${item.quantity}).`);
+            continue;
+          }
+
+          const attrs = JSON.parse(variant.attributes || '{}');
+          const variantTitle = `${product.title} (${Object.values(attrs).join(', ')})`;
+
+          resolved.push({ 
+            product, 
+            variant, 
+            quantity: item.quantity, 
+            title: variantTitle, 
+            price: variant.price 
+          });
+        } else {
+          if (product.product_type !== 'generic') {
+            errors.push(`"${product.title}" requires a variant selection.`);
+            continue;
+          }
+          if (product.stock_quantity < item.quantity) {
+            errors.push(`"${product.title}" only has ${product.stock_quantity} in stock (requested ${item.quantity}).`);
+            continue;
+          }
+          resolved.push({ 
+            product, 
+            quantity: item.quantity, 
+            title: product.title, 
+            price: product.price ?? 0 
+          });
         }
-        resolved.push({ product, quantity: item.quantity });
       }
 
       if (errors.length > 0) {
@@ -92,17 +140,18 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
       }
 
       const total = resolved.reduce(
-        (sum, { product, quantity }) => sum + (product.price ?? 0) * quantity,
+        (sum, { price, quantity }) => sum + price * quantity,
         0
       );
 
       const preview = {
-        items: resolved.map(({ product, quantity }) => ({
+        items: resolved.map(({ product, variant, title, price, quantity }) => ({
           product_id: product.id,
-          title: product.title,
-          price: product.price,
+          variant_id: variant?.id ?? null,
+          title,
+          price,
           quantity,
-          subtotal: (product.price ?? 0) * quantity,
+          subtotal: price * quantity,
         })),
         total,
         buyer_ref: buyer_ref ?? null,
@@ -165,26 +214,29 @@ export function registerOrderTools(server: McpServer, db: Database.Database): vo
 
         const orderId = orderResult.lastInsertRowid as number;
 
-        for (const { product, quantity } of resolved) {
+        for (const { product, variant, quantity, title, price } of resolved) {
           db.prepare(`
-            INSERT INTO order_items (order_id, product_id, title, price, quantity)
-            VALUES (?, ?, ?, ?, ?)
-          `).run(orderId, product.id, product.title, product.price ?? 0, quantity);
+            INSERT INTO order_items (order_id, product_id, variant_id, title, price, quantity)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(orderId, product.id, variant?.id ?? null, title, price, quantity);
 
           // Deduct stock
-          // We don't manually set updated_at here so that the products_sync_dirty 
-          // trigger can catch the change and set is_synced = 0 automatically.
-          const updateResult = db.prepare(
-            'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?'
-          ).run(quantity, product.id, quantity);
+          if (variant) {
+            const updateResult = db.prepare(
+              'UPDATE product_variants SET stock = stock - ? WHERE id = ? AND stock >= ?'
+            ).run(quantity, variant.id, quantity);
 
-          if (updateResult.changes === 0) {
-            // Check if product exists to give a better error message
-            const p = db.prepare('SELECT title, stock_quantity FROM products WHERE id = ?').get(product.id) as any;
-            if (!p) {
-              throw new Error(`Product ID ${product.id} not found`);
-            } else {
-              throw new Error(`Insufficient stock for "${p.title}" (requested ${quantity}, available ${p.stock_quantity})`);
+            if (updateResult.changes === 0) {
+              throw new Error(`Insufficient stock for variant of "${product.title}"`);
+            }
+          } else {
+            const updateResult = db.prepare(
+              'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?'
+            ).run(quantity, product.id, quantity);
+
+            if (updateResult.changes === 0) {
+              const p = db.prepare('SELECT title, stock_quantity FROM products WHERE id = ?').get(product.id) as any;
+              throw new Error(`Insufficient stock for "${p?.title || 'product'}" (requested ${quantity}, available ${p?.stock_quantity || 0})`);
             }
           }
         }

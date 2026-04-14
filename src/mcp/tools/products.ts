@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type Database from 'better-sqlite3';
-import type { ProductRow } from '../types/index.js';
+import type { ProductRow, VariantRow, Product, Variant } from '../types/index.js';
 import * as xlsx from 'xlsx';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -51,19 +51,19 @@ export async function downloadAndCacheImages(urls: string[]): Promise<{ urls: st
   return { urls: finalUrls, errors };
 }
 
-function parseProduct(row: ProductRow, baseUrl: string) {
+function parseProduct(row: ProductRow, baseUrl: string): Product {
   // M9: Safely handle JSON.parse for images and tags
   const safeParse = (str: string | null) => {
     if (!str) return [];
     try {
-      return JSON.parse(str) as string[];
+      return JSON.parse(str);
     } catch {
       console.error(`Failed to parse JSON column: ${str}`);
       return [];
     }
   };
 
-  const images = safeParse(row.images);
+  const images = safeParse(row.images) as string[];
 
   const absoluteImages = images.map(img => {
     if (img.startsWith('/uploads/') && baseUrl) {
@@ -75,9 +75,19 @@ function parseProduct(row: ProductRow, baseUrl: string) {
   return {
     ...row,
     active: Boolean(row.active),
-    tags: safeParse(row.tags),
+    tags: safeParse(row.tags) as string[],
     images: absoluteImages,
-    availability: row.stock_quantity > 0 ? 'in_stock' : 'out_of_stock',
+    metadata: row.metadata ? JSON.parse(row.metadata) : {},
+    // @ts-ignore - availability is a UI helper, not in DB
+    availability: (row.stock_quantity ?? 0) > 0 ? 'in_stock' : 'out_of_stock',
+  };
+}
+
+function parseVariant(row: VariantRow): Variant {
+  return {
+    ...row,
+    active: Boolean(row.active),
+    attributes: row.attributes ? JSON.parse(row.attributes) : {},
   };
 }
 
@@ -178,8 +188,14 @@ export function registerProductTools(
       const baseUrlRow = db.prepare("SELECT value FROM settings WHERE key = 'base_url'").get() as { value: string } | undefined;
       const baseUrl = baseUrlRow?.value?.replace(/\/$/, '') ?? '';
 
+      const product = parseProduct(row, baseUrl);
+
+      // Fetch variants
+      const variantRows = db.prepare('SELECT * FROM product_variants WHERE product_id = ?').all(row.id) as VariantRow[];
+      product.variants = variantRows.map(parseVariant);
+
       return {
-        content: [{ type: 'text', text: JSON.stringify(parseProduct(row, baseUrl), null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(product, null, 2) }],
       };
     },
   );
@@ -193,13 +209,15 @@ export function registerProductTools(
       description: z.string().optional().describe('Product description'),
       sku: z.string().optional().describe('Stock-keeping unit (unique identifier)'),
       category: z.string().optional().describe('Category name — will be created if it does not exist'),
-      price: z.number().min(0).optional().describe('Price in local currency'),
-      stock_quantity: z.number().int().min(0).default(0).describe('Initial stock level'),
+      product_type: z.enum(['generic', 'wearable', 'food', 'device', 'travel']).default('generic').describe('The type of product'),
+      price: z.number().min(0).optional().describe('Price in local currency (nullable if variants exist)'),
+      stock_quantity: z.number().int().min(0).optional().describe('Initial stock level (nullable if variants exist)'),
+      metadata: z.record(z.string(), z.any()).optional().describe('Type-specific descriptive metadata'),
       tags: z.array(z.string()).optional().describe('Tags for search and filtering'),
       images: z.array(z.string()).optional().describe('Image URLs'),
       confirm: z.boolean().default(false).describe('Set to true to actually save. When false (default), returns a preview for review.'),
     },
-    async ({ title, description, sku, category, price, stock_quantity, tags, images, confirm }) => {
+    async ({ title, description, sku, category, product_type, price, stock_quantity, metadata, tags, images, confirm }) => {
       // ── Preview mode ──
       if (!confirm) {
         const preview = {
@@ -207,8 +225,10 @@ export function registerProductTools(
           sku: sku ?? null,
           description: description ?? null,
           category: category ?? null,
+          product_type,
           price: price ?? null,
-          stock_quantity,
+          stock_quantity: stock_quantity ?? 0,
+          metadata: metadata ?? {},
           tags: tags ?? [],
           images: images ?? [],
           active: true,
@@ -242,16 +262,18 @@ export function registerProductTools(
 
       const result = db
         .prepare(
-          `INSERT INTO products (title, description, sku, category_id, price, stock_quantity, tags, images)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO products (title, description, sku, category_id, product_type, price, stock_quantity, metadata, tags, images)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           title,
           description ?? null,
           sku ?? null,
           categoryId,
+          product_type,
           price ?? null,
-          stock_quantity,
+          stock_quantity ?? null,
+          metadata ? JSON.stringify(metadata) : '{}',
           tags ? JSON.stringify(tags) : null,
           finalImages ? JSON.stringify(finalImages) : null,
         );
@@ -628,6 +650,194 @@ export function registerProductTools(
           isError: true,
         };
       }
+    },
+  );
+
+  // ─── list_variants ───────────────────────────────────────────────────────
+  server.tool(
+    'list_variants',
+    'List all variants for a specific product.',
+    {
+      product_id: z.number().int().describe('The ID of the parent product'),
+    },
+    async ({ product_id }) => {
+      const rows = db.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1').all(product_id) as VariantRow[];
+      const variants = rows.map(parseVariant);
+
+      return {
+        content: [{
+          type: 'text',
+          text: variants.length ? JSON.stringify(variants, null, 2) : 'No active variants found for this product.',
+        }],
+      };
+    },
+  );
+
+  // ─── get_variant ─────────────────────────────────────────────────────────
+  server.tool(
+    'get_variant',
+    'Fetch details for a single product variant by its ID or SKU.',
+    {
+      id: z.number().int().optional().describe('Variant ID'),
+      sku: z.string().optional().describe('Variant SKU'),
+    },
+    async ({ id, sku }) => {
+      if (!id && !sku) {
+        return {
+          content: [{ type: 'text', text: 'Error: provide either id or sku.' }],
+          isError: true,
+        };
+      }
+
+      const sql = `SELECT * FROM product_variants WHERE ${id ? 'id = ?' : 'sku = ?'}`;
+      const row = db.prepare(sql).get(id ?? sku) as VariantRow | undefined;
+
+      if (!row) {
+        return {
+          content: [{ type: 'text', text: 'Variant not found.' }],
+          isError: true,
+        };
+      }
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(parseVariant(row), null, 2) }],
+      };
+    },
+  );
+
+  // ─── add_variant ─────────────────────────────────────────────────────────
+  server.tool(
+    'add_variant',
+    'Add a new variant to a product.',
+    {
+      product_id: z.number().int().describe('The ID of the parent product'),
+      sku: z.string().describe('Unique SKU for this variant'),
+      price: z.number().min(0).describe('Price for this variant'),
+      stock: z.number().int().min(0).default(0).describe('Initial stock for this variant'),
+      attributes: z.record(z.string(), z.any()).describe('Variation axes (e.g. {color: "Red", size: "M"})'),
+    },
+    async ({ product_id, sku, price, stock, attributes }) => {
+      const product = db.prepare('SELECT id FROM products WHERE id = ?').get(product_id);
+      if (!product) {
+        return {
+          content: [{ type: 'text', text: `Parent product ID ${product_id} not found.` }],
+          isError: true,
+        };
+      }
+
+      try {
+        const result = db.prepare(
+          'INSERT INTO product_variants (product_id, sku, price, stock, attributes) VALUES (?, ?, ?, ?, ?)'
+        ).run(product_id, sku, price, stock, JSON.stringify(attributes));
+
+        return {
+          content: [{ type: 'text', text: `✅ Variant created successfully with ID ${result.lastInsertRowid}.` }],
+        };
+      } catch (e: any) {
+        return {
+          content: [{ type: 'text', text: `Error creating variant: ${e.message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ─── update_variant_stock ────────────────────────────────────────────────
+  server.tool(
+    'update_variant_stock',
+    'Update the stock level for a specific variant.',
+    {
+      id: z.number().int().describe('Variant ID'),
+      stock: z.number().int().min(0).describe('New stock level'),
+    },
+    async ({ id, stock }) => {
+      const result = db.prepare('UPDATE product_variants SET stock = ?, is_synced = 0 WHERE id = ?').run(stock, id);
+
+      if (result.changes === 0) {
+        return {
+          content: [{ type: 'text', text: 'Variant not found.' }],
+          isError: true,
+        };
+      }
+
+      return {
+        content: [{ type: 'text', text: `✅ Variant ${id} stock updated to ${stock}.` }],
+      };
+    },
+  );
+
+  // ─── update_variant_price ────────────────────────────────────────────────
+  server.tool(
+    'update_variant_price',
+    'Update the price for a specific variant.',
+    {
+      id: z.number().int().describe('Variant ID'),
+      price: z.number().min(0).describe('New price'),
+    },
+    async ({ id, price }) => {
+      const result = db.prepare('UPDATE product_variants SET price = ?, is_synced = 0 WHERE id = ?').run(price, id);
+
+      if (result.changes === 0) {
+        return {
+          content: [{ type: 'text', text: 'Variant not found.' }],
+          isError: true,
+        };
+      }
+
+      return {
+        content: [{ type: 'text', text: `✅ Variant ${id} price updated to ${price}.` }],
+      };
+    },
+  );
+
+  // ─── delete_variant ──────────────────────────────────────────────────────
+  server.tool(
+    'delete_variant',
+    'Soft-delete a variant by setting active=0.',
+    {
+      id: z.number().int().describe('Variant ID'),
+    },
+    async ({ id }) => {
+      const result = db.prepare('UPDATE product_variants SET active = 0, is_synced = 0 WHERE id = ?').run(id);
+
+      if (result.changes === 0) {
+        return {
+          content: [{ type: 'text', text: 'Variant not found.' }],
+          isError: true,
+        };
+      }
+
+      return {
+        content: [{ type: 'text', text: `✅ Variant ${id} deleted (deactivated).` }],
+      };
+    },
+  );
+
+  // ─── update_product_metadata ─────────────────────────────────────────────
+  server.tool(
+    'update_product_metadata',
+    'Update descriptive metadata for a product.',
+    {
+      id: z.number().int().describe('Product ID'),
+      metadata: z.record(z.string(), z.any()).describe('New metadata object (will merge with existing)'),
+    },
+    async ({ id, metadata }) => {
+      const row = db.prepare('SELECT metadata FROM products WHERE id = ?').get(id) as { metadata: string } | undefined;
+      if (!row) {
+        return {
+          content: [{ type: 'text', text: 'Product not found.' }],
+          isError: true,
+        };
+      }
+
+      const existing = row.metadata ? JSON.parse(row.metadata) : {};
+      const updated = { ...existing, ...metadata };
+
+      db.prepare('UPDATE products SET metadata = ?, is_synced = 0 WHERE id = ?').run(JSON.stringify(updated), id);
+
+      return {
+        content: [{ type: 'text', text: `✅ Metadata for product ${id} updated.` }],
+      };
     },
   );
 }

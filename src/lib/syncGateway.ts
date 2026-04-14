@@ -6,6 +6,7 @@ export interface SyncStatus {
   dirty: number;
   products: number;
   categories: number;
+  variants: number;
 }
 
 export interface SyncResult {
@@ -24,7 +25,7 @@ export async function fetchSyncStatus(slug: string): Promise<SyncStatus> {
     headers: authHeader(),
     signal: AbortSignal.timeout(10000)
   });
-  if (!res.ok) return { dirty: 0, products: 0, categories: 0 };
+  if (!res.ok) return { dirty: 0, products: 0, categories: 0, variants: 0 };
   return res.json();
 }
 

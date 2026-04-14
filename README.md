@@ -112,6 +112,7 @@ Experience the full journey of Prompt Commerce, from conversational ordering to 
 
 ### High-Performance Architecture
 - **Per-Store SQLite Containers**: Dedicated database files per store ensuring total data isolation and zero-latency queries.
+- **Product Types & Variants**: Support for complex product structures (Wearables, Food, Devices, Travel) with per-variant price and inventory tracking.
 - **Delta Sync Engine**: Optimized batch syncing ensures your gateway catalog is always up to date with minimal bandwidth usage.
 ---
 

@@ -137,13 +137,18 @@ export const POST: RequestHandler = async (event) => {
     });
 
   } else {
-    // ── 2b. Fetch dirty catalog rows (Existing Logic) ────────────────────────
+    // ── 2b. Fetch dirty catalog rows ────────────────────────────────────────
     type RawCategory = { id: number; name: string; parent_id: number | null; deleted_at: string | null; updated_at: string };
     type RawProduct = {
       id: number; title: string; description: string | null; sku: string | null;
-      price: number | null; stock_quantity: number; category_id: number | null;
+      product_type: string; price: number | null; stock_quantity: number | null;
+      metadata: string | null; category_id: number | null;
       tags: string | null; images: string | null; active: number; deleted_at: string | null;
       updated_at: string;
+    };
+    type RawVariant = {
+      id: number; product_id: number; sku: string | null; price: number;
+      stock: number; attributes: string; active: number; updated_at: string;
     };
 
     const dirtyCategories = storeDb
@@ -152,14 +157,18 @@ export const POST: RequestHandler = async (event) => {
 
     const dirtyProducts = storeDb
       .prepare(`
-        SELECT id, title, description, sku, price, stock_quantity,
-               category_id, tags, images, active, deleted_at, updated_at
+        SELECT id, title, description, sku, product_type, price, stock_quantity,
+               metadata, category_id, tags, images, active, deleted_at, updated_at
         FROM products WHERE is_synced = 0
       `)
       .all() as RawProduct[];
 
-    if (dirtyCategories.length === 0 && dirtyProducts.length === 0) {
-      return json({ success: true, synced: { categories: 0, products: 0 }, message: 'Nothing to sync.' });
+    const dirtyVariants = storeDb
+      .prepare('SELECT * FROM product_variants WHERE is_synced = 0')
+      .all() as RawVariant[];
+
+    if (dirtyCategories.length === 0 && dirtyProducts.length === 0 && dirtyVariants.length === 0) {
+      return json({ success: true, synced: { categories: 0, products: 0, variants: 0 }, message: 'Nothing to sync.' });
     }
 
     const upsertCategories = dirtyCategories
@@ -190,25 +199,47 @@ export const POST: RequestHandler = async (event) => {
             validImages.push(...filterSecureImageUrls([img]));
           }
         }
+
+        // Fetch variants for this product
+        const variants = storeDb.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1').all(p.id) as RawVariant[];
+
         return {
           id: p.id,
           title: p.title,
           description: p.description,
           sku: p.sku,
+          product_type: p.product_type,
           price: p.price,
           stock_quantity: p.stock_quantity,
+          metadata: (() => {
+            try { return p.metadata ? JSON.parse(p.metadata) : {}; } catch { return {}; }
+          })(),
           category_id: p.category_id,
           tags: (() => {
             try { return p.tags ? JSON.parse(p.tags) : []; } catch { return []; }
           })(),
           images: validImages,
           active: Boolean(p.active),
+          variants: variants.map(v => ({
+            id: v.id,
+            sku: v.sku,
+            price: v.price,
+            stock: v.stock,
+            attributes: (() => {
+              try { return v.attributes ? JSON.parse(v.attributes) : {}; } catch { return {}; }
+            })(),
+            active: Boolean(v.active),
+          })),
         };
       });
 
     const deleteProductIds = dirtyProducts
       .filter(p => p.deleted_at !== null)
       .map(p => p.id);
+
+    // Variants are soft-deleted by setting active=0, which is handled in upsertProducts.
+    // If we have explicit variant deletions (hard delete), they would go here.
+    // But our MCP tool uses soft-delete (active=0).
 
     const payload = {
       upsert: { categories: upsertCategories, products: upsertProducts },
@@ -239,6 +270,10 @@ export const POST: RequestHandler = async (event) => {
         const stmt = storeDb.prepare(`UPDATE products SET is_synced = 1 WHERE id = ? AND updated_at = ?`);
         for (const prod of dirtyProducts) stmt.run(prod.id, prod.updated_at);
       }
+      if (dirtyVariants.length > 0) {
+        const stmt = storeDb.prepare(`UPDATE product_variants SET is_synced = 1 WHERE id = ? AND updated_at = ?`);
+        for (const v of dirtyVariants) stmt.run(v.id, v.updated_at);
+      }
     });
     markSynced();
 
@@ -247,6 +282,7 @@ export const POST: RequestHandler = async (event) => {
       synced: {
         categories: (upsertCategories.length + deleteCategoryIds.length),
         products: (upsertProducts.length + deleteProductIds.length),
+        variants: dirtyVariants.length,
       },
       message: `Catalog sync complete for "${slug}".`,
     });

@@ -33,12 +33,17 @@ export const GET: RequestHandler = async (event) => {
     .prepare('SELECT COUNT(*) as n FROM order_files WHERE is_synced = 0')
     .get() as { n: number }).n;
 
+  const dirtyVariants = (db
+    .prepare('SELECT COUNT(*) as n FROM product_variants WHERE is_synced = 0')
+    .get() as { n: number }).n;
+
   return json({
-    dirty:      dirtyProducts + dirtyCategories + dirtyOrders + dirtyNotes + dirtyFiles,
+    dirty:      dirtyProducts + dirtyCategories + dirtyOrders + dirtyNotes + dirtyFiles + dirtyVariants,
     products:   dirtyProducts,
     categories: dirtyCategories,
     orders:     dirtyOrders,
     notes:      dirtyNotes,
     files:      dirtyFiles,
+    variants:   dirtyVariants,
   });
 };

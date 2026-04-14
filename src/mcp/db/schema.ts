@@ -117,13 +117,29 @@ export function initStoreSchema(db: Database.Database): void {
       title          TEXT    NOT NULL,
       description    TEXT,
       category_id    INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      product_type   TEXT    NOT NULL DEFAULT 'generic',
       price          REAL,
-      stock_quantity INTEGER NOT NULL DEFAULT 0,
+      stock_quantity INTEGER,
+      metadata       TEXT    DEFAULT '{}',
       tags           TEXT,
       images         TEXT,
       active         INTEGER NOT NULL DEFAULT 1,
       is_synced      INTEGER NOT NULL DEFAULT 0,  -- 0=dirty (needs push), 1=synced
       deleted_at     TEXT    DEFAULT NULL,        -- NULL=active; timestamp=soft-deleted
+      created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- ─── Product Variants ───────────────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS product_variants (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id     INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      sku            TEXT    UNIQUE,
+      price          REAL    NOT NULL,
+      stock          INTEGER NOT NULL DEFAULT 0,
+      attributes     TEXT    NOT NULL DEFAULT '{}',
+      active         INTEGER NOT NULL DEFAULT 1,
+      is_synced      INTEGER NOT NULL DEFAULT 0,
       created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -218,6 +234,7 @@ export function initStoreSchema(db: Database.Database): void {
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id   INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
       product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+      variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL,
       title      TEXT    NOT NULL,
       price      REAL    NOT NULL,
       quantity   INTEGER NOT NULL DEFAULT 1,
@@ -266,6 +283,8 @@ export function initStoreSchema(db: Database.Database): void {
     'CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status)',
     'CREATE INDEX IF NOT EXISTS idx_conversations_gateway_id ON conversations(gateway_id)',
     'CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id)',
+    'CREATE INDEX IF NOT EXISTS idx_product_variants_product_id ON product_variants(product_id)',
+    'CREATE INDEX IF NOT EXISTS idx_product_variants_sku ON product_variants(sku)',
   ]) {
     try { db.exec(stmt); } catch { /* column might not exist yet during migration */ }
   }
@@ -308,6 +327,11 @@ export function initStoreSchema(db: Database.Database): void {
     END;
     CREATE TRIGGER IF NOT EXISTS order_items_updated_at AFTER UPDATE ON order_items FOR EACH ROW BEGIN
       UPDATE order_items SET updated_at = datetime('now') WHERE id = OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS product_variants_updated_at AFTER UPDATE ON product_variants FOR EACH ROW
+    WHEN (NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL)
+    BEGIN
+      UPDATE product_variants SET updated_at = datetime('now') WHERE id = OLD.id;
     END;
 
     -- Update last_message and counts on message insert (PERF-3)
@@ -362,6 +386,20 @@ export function initStoreSchema(db: Database.Database): void {
     WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
     BEGIN
       UPDATE order_files SET is_synced = 0 WHERE id = OLD.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS product_variants_sync_dirty AFTER UPDATE ON product_variants FOR EACH ROW
+    WHEN NEW.is_synced = OLD.is_synced AND NEW.is_synced = 1 AND NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE product_variants SET is_synced = 0 WHERE id = OLD.id;
+    END;
+
+    -- If a variant is updated, the parent product should also be marked as dirty
+    -- to ensure the gateway re-tags and re-builds search vectors.
+    CREATE TRIGGER IF NOT EXISTS product_variants_parent_dirty AFTER UPDATE ON product_variants FOR EACH ROW
+    WHEN NEW.is_synced = 0 AND OLD.is_synced = 1
+    BEGIN
+      UPDATE products SET is_synced = 0 WHERE id = NEW.product_id;
     END;
   `);
 }
