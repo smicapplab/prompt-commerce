@@ -10,26 +10,157 @@
     Bot,
     Smartphone,
     BellRing,
+    RefreshCw,
+    AlertCircle,
   } from "@lucide/svelte";
+  import { onMount } from "svelte";
+  import { activeStore } from "$lib/stores/activeStore.svelte.js";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Card from "$lib/components/ui/Card.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Toggle from "$lib/components/ui/Toggle.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
+  import { fade } from "svelte/transition";
 
-  let {
-    activeStore,
-    storeSettings,
-    val,
-    set,
-    saving,
-    saved,
-    telegramMode = $bindable(),
-    telegramCustomUrl = $bindable(),
-    telegramKeyInput = $bindable(),
-    showTelegramKey = $bindable(),
-    telegramBotStatus,
-    telegramBotStatusInfo,
-    telegramWebhookUrlCopied = $bindable(),
-    defaultTelegramWebhookUrl,
-    whatsappStatus,
-    saveMessaging,
-  } = $props();
+  // Internal state
+  let data = $state<Record<string, string | boolean>>({});
+  let serverSettings = $state<Record<string, string>>({});
+  let loading = $state(false);
+  let saving = $state(false);
+  let saved = $state(false);
+  let error = $state("");
+
+  // Telegram specific
+  let telegramMode = $state<"polling" | "webhook">("polling");
+  let telegramCustomUrl = $state("");
+  let telegramKeyInput = $state("");
+  let showTelegramKey = $state(false);
+  let telegramWebhookUrlCopied = $state(false);
+
+  let telegramBotStatus = $state<"idle" | "checking" | "active" | "failed">(
+    "idle",
+  );
+  let telegramBotStatusInfo = $state<any>(null);
+  let whatsappStatus = $state<"active" | "failed">("failed");
+
+  const token = () => localStorage.getItem("pc_token") ?? "";
+
+  function val(key: string, fallback = ""): string {
+    return String(data[key] ?? fallback);
+  }
+
+  const defaultTelegramWebhookUrl = $derived(
+    serverSettings.gateway_url && activeStore.slug
+      ? `${serverSettings.gateway_url.replace(/\/$/, "")}/webhooks/telegram/${activeStore.slug}`
+      : "",
+  );
+
+  $effect(() => {
+    if (activeStore.slug) load();
+  });
+
+  async function load() {
+    if (!activeStore.slug) return;
+    loading = true;
+    error = "";
+    try {
+      // Load server settings first for gateway_url
+      const srvRes = await fetch("/api/settings", {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (srvRes.ok) {
+        serverSettings = await srvRes.json();
+        whatsappStatus = serverSettings.whatsapp_configured
+          ? "active"
+          : "failed";
+      }
+
+      // Load store settings
+      const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (res.ok) {
+        data = await res.json();
+        telegramMode = val("telegram_webhook_url") ? "webhook" : "polling";
+        telegramCustomUrl =
+          val("telegram_webhook_url") === defaultTelegramWebhookUrl
+            ? ""
+            : val("telegram_webhook_url");
+        checkBotStatus();
+      }
+    } catch (e) {
+      error = "Load failed";
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function checkBotStatus() {
+    if (!activeStore.slug) return;
+    telegramBotStatus = "checking";
+    try {
+      const res = await fetch(
+        `/api/settings/telegram-bot-status?store=${activeStore.slug}`,
+        {
+          headers: { Authorization: `Bearer ${token()}` },
+        },
+      );
+      if (res.ok) {
+        telegramBotStatusInfo = await res.json();
+        telegramBotStatus = "active";
+      } else {
+        telegramBotStatus = "failed";
+      }
+    } catch {
+      telegramBotStatus = "failed";
+    }
+  }
+
+  async function saveMessaging() {
+    if (!activeStore.slug) return;
+    saving = true;
+    saved = false;
+    error = "";
+
+    const webhookUrl =
+      telegramMode === "webhook"
+        ? telegramCustomUrl.trim() || defaultTelegramWebhookUrl || null
+        : null;
+    const payload: Record<string, string | null> = {
+      telegram_enabled: val("telegram_enabled", "0"),
+      whatsapp_enabled: val("whatsapp_enabled", "0"),
+      telegram_webhook_url: webhookUrl,
+      telegram_notify_chat_id: String(data.telegram_notify_chat_id ?? ""),
+      whatsapp_notify_number: String(data.whatsapp_notify_number ?? ""),
+    };
+    if (telegramKeyInput) payload.telegram_bot_token = telegramKeyInput.trim();
+
+    try {
+      const res = await fetch(`/api/settings?store=${activeStore.slug}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token()}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        data = await res.json();
+        telegramKeyInput = "";
+        saved = true;
+        checkBotStatus();
+        setTimeout(() => (saved = false), 3000);
+      } else {
+        const d = await res.json();
+        error = d.error ?? "Save failed";
+      }
+    } catch (e) {
+      error = "Connection error";
+    } finally {
+      saving = false;
+    }
+  }
 </script>
 
 {#if !activeStore.slug}
@@ -44,8 +175,12 @@
       Select a store from the sidebar to configure its messaging channels.
     </p>
   </div>
+{:else if loading && !data.telegram_enabled}
+  <div class="flex items-center justify-center py-20">
+    <RefreshCw size={32} class="animate-spin text-gray-300" />
+  </div>
 {:else}
-  <div class="space-y-8 animate-in fade-in duration-500">
+  <div class="space-y-8 animate-in fade-in duration-500 pb-20">
     <!-- Header -->
     <div>
       <h2 class="text-2xl font-bold text-gray-900 tracking-tight">
@@ -56,10 +191,19 @@
       </p>
     </div>
 
+    {#if error}
+      <div
+        class="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-700 shadow-sm"
+      >
+        <AlertCircle size={18} />
+        <p class="text-sm font-bold">{error}</p>
+      </div>
+    {/if}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Telegram Card -->
-      <div
-        class="flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+      <Card
+        class="flex flex-col overflow-hidden hover:shadow-md transition-shadow"
       >
         <div class="p-6 border-b border-gray-100 bg-gray-50/50">
           <div class="flex items-center justify-between">
@@ -76,57 +220,52 @@
                 </p>
               </div>
             </div>
-            <button
-              onclick={() => set('telegram_enabled', val('telegram_enabled', '0') === '1' ? '0' : '1')}
+            <Toggle
+              class="p-0 border-none bg-transparent hover:bg-transparent"
+              checked={val("telegram_enabled", "0") === "1"}
+              onchange={(e) =>
+                (data.telegram_enabled = (e.target as HTMLInputElement).checked
+                  ? "1"
+                  : "0")}
               aria-label="Toggle Telegram Bot"
-              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                {val('telegram_enabled', '0') === '1' ? 'bg-blue-600' : 'bg-gray-200'}"
-            >
-              <span
-                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  {val('telegram_enabled', '0') === '1' ? 'translate-x-6' : 'translate-x-1'}"
-              ></span>
-            </button>
+            />
           </div>
         </div>
 
         <div class="p-6 space-y-6 flex-1">
           <!-- Bot Token -->
           <div class="space-y-2">
-            <label
-              for="t-token"
-              class="text-sm font-semibold text-gray-700 flex items-center gap-2"
+            <Input
+              id="t-token"
+              label="Bot API Token"
+              type={showTelegramKey ? "text" : "password"}
+              bind:value={telegramKeyInput}
+              placeholder={data.telegram_bot_token_set
+                ? "••••••••••••••••••••••••••••"
+                : "Paste token from @BotFather"}
+              class="font-mono"
             >
-              Bot API Token
-              <a
-                href="https://t.me/BotFather"
-                target="_blank"
-                class="text-gray-400 hover:text-blue-600 transition-colors"
-                title="Get token from @BotFather"
-              >
-                <ExternalLink size={14} />
-              </a>
-            </label>
-            <div class="relative group">
-              <input
-                id="t-token"
-                type={showTelegramKey ? "text" : "password"}
-                bind:value={telegramKeyInput}
-                placeholder={storeSettings.telegram_bot_token_set
-                  ? "••••••••••••••••••••••••••••"
-                  : "Paste token from @BotFather"}
-                class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-12 text-sm font-mono focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 outline-none transition-all"
-              />
+              {#snippet labelExtra()}
+                <a
+                  href="https://t.me/BotFather"
+                  target="_blank"
+                  class="text-gray-400 hover:text-blue-600 transition-colors inline-flex ml-1"
+                  title="Get token from @BotFather"
+                >
+                  <ExternalLink size={14} />
+                </a>
+              {/snippet}
               <button
                 type="button"
                 onclick={() => (showTelegramKey = !showTelegramKey)}
-                class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                class="absolute right-3 top-[34px] -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                slot="right"
               >
                 {#if showTelegramKey}<EyeOff size={18} />{:else}<Eye
                     size={18}
                   />{/if}
               </button>
-            </div>
+            </Input>
           </div>
 
           <!-- Bot Mode -->
@@ -135,34 +274,26 @@
               class="text-sm font-semibold text-gray-700 flex items-center gap-2"
             >
               Connection Mode
-              <span
-                class="px-2 py-0.5 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-tight"
-                >Advanced</span
+              <Badge class="bg-gray-100 text-gray-500 border-none font-bold"
+                >Advanced</Badge
               >
             </span>
             <div class="grid grid-cols-2 gap-3">
               {#each [["polling", "🔄 Polling", "Simple, no HTTPS required."], ["webhook", "🔗 Webhook", "Fast, needs public HTTPS."]] as [modeId, label, desc]}
-                <button
-                  type="button"
-                  onclick={() => {
-                    telegramMode = modeId as "polling" | "webhook";
-                  }}
-                  class="flex flex-col items-start p-3 rounded-xl border-2 transition-all text-left
-                    {telegramMode === modeId
-                    ? 'border-blue-600 bg-blue-50/50'
-                    : 'border-gray-100 bg-white hover:border-gray-200'}"
+                <Button
+                  variant={telegramMode === modeId ? "primary" : "secondary"}
+                  onclick={() =>
+                    (telegramMode = modeId as "polling" | "webhook")}
+                  class="flex-col items-start h-auto p-3 text-left {telegramMode ===
+                  modeId
+                    ? 'border-blue-600 bg-blue-50/50 shadow-blue-50'
+                    : ''}"
                 >
-                  <span
-                    class="text-sm font-bold {telegramMode === modeId
-                      ? 'text-blue-700'
-                      : 'text-gray-900'}">{label}</span
-                  >
-                  <span
-                    class="text-[11px] {telegramMode === modeId
-                      ? 'text-blue-600/70'
-                      : 'text-gray-400'} mt-0.5 leading-tight">{desc}</span
-                  >
-                </button>
+                  <span>{label}</span>
+                  <span class="text-[11px] mt-0.5 leading-tight font-medium">
+                    {desc}
+                  </span>
+                </Button>
               {/each}
             </div>
           </div>
@@ -216,15 +347,14 @@
                 <label
                   for="t-webhook-custom"
                   class="text-[11px] font-bold text-gray-500 uppercase tracking-tight"
+                  >Custom URL Override</label
                 >
-                  Custom URL Override
-                </label>
                 <input
                   id="t-webhook-custom"
                   type="text"
                   bind:value={telegramCustomUrl}
                   placeholder="https://..."
-                  class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-mono focus:border-blue-500 outline-none transition-all placeholder:text-gray-300"
+                  class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-mono focus:border-blue-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
                 />
               </div>
             </div>
@@ -244,22 +374,15 @@
               class="p-4 rounded-xl border border-gray-100 bg-gray-50/30 space-y-3"
             >
               <div>
-                <label
-                  for="tg-chat"
-                  class="block text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-1"
-                  >Telegram Chat ID</label
-                >
-                <input
+                <Input
                   id="tg-chat"
-                  type="text"
+                  label="Telegram Chat ID"
                   value={val("telegram_notify_chat_id")}
-                  oninput={(e) =>
-                    set(
-                      "telegram_notify_chat_id",
-                      (e.target as HTMLInputElement).value,
-                    )}
+                  oninput={(e: Event) =>
+                    (data.telegram_notify_chat_id = (
+                      e.target as HTMLInputElement
+                    ).value)}
                   placeholder="e.g. 12345678"
-                  class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 outline-none"
                 />
               </div>
               <div
@@ -271,11 +394,11 @@
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       <!-- WhatsApp Card -->
-      <div
-        class="flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+      <Card
+        class="flex flex-col overflow-hidden hover:shadow-md transition-shadow"
       >
         <div class="p-6 border-b border-gray-100 bg-emerald-50/30">
           <div class="flex items-center justify-between">
@@ -292,17 +415,15 @@
                 </p>
               </div>
             </div>
-            <button
-              onclick={() => set('whatsapp_enabled', val('whatsapp_enabled', '0') === '1' ? '0' : '1')}
+            <Toggle
+              class="p-0 border-none bg-transparent hover:bg-transparent"
+              checked={val("whatsapp_enabled", "0") === "1"}
+              onchange={(e) =>
+                (data.whatsapp_enabled = (e.target as HTMLInputElement).checked
+                  ? "1"
+                  : "0")}
               aria-label="Toggle WhatsApp Business"
-              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
-                {val('whatsapp_enabled', '0') === '1' ? 'bg-emerald-600' : 'bg-gray-200'}"
-            >
-              <span
-                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  {val('whatsapp_enabled', '0') === '1' ? 'translate-x-6' : 'translate-x-1'}"
-              ></span>
-            </button>
+            />
           </div>
         </div>
 
@@ -332,22 +453,16 @@
               class="p-4 rounded-xl border border-emerald-100 bg-emerald-50/20 space-y-3"
             >
               <div>
-                <label
-                  for="wa-notify-id"
-                  class="block text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-1"
-                  >WhatsApp Phone Number</label
-                >
-                <input
+                <Input
                   id="wa-notify-id"
-                  type="text"
+                  label="WhatsApp Phone Number"
                   value={val("whatsapp_notify_number")}
-                  oninput={(e) =>
-                    set(
-                      "whatsapp_notify_number",
-                      (e.target as HTMLInputElement).value,
-                    )}
+                  oninput={(e: Event) =>
+                    (data.whatsapp_notify_number = (
+                      e.target as HTMLInputElement
+                    ).value)}
                   placeholder="e.g. 639171234567"
-                  class="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 outline-none"
+                  class="border-emerald-200 focus:border-emerald-500"
                 />
               </div>
               <div
@@ -379,77 +494,74 @@
             </div>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
 
     <!-- Actions & Status Bar -->
     <div
-      class="sticky bottom-0 backdrop-blur-md border-t border-gray-100 p-4 -mx-6 flex items-center justify-between"
+      class="sticky bottom-0 backdrop-blur-md border-t border-gray-100 p-4 -mx-6 flex items-center justify-between z-20"
     >
       <div class="flex items-center gap-3">
-        <button
+        <Button
           onclick={saveMessaging}
           disabled={saving}
-          class="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-gray-800 disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-gray-200"
+          variant="primary"
+          class="px-6 py-2.5 bg-gray-900 border-none hover:bg-gray-800 shadow-gray-200"
         >
           {#if saving}
-            <div
-              class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
-            ></div>
-            Saving...
-          {:else if saved === "telegram"}
-            <Check size={18} />
-            Saved!
+            <RefreshCw size={18} class="animate-spin mr-2" /> Saving...
+          {:else if saved}
+            <Check size={18} class="mr-2" /> Saved!
           {:else}
-            Save Settings
+            Save Messaging Settings
           {/if}
-        </button>
+        </Button>
 
         <!-- Status Badges -->
         <div class="hidden sm:flex items-center gap-2">
           {#if telegramBotStatus === "checking"}
-            <div
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 text-[10px] uppercase font-bold tracking-wider"
+            <Badge
+              class="bg-gray-100 text-gray-500 border-none px-3 py-1.5 font-bold"
             >
               <div
-                class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse"
+                class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse mr-1"
               ></div>
               Verifying Bot...
-            </div>
+            </Badge>
           {:else if telegramBotStatus === "active"}
-            <div
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 text-green-700 text-[10px] uppercase font-bold tracking-wider"
+            <Badge
+              class="bg-green-100 text-green-700 border-none px-3 py-1.5 font-bold"
             >
               <div
-                class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] mr-1"
               ></div>
               Telegram Active
-            </div>
+            </Badge>
           {:else if telegramBotStatus === "failed"}
-            <div
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-100 text-red-700 text-[10px] uppercase font-bold tracking-wider"
+            <Badge
+              class="bg-red-100 text-red-700 border-none px-3 py-1.5 font-bold"
             >
-              <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+              <div class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1"></div>
               Telegram Unreachable
-            </div>
+            </Badge>
           {/if}
 
           {#if whatsappStatus === "active"}
-            <div
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] uppercase font-bold tracking-wider"
+            <Badge
+              class="bg-emerald-100 text-emerald-700 border-none px-3 py-1.5 font-bold"
             >
               <div
-                class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] mr-1"
               ></div>
               WhatsApp Active
-            </div>
+            </Badge>
           {:else}
-            <div
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-[10px] uppercase font-bold tracking-wider"
+            <Badge
+              class="bg-amber-100 text-amber-700 border-none px-3 py-1.5 font-bold"
             >
-              <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+              <div class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></div>
               WhatsApp Config Required
-            </div>
+            </Badge>
           {/if}
         </div>
       </div>
