@@ -151,7 +151,7 @@ npm install
 npm run dev
 ```
 
-The server auto-creates `.env` from `.env.example`, initializes databases, and starts at [http://localhost:3000](http://localhost:3000). Default login: `admin` / `admin123`.
+The server auto-creates `.env` from `.env.example`, initializes databases, and starts at [http://localhost:3000](http://localhost:3000). Default login: `admin` / `XnR9XxiI5WizHJkj`.
 
 ---
 
