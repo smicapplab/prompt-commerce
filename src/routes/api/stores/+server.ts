@@ -56,6 +56,14 @@ export const POST: RequestHandler = async (event) => {
   try {
     const gatewayKey = body.gateway_key || randomBytes(32).toString('hex');
 
+    // UX-AUTO: If seller_public_url is not set in registry, and we have an mcp_server_url, set it now.
+    if (body.mcp_server_url) {
+      const existingUrl = db.prepare("SELECT value FROM settings WHERE key = 'seller_public_url'").get() as { value: string } | undefined;
+      if (!existingUrl || !existingUrl.value || existingUrl.value === 'http://localhost:3000') {
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('seller_public_url', ?)").run(body.mcp_server_url);
+      }
+    }
+
     const result = db
       .prepare(`
         INSERT INTO stores (slug, name, description, gateway_key, active)

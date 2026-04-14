@@ -121,6 +121,7 @@
         slug: looked.slug,
         name: looked.name,
         gateway_key: keyInput.trim(),
+        mcp_server_url: looked.mcpServerUrl,
       }),
     });
     const data = await res.json();
