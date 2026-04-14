@@ -20,7 +20,10 @@ export const GET: RequestHandler = async (event) => {
 	const id = event.params.id;
 	const db = getStoreDb(store);
 	const product = db.prepare(`
-		SELECT p.*, c.name AS category_name
+		SELECT p.*, c.name AS category_name,
+			(SELECT COUNT(*) FROM product_variants pv WHERE pv.product_id = p.id AND pv.active = 1) as variant_count,
+			(SELECT MIN(price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.active = 1) as min_price,
+			(SELECT SUM(stock) FROM product_variants pv WHERE pv.product_id = p.id AND pv.active = 1) as total_stock
 		FROM products p
 		LEFT JOIN categories c ON p.category_id = c.id
 		WHERE p.id = ?
@@ -32,6 +35,7 @@ export const GET: RequestHandler = async (event) => {
 		...product,
 		images: product.images ? JSON.parse(product.images) : [],
 		tags: product.tags ? JSON.parse(product.tags) : [],
+		metadata: product.metadata ? JSON.parse(product.metadata) : {},
 		active: !!product.active
 	});
 };
@@ -62,6 +66,16 @@ export const PATCH: RequestHandler = async (event) => {
 		: null;
 	const tagsStr = formData.get('tags') as string;
 	const active = formData.get('active') ? (formData.get('active') as string) === '1' ? 1 : 0 : null;
+	const product_type = formData.has('product_type') ? (formData.get('product_type') as string) : null;
+	const metadataStr = formData.has('metadata') ? (formData.get('metadata') as string) : null;
+	let metadata = null;
+	if (metadataStr !== null) {
+		try {
+			metadata = metadataStr ? JSON.parse(metadataStr) : null;
+		} catch (e) {
+			return apiError(400, 'Invalid metadata JSON');
+		}
+	}
 
 	if (price !== null && (!Number.isFinite(price) || price < 0)) {
 		return apiError(422, 'price must be a non-negative number');
@@ -83,7 +97,7 @@ export const PATCH: RequestHandler = async (event) => {
 		if (file.size === 0) continue;
 		const validationError = validateImageFile(file);
 		if (validationError) return apiError(422, validationError);
-		const imgPath = await saveUploadedFile(file);
+		const imgPath = await saveUploadedFile(file, store);
 		uploadedImages.push(imgPath);
 	}
 
@@ -105,6 +119,8 @@ export const PATCH: RequestHandler = async (event) => {
 	if (formData.has('tags')) { updates.push('tags = ?'); values.push(JSON.stringify(tags)); }
 	if (formData.has('images_urls') || imageFiles.length > 0) { updates.push('images = ?'); values.push(JSON.stringify(allImages)); }
 	if (active !== null) { updates.push('active = ?'); values.push(active); }
+	if (product_type !== null) { updates.push('product_type = ?'); values.push(product_type); }
+	if (metadataStr !== null) { updates.push('metadata = ?'); values.push(metadata ? JSON.stringify(metadata) : null); }
 
 	if (updates.length > 0) {
 		updates.push('is_synced = 0');
@@ -125,6 +141,7 @@ export const PATCH: RequestHandler = async (event) => {
 		...product,
 		images: product.images ? JSON.parse(product.images) : [],
 		tags: product.tags ? JSON.parse(product.tags) : [],
+		metadata: product.metadata ? JSON.parse(product.metadata) : {},
 		active: !!product.active
 	});
 };

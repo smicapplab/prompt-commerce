@@ -2,13 +2,26 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
-  import { Store, Plus, ArrowRight } from "@lucide/svelte";
+  import { 
+    Store, 
+    Plus, 
+    ArrowRight, 
+    ChevronRight, 
+    ShieldAlert, 
+    RefreshCw,
+    Building2,
+    LayoutDashboard
+  } from "@lucide/svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Card from "$lib/components/ui/Card.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
 
   interface StoreItem {
     id: number;
     slug: string;
     name: string;
     description: string | null;
+    logo_url: string | null;
     gateway_key: string | null;
     active: number;
   }
@@ -30,7 +43,7 @@
   }
 
   function enter(s: StoreItem) {
-    activeStore.set(s.slug, s.id, s.name);
+    activeStore.set(s.slug, s.id, s.name, s.logo_url || "");
     goto("/admin/dashboard");
   }
 
@@ -44,103 +57,114 @@
   });
 </script>
 
-<svelte:head><title>Select Store — Prompt Commerce</title></svelte:head>
+<svelte:head>
+  <title>Retailer Access — Prompt Commerce</title>
+</svelte:head>
 
-<div class="min-h-full flex flex-col items-center justify-center p-8">
-  <div class="w-full max-w-lg">
-    <div class="text-center mb-8">
-      <div
-        class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-600 mb-4"
-      >
-        <Store class="w-6 h-6 text-white" />
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+  <!-- Aesthetic Decorations -->
+  <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
+    <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full"></div>
+    <div class="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full"></div>
+  </div>
+
+  <div class="w-full max-w-xl relative z-10">
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-indigo-600 shadow-xl shadow-indigo-100 mb-6 transition-transform hover:scale-110 duration-500">
+        <LayoutDashboard size={32} class="text-white" />
       </div>
-      <h1 class="text-2xl font-semibold text-gray-900">Select a store</h1>
-      <p class="text-sm text-gray-500 mt-1">
-        Choose which store you want to manage
-      </p>
+      <h1 class="text-4xl font-black text-gray-900 tracking-tight mb-2">Select a Store</h1>
+      <p class="text-sm font-medium text-gray-400 uppercase tracking-widest">Identify your retail workspace to continue</p>
     </div>
 
     {#if loading}
-      <div class="space-y-3">
-        {#each Array(2) as _}
-          <div class="h-20 rounded-xl bg-gray-100 animate-pulse"></div>
+      <div class="space-y-4">
+        {#each Array(3) as _}
+          <div class="h-24 rounded-3xl bg-white border border-gray-100 animate-pulse"></div>
         {/each}
       </div>
     {:else if stores.length === 0}
-      <div
-        class="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl"
-      >
-        <Store class="w-10 h-10 mx-auto mb-3 text-gray-300" />
-        <p class="text-sm font-medium text-gray-600">No stores connected yet</p>
-        <p class="text-xs text-gray-400 mt-1">
-          Register a store via the gateway, then connect it here.
+      <Card class="p-10 text-center flex flex-col items-center">
+        <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-8">
+          <Store size={40} />
+        </div>
+        <h2 class="text-xl font-black text-gray-900 mb-2">Registry Empty</h2>
+        <p class="text-sm font-medium text-gray-400 max-w-xs mb-10 leading-relaxed">
+          There are no connected retailers available for this account. Register a store via the gateway first.
         </p>
-        <a
-          href="/admin/stores"
-          class="inline-flex items-center gap-2 mt-4 text-sm font-medium text-blue-600 hover:text-blue-700"
+        <Button 
+          variant="primary" 
+          onclick={() => goto('/admin/stores')}
+          class="w-full h-14 rounded-2xl bg-gray-900 border-none hover:bg-black font-black uppercase text-xs tracking-widest"
         >
-          <Plus class="w-4 h-4" /> Connect a store
-        </a>
-      </div>
+          <Plus size={18} class="mr-2" /> Connect New Store
+        </Button>
+      </Card>
     {:else}
-      <div class="space-y-3">
+      <div class="space-y-4">
         {#each stores.filter((s) => s.active) as s}
           <button
             onclick={() => enter(s)}
-            class="w-full flex items-center justify-between gap-4 bg-white border border-gray-200 hover:border-blue-400 hover:shadow-sm rounded-xl px-5 py-4 text-left transition-all group"
+            class="w-full text-left group transition-all"
           >
-            <div class="flex items-center gap-3 min-w-0">
-              <div
-                class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0"
-              >
-                <Store class="w-5 h-5 text-blue-600" />
+            <Card class="p-6 flex items-center justify-between group-hover:border-indigo-600 group-hover:shadow-2xl group-hover:shadow-indigo-50 group-hover:-translate-y-1 duration-300 border-gray-100">
+              <div class="flex items-center gap-5 min-w-0">
+                <div class="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm overflow-hidden">
+                  {#if s.logo_url}
+                    <img src={s.logo_url} alt={s.name} class="w-full h-full object-cover" />
+                  {:else}
+                    <Building2 size={24} />
+                  {/if}
+                </div>
+                <div class="min-w-0">
+                  <h3 class="font-black text-gray-900 text-lg leading-tight mb-1 group-hover:text-indigo-600 transition-colors">{s.name}</h3>
+                  <div class="flex items-center gap-3">
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest font-mono truncate">{s.slug}</span>
+                    {#if !s.gateway_key}
+                      <Badge variant="secondary" class="bg-amber-50 text-amber-600 border-none font-bold text-[9px] uppercase tracking-tighter">
+                        <ShieldAlert size={10} class="mr-1" /> No Gateway Key
+                      </Badge>
+                    {/if}
+                  </div>
+                </div>
               </div>
-              <div class="min-w-0">
-                <p class="font-medium text-gray-900 text-sm">{s.name}</p>
-                <p class="text-xs text-gray-400 font-mono mt-0.5">{s.slug}</p>
+              <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-300 group-hover:text-indigo-600 group-hover:bg-indigo-50 transition-all">
+                <ChevronRight size={20} />
               </div>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-              {#if !s.gateway_key}
-                <span
-                  class="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"
-                  >No key</span
-                >
-              {/if}
-              <ArrowRight
-                class="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors"
-              />
-            </div>
+            </Card>
           </button>
         {/each}
 
         {#each stores.filter((s) => !s.active) as s}
-          <div
-            class="w-full flex items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 opacity-50"
-          >
-            <div
-              class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0"
-            >
-              <Store class="w-5 h-5 text-gray-400" />
-            </div>
-            <div>
-              <p class="font-medium text-gray-600 text-sm">{s.name}</p>
-              <p class="text-xs text-gray-400 font-mono mt-0.5">
-                {s.slug} · Inactive
-              </p>
-            </div>
+          <div class="w-full opacity-50 grayscale cursor-not-allowed">
+            <Card class="p-6 flex items-center gap-5 border-gray-100 bg-gray-50/50">
+              <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">
+                <Store size={24} />
+              </div>
+              <div>
+                <h3 class="font-black text-gray-600 text-lg leading-tight mb-1">{s.name}</h3>
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Inactive Registry</span>
+              </div>
+            </Card>
           </div>
         {/each}
       </div>
 
-      <div class="mt-6 text-center">
-        <a
-          href="/admin/stores"
-          class="text-sm text-gray-500 hover:text-gray-700"
+      <div class="mt-12 text-center">
+        <Button 
+          variant="secondary" 
+          onclick={() => goto('/admin/stores')}
+          class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-none bg-transparent hover:bg-white hover:text-gray-900 shadow-none px-6"
         >
-          Manage stores →
-        </a>
+          Manage External Registrations <ArrowRight size={14} class="ml-2" />
+        </Button>
       </div>
     {/if}
+    
+    <!-- Identity Footer -->
+    <div class="mt-20 pt-8 border-t border-gray-100 text-center">
+      <p class="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Prompt Commerce Administration Module</p>
+    </div>
   </div>
 </div>

@@ -98,16 +98,16 @@ export const POST: RequestHandler = async (event) => {
 
   // ── 2. Save to disk ────────────────────────────────────────────────────────
   const uploadBase = getUploadDir();
-  const orderFilesDir = join(uploadBase, 'orders', String(orderId));
-  mkdirSync(orderFilesDir, { recursive: true });
+  const storeUploadDir = join(uploadBase, store, 'orders', String(orderId));
+  mkdirSync(storeUploadDir, { recursive: true });
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const diskFilename = `${Date.now()}-${randomBytes(8).toString('hex')}.${ext}`;
-  const filepath = join(orderFilesDir, diskFilename);
+  const filepath = join(storeUploadDir, diskFilename);
   writeFileSync(filepath, buffer);
 
   // ── 3. Store absolute URL ──────────────────────────────────────────────────
-  const relativePath = `/uploads/orders/${orderId}/${diskFilename}`;
+  const relativePath = `/uploads/${store}/orders/${orderId}/${diskFilename}`;
   const fileUrl = `${sellerPublicUrl}${relativePath}`;
 
   const result = db.prepare(`

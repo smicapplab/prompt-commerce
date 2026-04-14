@@ -1,7 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { RefreshCw } from "@lucide/svelte";
+  import { RefreshCw, Plus, Search, Trash2, Pencil, Calendar, Ticket, Percent, Banknote } from "@lucide/svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Card from "$lib/components/ui/Card.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
+  import Toggle from "$lib/components/ui/Toggle.svelte";
   import type { Promotion, Product } from "$lib/types/catalog.js";
 
   let promotions = $state<Promotion[]>([]);
@@ -19,6 +25,8 @@
   let saving = $state(false);
   let syncError = $state("");
   let formError = $state("");
+
+  import { ChevronLeft, ChevronRight, X } from "@lucide/svelte";
 
   // Form fields
   let fTitle = $state("");
@@ -209,213 +217,222 @@
 
 <svelte:head><title>Promotions — Prompt Commerce</title></svelte:head>
 
-<div class="p-6">
+<div class="px-6 pt-6 pb-20 max-w-6xl mx-auto">
   <!-- Header -->
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-xl font-semibold text-gray-900">Promotions</h1>
-    <button
+  <div class="flex items-center justify-between mb-8">
+    <h1 class="text-2xl font-black text-gray-900 tracking-tight">Promotions</h1>
+    <Button
       onclick={openCreate}
-      class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+      variant="primary"
     >
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        ><path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 4v16m8-8H4"
-        /></svg
-      >
+      <Plus size={18} />
       Add Promotion
-    </button>
+    </Button>
   </div>
 
   <!-- Filters -->
-  <div class="flex flex-wrap gap-3 mb-5">
-    <input
-      type="search"
-      placeholder="Search title or code…"
-      bind:value={q}
-      onkeydown={(e) => e.key === "Enter" && search()}
-      class="rounded-lg border border-gray-300 px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-    />
-    <select
-      bind:value={filterActive}
-      onchange={search}
-      class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-    >
-      <option value="">All status</option>
-      <option value="1">Active</option>
-      <option value="0">Inactive</option>
-    </select>
-    <button
-      onclick={search}
-      class="rounded-lg bg-gray-100 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
-      >Search</button
-    >
-  </div>
+  <Card class="p-4 mb-6">
+    <div class="flex flex-col md:flex-row gap-4">
+      <div class="flex-1 relative">
+        <Search
+          size={18}
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        />
+        <Input
+          type="search"
+          placeholder="Search title or code…"
+          bind:value={q}
+          onkeydown={(e: KeyboardEvent) => e.key === "Enter" && search()}
+          class="pl-10"
+        />
+      </div>
+      <div class="flex gap-4">
+        <Select
+          bind:value={filterActive}
+          onchange={search}
+          class="w-40"
+          options={[
+            { value: '', label: 'All Status' },
+            { value: '1', label: 'Active' },
+            { value: '0', label: 'Inactive' }
+          ]}
+        />
+        <Button
+          onclick={search}
+          variant="secondary"
+        >
+          Search
+        </Button>
+      </div>
+    </div>
+  </Card>
 
   <!-- Table -->
-  <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-    <table class="min-w-full text-sm">
-      <thead>
-        <tr
-          class="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500"
-        >
-          <th class="px-4 py-3">Promotion</th>
-          <th class="px-4 py-3">Voucher Code</th>
-          <th class="px-4 py-3">Discount</th>
-          <th class="px-4 py-3">Product</th>
-          <th class="px-4 py-3">Validity</th>
-          <th class="px-4 py-3">Status</th>
-          <th class="px-4 py-3 text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-100">
-        {#if loading}
-          <tr
-            ><td colspan="7" class="px-4 py-12 text-center text-gray-400"
-              >Loading…</td
-            ></tr
-          >
-        {:else if promotions.length === 0}
-          <tr
-            ><td colspan="7" class="px-4 py-16 text-center">
-              <div
-                class="flex flex-col items-center justify-center text-gray-400"
-              >
-                <svg
-                  class="h-10 w-10 mb-2 opacity-20"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  ><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.703 2.703 0 00-3 0 2.704 2.704 0 01-3 0 2.705 2.705 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 16v2m3-6v6m3-3v3M9 12h6M4 17.75V4.25C4 3.01 5.01 2 6.25 2h11.5c1.24 0 2.25 1.01 2.25 2.25v13.5c0 1.24-1.01 2.25-2.25 2.25h-11.5C5.01 20 4 18.99 4 17.75z"
-                  /></svg
-                >
-                <p class="text-sm font-medium">No promotions found</p>
-                {#if q || filterActive}
-                  <button
-                    onclick={() => {
-                      q = "";
-                      filterActive = "";
-                      search();
-                    }}
-                    class="mt-2 text-xs text-indigo-600 hover:underline"
-                    >Clear filters</button
-                  >
-                {:else if activeStore.slug}
-                  <button
-                    onclick={openCreate}
-                    class="mt-2 text-xs text-indigo-600 hover:underline"
-                    >Create your first promotion</button
-                  >
-                {:else}
-                  <p class="mt-1 text-xs">Select a store to see promotions.</p>
-                {/if}
-              </div>
-            </td></tr
-          >
-        {:else}
-          {#each promotions as promo}
-            <tr class="hover:bg-gray-50">
-              <td class="px-4 py-3 font-medium text-gray-900">{promo.title}</td>
-              <td class="px-4 py-3">
-                {#if promo.voucher_code}
-                  <code
-                    class="bg-gray-100 rounded px-2 py-0.5 text-xs font-mono"
-                    >{promo.voucher_code}</code
-                  >
-                {:else}
-                  <span class="text-gray-400">—</span>
-                {/if}
+  <Card class="overflow-hidden p-0">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50/80 border-b border-gray-100">
+          <tr>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Promotion</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Code</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Discount</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Product</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Validity</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
+            <th class="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {#if loading}
+            <tr>
+              <td colspan="7" class="px-6 py-12 text-center text-gray-400 animate-pulse font-medium">
+                Loading promotions...
               </td>
-              <td class="px-4 py-3 font-semibold text-emerald-700"
-                >{formatDiscount(promo)}</td
-              >
-              <td class="px-4 py-3 text-gray-600"
-                >{promo.product_title ?? "All products"}</td
-              >
-              <td class="px-4 py-3 text-gray-600 text-[10px] leading-tight">
-                <div class="flex flex-col">
-                  <span class="font-medium text-gray-900"
-                    >{formatDate(promo.start_date)} → {formatDate(
-                      promo.end_date,
-                    )}</span
-                  >
-                  {#if formatRelativeDate(promo.end_date, "Ends ")}
-                    <span class="text-orange-600"
-                      >{formatRelativeDate(promo.end_date, "Ends ")}</span
+            </tr>
+          {:else if promotions.length === 0}
+            <tr>
+              <td colspan="7" class="px-6 py-20 text-center">
+                <div class="flex flex-col items-center justify-center max-w-sm mx-auto text-gray-400">
+                  <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                    <Ticket size={24} class="opacity-40" />
+                  </div>
+                  <h3 class="text-lg font-bold text-gray-900 mb-1">No promotions found</h3>
+                  <p class="text-sm">
+                    {#if q || filterActive}
+                      No promotions match your current search or filters.
+                    {:else}
+                      You haven't added any promotions to this store yet.
+                    {/if}
+                  </p>
+                  {#if q || filterActive}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onclick={() => { q = ""; filterActive = ""; search(); }}
+                      class="mt-6"
                     >
+                      Clear filters
+                    </Button>
+                  {:else}
+                    <Button
+                      variant="primary"
+                      onclick={openCreate}
+                      class="mt-6"
+                    >
+                      Create your first promotion
+                    </Button>
                   {/if}
                 </div>
               </td>
-              <td class="px-4 py-3">
-                {#if isActive(promo)}
-                  <span
-                    class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
-                    >Active</span
-                  >
-                {:else if !promo.active}
-                  <span
-                    class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
-                    >Disabled</span
-                  >
-                {:else}
-                  <span
-                    class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
-                    >Scheduled</span
-                  >
-                {/if}
-              </td>
-              <td class="px-4 py-3 text-right">
-                <button
-                  onclick={() => openEdit(promo)}
-                  class="text-indigo-600 hover:text-indigo-800 mr-3 text-xs font-medium"
-                  >Edit</button
-                >
-                <button
-                  onclick={() => {
-                    deleteId = promo.id;
-                    deleteTitle = promo.title;
-                  }}
-                  class="text-red-600 hover:text-red-800 text-xs font-medium"
-                  >Delete</button
-                >
-              </td>
             </tr>
-          {/each}
-        {/if}
-      </tbody>
-    </table>
-  </div>
+          {:else}
+            {#each promotions as promo}
+              <tr class="hover:bg-gray-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-bold text-gray-900">{promo.title}</div>
+                  <div class="text-[10px] text-gray-400 font-medium mt-0.5">ID: {promo.id}</div>
+                </td>
+                <td class="px-6 py-4">
+                  {#if promo.voucher_code}
+                    <Badge variant="secondary" class="font-mono text-[10px] border-none">
+                      {promo.voucher_code}
+                    </Badge>
+                  {:else}
+                    <span class="text-gray-300 text-xs italic">Automatic</span>
+                  {/if}
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-1.5 font-black text-emerald-600">
+                    {#if promo.discount_type === 'percentage'}
+                      <Percent size={14} />
+                    {:else}
+                      <Banknote size={14} />
+                    {/if}
+                    {formatDiscount(promo)}
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-xs font-medium text-gray-600">
+                    {promo.product_title ?? "All products"}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-gray-900">
+                      <Calendar size={12} class="text-gray-400" />
+                      <span>{formatDate(promo.start_date)} — {formatDate(promo.end_date)}</span>
+                    </div>
+                    {#if formatRelativeDate(promo.end_date, "Ends ")}
+                      <Badge class="bg-orange-50 text-orange-600 border-none px-1 text-[9px] w-fit">
+                        {formatRelativeDate(promo.end_date, "Ends ")}
+                      </Badge>
+                    {/if}
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  {#if isActive(promo)}
+                    <Badge class="bg-emerald-50 text-emerald-700 border-emerald-100">Active</Badge>
+                  {:else if !promo.active}
+                    <Badge class="bg-gray-100 text-gray-500 border-gray-200">Disabled</Badge>
+                  {:else}
+                    <Badge class="bg-amber-50 text-amber-700 border-amber-100">Scheduled</Badge>
+                  {/if}
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center justify-end gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onclick={() => openEdit(promo)}
+                      class="p-2 border-none h-auto"
+                    >
+                      <Pencil size={15} />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onclick={() => { deleteId = promo.id; deleteTitle = promo.title; }}
+                      class="p-2 border-none h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          {/if}
+        </tbody>
+      </table>
+    </div>
+  </Card>
 
   <!-- Pagination -->
   {#if totalPages > 1}
-    <div class="flex items-center justify-between mt-4 text-sm text-gray-600">
-      <span>{totalCount} promotions</span>
+    <div class="mt-8 flex items-center justify-between">
+      <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+        Page {page} of {totalPages} ({totalCount} items)
+      </div>
       <div class="flex gap-2">
-        <button
-          onclick={() => {
-            page--;
-            load();
-          }}
+        <Button
+          onclick={() => { page--; load(); }}
           disabled={page <= 1}
-          class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40"
-          >Prev</button
+          variant="secondary"
+          size="sm"
+          class="flex items-center gap-1 border-gray-200"
         >
-        <span class="px-3 py-1.5">Page {page} of {totalPages}</span>
-        <button
-          onclick={() => {
-            page++;
-            load();
-          }}
+          <ChevronLeft size={16} />
+          Previous
+        </Button>
+        <Button
+          onclick={() => { page++; load(); }}
           disabled={page >= totalPages}
-          class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40"
-          >Next</button
+          variant="secondary"
+          size="sm"
+          class="flex items-center gap-1 border-gray-200"
         >
+          Next
+          <ChevronRight size={16} />
+        </Button>
       </div>
     </div>
   {/if}
@@ -424,234 +441,170 @@
 <!-- Add / Edit Modal -->
 {#if showModal}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+    onclick={(e) => e.target === e.currentTarget && (showModal = false)}
     role="presentation"
     onkeydown={(e) => e.key === "Escape" && (showModal = false)}
   >
-    <div
-      class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col"
+    <Card
+      class="w-full max-w-lg shadow-2xl p-0 overflow-hidden animate-in zoom-in-95 duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="promo-modal-title"
     >
       <div
-        class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10"
+        class="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50"
       >
         <h2
           id="promo-modal-title"
-          class="text-base font-semibold text-gray-900"
+          class="text-xl font-black text-gray-900"
         >
           {editingId ? "Edit Promotion" : "New Promotion"}
         </h2>
-        <button
+        <Button
           onclick={() => (showModal = false)}
-          class="text-gray-400 hover:text-gray-600 text-xl leading-none"
-          aria-label="Close modal">&times;</button
+          variant="secondary"
+          size="sm"
+          class="p-1 border-none h-auto text-gray-400 hover:text-gray-600"
         >
+          <X size={20} />
+        </Button>
       </div>
 
-      <div class="px-6 py-5 space-y-4">
+      <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
         {#if formError}
           <div
-            class="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700"
+            class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 font-medium"
           >
             {formError}
           </div>
         {/if}
 
-        <div>
-          <label
-            for="promo-title"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Title <span class="text-red-500">*</span></label
-          >
-          <input
-            id="promo-title"
-            type="text"
-            bind:value={fTitle}
-            placeholder="Summer Sale 20%"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
-          />
-        </div>
+        <Input
+          id="promo-title"
+          label="Title"
+          bind:value={fTitle}
+          placeholder="e.g. Summer Sale 20%"
+          required
+        />
 
         <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              for="promo-type"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Discount Type <span class="text-red-500">*</span></label
-            >
-            <select
+          <div class="space-y-1.5">
+            <label for="promo-type" class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">Type</label>
+            <Select
               id="promo-type"
               bind:value={fDiscountType}
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="percentage">Percentage (%)</option>
-              <option value="fixed">Fixed amount</option>
-            </select>
-          </div>
-          <div>
-            <label
-              for="promo-value"
-              class="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Value <span class="text-red-500">*</span>
-              <span class="text-gray-400 font-normal"
-                >{fDiscountType === "percentage" ? "(%)" : "(amount)"}</span
-              >
-            </label>
-            <input
-              id="promo-value"
-              type="number"
-              bind:value={fDiscountValue}
-              min="0"
-              step="0.01"
-              placeholder="20"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              options={[
+                { value: 'percentage', label: 'Percentage (%)' },
+                { value: 'fixed', label: 'Fixed Amount' }
+              ]}
             />
           </div>
-        </div>
-
-        <div>
-          <label
-            for="promo-code"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Voucher Code <span class="text-gray-400 font-normal"
-              >(optional)</span
-            ></label
-          >
-          <input
-            id="promo-code"
-            type="text"
-            bind:value={fVoucherCode}
-            placeholder="SUMMER20"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          <Input
+            id="promo-value"
+            label="Value"
+            type="number"
+            bind:value={fDiscountValue}
+            placeholder="20"
+            required
           />
-          <p class="mt-1 text-xs text-gray-500">
-            Leave blank for automatic / no-code promotions.
-          </p>
         </div>
 
-        <div>
-          <label
-            for="promo-product"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Apply to Product <span class="text-gray-400 font-normal"
-              >(optional)</span
-            ></label
-          >
-          <select
+        <Input
+          id="promo-code"
+          label="Voucher Code"
+          bind:value={fVoucherCode}
+          placeholder="e.g. SUMMER20"
+          class="uppercase font-mono"
+          description="Leave blank for automatic/no-code promotions."
+        />
+
+        <div class="space-y-1.5">
+          <label for="promo-product" class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">Apply to Product</label>
+          <Select
             id="promo-product"
             bind:value={fProductId}
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">All products</option>
-            {#each products as p}
-              <option value={String(p.id)}>{p.title}</option>
-            {/each}
-          </select>
+            options={[
+              { value: '', label: 'All Products (Store-wide)' },
+              ...products.map(p => ({ value: p.id.toString(), label: p.title }))
+            ]}
+          />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              for="promo-start"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Start Date</label
-            >
-            <input
-              id="promo-start"
-              type="date"
-              bind:value={fStartDate}
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label
-              for="promo-end"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >End Date</label
-            >
-            <input
-              id="promo-end"
-              type="date"
-              bind:value={fEndDate}
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+          <Input id="promo-start" label="Start Date" type="date" bind:value={fStartDate} />
+          <Input id="promo-end" label="End Date" type="date" bind:value={fEndDate} />
         </div>
 
-        <div class="flex items-center gap-3">
-          <button
-            onclick={() => (fActive = !fActive)}
-            aria-label={fActive ? "Deactivate promotion" : "Activate promotion"}
-            aria-pressed={fActive}
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {fActive
-              ? 'bg-indigo-600'
-              : 'bg-gray-200'}"
-          >
-            <span
-              class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {fActive
-                ? 'translate-x-6'
-                : 'translate-x-1'}"
-            ></span>
-          </button>
-          <span class="text-sm text-gray-700">Active</span>
-        </div>
+        <Toggle
+          label="Active Status"
+          description="Enable or disable this promotion manually."
+          bind:checked={fActive}
+        />
       </div>
 
-      <div
-        class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 mt-auto"
-      >
-        <button
+      <div class="flex gap-3 p-6 border-t border-gray-100 bg-gray-50/50">
+        <Button
           onclick={() => (showModal = false)}
-          class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 focus:ring-2 focus:ring-gray-300 focus:ring-offset-1 outline-none"
+          variant="secondary"
+          class="flex-1"
           disabled={saving}
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           onclick={savePromotion}
+          variant="primary"
+          class="flex-1"
           disabled={saving}
-          class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 outline-none disabled:opacity-50"
         >
           {#if saving}
             <RefreshCw size={16} class="animate-spin" />
-            {editingId ? "Updating…" : "Creating…"}
+            Saving...
           {:else}
-            {editingId ? "Save changes" : "Create Promotion"}
+            {editingId ? "Update Promotion" : "Create Promotion"}
           {/if}
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   </div>
 {/if}
 
 <!-- Delete Confirm -->
 {#if deleteId}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+    onclick={(e) => e.target === e.currentTarget && (deleteId = null)}
+    role="presentation"
   >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-      <h2 class="text-base font-semibold text-gray-900 mb-2">
-        Delete Promotion?
-      </h2>
-      <p class="text-sm text-gray-600 mb-6">
-        "<span class="font-medium">{deleteTitle}</span>" will be permanently
-        removed.
-      </p>
-      <div class="flex justify-end gap-3">
-        <button
-          onclick={() => (deleteId = null)}
-          class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
-          >Cancel</button
-        >
-        <button
-          onclick={confirmDelete}
-          class="rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700"
-          >Delete</button
-        >
+    <Card class="w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+      <div class="flex flex-col items-center text-center">
+        <div class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+          <Trash2 size={24} />
+        </div>
+        <h2 class="text-lg font-black text-gray-900 mb-2">
+          Delete Promotion?
+        </h2>
+        <p class="text-sm text-gray-500">
+          The promotion "<span class="font-bold text-gray-900">{deleteTitle}</span>" and its voucher code will be permanently removed.
+        </p>
       </div>
-    </div>
+      <div class="flex gap-3 mt-8">
+        <Button
+          onclick={() => (deleteId = null)}
+          variant="secondary"
+          class="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          onclick={confirmDelete}
+          variant="primary"
+          class="flex-1 bg-red-600 hover:bg-red-700"
+        >
+          Delete
+        </Button>
+      </div>
+    </Card>
   </div>
 {/if}

@@ -24,6 +24,7 @@ export const PATCH: RequestHandler = async (event) => {
 
   if (body.name !== undefined)        { fields.push('name = ?');        values.push(body.name); }
   if (body.description !== undefined) { fields.push('description = ?'); values.push(body.description); }
+  if (body.logo_url !== undefined)    { fields.push('logo_url = ?');    values.push(body.logo_url); }
   if (body.gateway_key !== undefined) { 
     if (body.gateway_key === '' || body.gateway_key === null) {
       return json({ error: 'gateway_key cannot be empty' }, { status: 400 });

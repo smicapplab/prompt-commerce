@@ -3,34 +3,14 @@
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import { goto } from "$app/navigation";
   import type { Order } from "$lib/types/orders.js";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Card from "$lib/components/ui/Card.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
+  import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight, Package, User, CreditCard, Truck } from "@lucide/svelte";
 
-  const STATUS_OPTIONS = [
-    "pending_payment",
-    "pending",
-    "paid",
-    "picking",
-    "packing",
-    "ready_for_pickup",
-    "picked_up",
-    "in_transit",
-    "delivered",
-    "cancelled",
-    "refunded",
-  ];
-
-  const STATUS_COLORS: Record<string, string> = {
-    pending_payment: "bg-orange-100 text-orange-700 border-orange-200",
-    pending: "bg-amber-100 text-amber-700 border-amber-200",
-    paid: "bg-blue-100 text-blue-700 border-blue-200",
-    picking: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    packing: "bg-violet-100 text-violet-700 border-violet-200",
-    ready_for_pickup: "bg-cyan-100 text-cyan-700 border-cyan-200",
-    picked_up: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    in_transit: "bg-sky-100 text-sky-700 border-sky-200",
-    delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    cancelled: "bg-red-100 text-red-700 border-red-200",
-    refunded: "bg-gray-100 text-gray-700 border-gray-200",
-  };
+  import { STATUS_OPTIONS, STATUS_COLORS } from "$lib/constants/orders.js";
 
   let orders = $state<Order[]>([]);
   let totalCount = $state(0);
@@ -140,231 +120,182 @@
 
 <svelte:head><title>Orders — Prompt Commerce</title></svelte:head>
 
-<div class="p-6 max-w-7xl mx-auto">
+<div class="px-6 pt-6 pb-20 max-w-6xl mx-auto">
   <div class="flex items-center justify-between mb-8">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">Orders</h1>
-      <p class="text-sm text-gray-500 mt-1">
+      <h1 class="text-2xl font-black text-gray-900 tracking-tight">Orders</h1>
+      <p class="text-sm text-gray-400 font-medium mt-1">
         Manage and track your store's customer orders.
       </p>
     </div>
-    <button
+    <Button
       onclick={() => goto("/admin/orders/new")}
-      class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all active:scale-95"
+      variant="primary"
     >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        ><path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 4v16m8-8H4"
-        /></svg
-      >
+      <Plus size={18} />
       Create Manual Order
-    </button>
+    </Button>
   </div>
 
   {#if dirtyCount > 0}
     <div
-      class="mb-6 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 flex items-center justify-between"
+      class="mb-6 rounded-2xl border border-orange-200 bg-orange-50/50 px-4 py-3 flex items-center justify-between animate-in slide-in-from-top-2 duration-300"
     >
       <div class="flex items-center gap-3">
-        <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-        <p class="text-sm font-medium text-orange-800">
+        <RefreshCw size={16} class="text-orange-600 {isSyncing ? 'animate-spin' : 'animate-spin-slow'}" />
+        <p class="text-sm font-bold text-orange-800">
           {dirtyCount} order{dirtyCount !== 1 ? "s" : ""} changed since last sync.
         </p>
       </div>
-      <button
+      <Button
         onclick={syncNow}
         disabled={isSyncing}
-        class="text-xs font-bold text-orange-600 bg-white border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-all disabled:opacity-50"
+        variant="primary"
+        class="bg-orange-600 hover:bg-orange-700 h-8 text-[10px]"
       >
         {isSyncing ? "Syncing..." : "Sync Now"}
-      </button>
+      </Button>
     </div>
   {/if}
 
   <!-- Filters -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <div class="md:col-span-2 relative">
-      <div
-        class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
-      >
-        <svg
-          class="h-4 w-4 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          ><path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          /></svg
-        >
+  <Card class="p-4 mb-6">
+    <div class="flex flex-col md:flex-row gap-4">
+      <div class="flex-1 relative">
+        <Search
+          size={18}
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        />
+        <Input
+          type="search"
+          placeholder="Search by buyer or notes..."
+          bind:value={q}
+          onkeydown={(e) => e.key === "Enter" && search()}
+          class="pl-10"
+        />
       </div>
-      <input
-        type="search"
-        placeholder="Search by buyer or notes..."
-        bind:value={q}
-        onkeydown={(e) => e.key === "Enter" && search()}
-        class="block w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all outline-none"
-      />
-    </div>
-
-    <select
-      bind:value={filterStatus}
-      onchange={search}
-      class="block w-full rounded-xl border border-gray-200 bg-white py-2.5 px-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all outline-none"
-    >
-      <option value="">All Statuses</option>
-      {#each STATUS_OPTIONS as s}
-        <option value={s}
-          >{s
-            .split("_")
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(" ")}</option
+      <div class="flex gap-4">
+        <Select
+          bind:value={filterStatus}
+          onchange={search}
+          class="w-48"
+          options={[
+            { value: '', label: 'All Statuses' },
+            ...STATUS_OPTIONS.map(s => ({
+              value: s,
+              label: s.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+            }))
+          ]}
+        />
+        <Button
+          onclick={search}
+          variant="secondary"
+          class="whitespace-nowrap"
         >
-      {/each}
-    </select>
-
-    <button
-      onclick={search}
-      class="rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95"
-    >
-      Apply Filters
-    </button>
-  </div>
+          Apply Filters
+        </Button>
+      </div>
+    </div>
+  </Card>
 
   <!-- Table -->
-  <div
-    class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-  >
+  <Card class="overflow-hidden p-0">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm border-collapse">
-        <thead>
-          <tr class="bg-gray-50/50 border-b border-gray-100">
-            <th class="px-6 py-4 font-semibold text-gray-600">Order ID</th>
-            <th class="px-6 py-4 font-semibold text-gray-600">Buyer</th>
-            <th class="px-6 py-4 font-semibold text-gray-600 text-center"
-              >Channel</th
-            >
-            <th class="px-6 py-4 font-semibold text-gray-600 text-center"
-              >Delivery</th
-            >
-            <th class="px-6 py-4 font-semibold text-gray-600 text-center"
-              >Items</th
-            >
-            <th class="px-6 py-4 font-semibold text-gray-600">Total</th>
-            <th class="px-6 py-4 font-semibold text-gray-600">Status</th>
-            <th class="px-6 py-4 font-semibold text-gray-600">Date</th>
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50/80 border-b border-gray-100">
+          <tr>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Order ID</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Buyer</th>
+            <th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Channel</th>
+            <th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Delivery</th>
+            <th class="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Items</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Total</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
+            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Date</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           {#if loading}
             <tr>
-              <td colspan="7" class="px-6 py-24 text-center">
+              <td colspan="8" class="px-6 py-24 text-center">
                 <div class="flex flex-col items-center gap-3">
-                  <div
-                    class="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"
-                  ></div>
-                  <p class="text-gray-400 font-medium">Loading orders...</p>
+                  <RefreshCw size={24} class="text-indigo-600 animate-spin" />
+                  <p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Loading orders...</p>
                 </div>
               </td>
             </tr>
           {:else if orders.length === 0}
             <tr>
-              <td colspan="7" class="px-6 py-24 text-center">
-                <div class="flex flex-col items-center gap-4">
-                  <div
-                    class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300"
-                  >
-                    <svg
-                      class="w-8 h-8"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      ><path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                      /></svg
-                    >
+              <td colspan="8" class="px-6 py-24 text-center">
+                <div class="flex flex-col items-center justify-center max-w-sm mx-auto text-gray-400">
+                  <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                    <Package size={24} class="opacity-40" />
                   </div>
-                  <p class="text-gray-500 font-medium">
+                  <h3 class="text-lg font-bold text-gray-900 mb-1">No orders found</h3>
+                  <p class="text-sm">
                     {activeStore.slug
-                      ? "No orders found matching your criteria."
+                      ? "No orders found matching your search or filters."
                       : "Please select a store to view orders."}
                   </p>
+                  {#if activeStore.slug}
+                    <Button
+                      variant="primary"
+                      onclick={() => goto("/admin/orders/new")}
+                      class="mt-6"
+                    >
+                      Create Manual Order
+                    </Button>
+                  {/if}
                 </div>
               </td>
             </tr>
           {:else}
             {#each orders as order}
               <tr
-                class="hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                onclick={() =>
-                  (window.location.href = `/admin/orders/${order.id}`)}
+                class="hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                onclick={() => (goto(`/admin/orders/${order.id}`))}
               >
                 <td class="px-6 py-4">
-                  <span
-                    class="font-mono text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded truncate"
-                  >
+                  <Badge variant="secondary" class="font-mono text-[10px] border-none text-indigo-600 bg-indigo-50/50">
                     #{String(order.id).padStart(6, "0")}
-                  </span>
+                  </Badge>
                 </td>
                 <td class="px-6 py-4">
-                  <div class="font-medium text-gray-900">
+                  <div class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
                     {order.buyer_ref ?? "Guest Buyer"}
                   </div>
                   {#if order.notes}
-                    <div
-                      class="text-xs text-gray-400 mt-0.5 max-w-[200px] truncate"
-                    >
-                      {order.notes}
+                    <div class="text-[10px] text-gray-400 font-medium mt-0.5 max-w-[180px] truncate italic">
+                      "{order.notes}"
                     </div>
                   {/if}
                 </td>
                 <td class="px-6 py-4 text-center">
-                  <span
-                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-600"
-                  >
+                  <Badge class="bg-gray-100 text-gray-500 border-none font-bold text-[9px]">
                     {order.channel}
-                  </span>
+                  </Badge>
                 </td>
                 <td class="px-6 py-4 text-center">
-                  <span
-                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider {(order as any).delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}"
-                  >
+                  <Badge class="border-none font-bold text-[9px] {(order as any).delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}">
                     {(order as any).delivery_type || 'delivery'}
-                  </span>
+                  </Badge>
                 </td>
-                <td class="px-6 py-4 text-center text-gray-600 font-medium"
-                  >{order.item_count}</td
-                >
-                <td class="px-6 py-4 font-bold text-gray-900"
-                  >{formatCurrency(order.total)}</td
-                >
-                <td class="px-6 py-4">
-                  <span
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border {STATUS_COLORS[
-                      order.status
-                    ] ?? 'bg-gray-100 text-gray-600 border-gray-200'}"
-                  >
-                    {order.status
-                      .split("_")
-                      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                      .join(" ")}
-                  </span>
+                <td class="px-6 py-4 text-center font-black text-gray-900">
+                  {order.item_count}
+                </td>
+                <td class="px-6 py-4 font-black text-gray-900 leading-tight">
+                  {formatCurrency(order.total)}
                 </td>
                 <td class="px-6 py-4">
-                  <div class="text-xs font-medium text-gray-700">
+                  <Badge variant="secondary" class="font-bold {STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}">
+                    {order.status.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                  </Badge>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="text-[10px] font-bold text-gray-900 leading-tight">
                     {formatDate(order.created_at).split(" at ")[0]}
                   </div>
-                  <div
-                    class="text-[10px] text-gray-400 mt-0.5 uppercase tracking-tighter"
-                  >
+                  <div class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
                     {formatDate(order.created_at).split(" at ")[1] || ""}
                   </div>
                 </td>
@@ -380,63 +311,35 @@
       <div
         class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between"
       >
-        <p class="text-sm text-gray-500 font-medium">
-          Showing <span class="text-gray-900">{orders.length}</span> of
-          <span class="text-gray-900">{totalCount}</span> orders
-        </p>
+        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+          Page {page} of {totalPages} ({totalCount} orders)
+        </div>
         <div class="flex items-center gap-1">
-          <button
-            onclick={() => {
-              page--;
-              load();
-            }}
+          <Button
+            onclick={() => { page--; load(); }}
             disabled={page <= 1}
-            class="p-2 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-            aria-label="Previous page"
+            variant="secondary"
+            size="sm"
+            class="p-2 h-auto border-none"
           >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 19l-7-7 7-7"
-              /></svg
-            >
-          </button>
+            <ChevronLeft size={20} />
+          </Button>
           <div
-            class="px-4 py-1.5 rounded-lg bg-white border border-gray-200 text-sm font-bold text-gray-700"
+            class="px-3 py-1 rounded-lg bg-white border border-gray-100 text-[10px] font-black text-gray-700"
           >
-            {page} <span class="text-gray-300 mx-1">/</span>
-            {totalPages}
+            {page} / {totalPages}
           </div>
-          <button
-            onclick={() => {
-              page++;
-              load();
-            }}
+          <Button
+            onclick={() => { page++; load(); }}
             disabled={page >= totalPages}
-            class="p-2 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-            aria-label="Next page"
+            variant="secondary"
+            size="sm"
+            class="p-2 h-auto border-none"
           >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 5l7 7-7 7"
-              /></svg
-            >
-          </button>
+            <ChevronRight size={20} />
+          </Button>
         </div>
       </div>
     {/if}
-  </div>
+  </Card>
 </div>

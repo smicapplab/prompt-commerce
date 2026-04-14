@@ -2,6 +2,11 @@
 	import { onMount } from "svelte";
 	import { Plus, Trash2, X, RefreshCw, Pencil } from "@lucide/svelte";
 	import { activeStore } from "$lib/stores/activeStore.svelte.js";
+	import Button from "$lib/components/ui/Button.svelte";
+	import Card from "$lib/components/ui/Card.svelte";
+	import Input from "$lib/components/ui/Input.svelte";
+	import Select from "$lib/components/ui/Select.svelte";
+	import Badge from "$lib/components/ui/Badge.svelte";
 	import {
 		fetchSyncStatus,
 		syncToGateway as doSync,
@@ -253,44 +258,44 @@
 
 <svelte:head><title>Categories — Prompt Commerce</title></svelte:head>
 
-<div class="min-h-screen bg-gray-50 p-8">
-	<div class="max-w-4xl mx-auto">
-		<div class="flex items-center justify-between mb-4">
-			<h1 class="text-2xl font-bold text-gray-900">Categories</h1>
-			<button
+<div class="px-6 pt-6 pb-20">
+	<div class="max-w-6xl mx-auto">
+		<div class="flex items-center justify-between mb-8">
+			<h1 class="text-2xl font-black text-gray-900 tracking-tight">Categories</h1>
+			<Button
 				onclick={openAddModal}
-				class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+				variant="primary"
 			>
 				<Plus size={18} />
 				Add category
-			</button>
+			</Button>
 		</div>
 
 		<!-- Sync banner -->
 		{#if syncing}
 			<div
-				class="flex items-center gap-3 mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+				class="flex items-center gap-3 mb-6 rounded-2xl border border-blue-200 bg-blue-50/50 px-4 py-3 text-sm text-blue-800"
 			>
 				<RefreshCw size={15} class="animate-spin shrink-0" />
 				<span>Syncing changes to gateway…</span>
 			</div>
 		{:else if syncSuccess}
 			<div
-				class="flex items-center gap-3 mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+				class="flex items-center gap-3 mb-6 rounded-2xl border border-green-200 bg-green-50/50 px-4 py-3 text-sm text-green-800"
 			>
 				<span class="shrink-0">✓</span>
 				<span>{syncSuccess}</span>
 			</div>
 		{:else if syncError}
 			<div
-				class="flex items-center gap-3 mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+				class="flex items-center gap-3 mb-6 rounded-2xl border border-red-200 bg-red-50/50 px-4 py-3 text-sm text-red-700"
 			>
 				<span class="shrink-0">⚠</span>
 				<span>{syncError}</span>
 			</div>
 		{:else if dirtyCount > 0}
 			<div
-				class="mb-6 flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800"
+				class="mb-6 flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50/50 px-4 py-3 text-sm text-orange-800"
 			>
 				<div class="flex items-center gap-2">
 					<RefreshCw
@@ -305,12 +310,13 @@
 						</span>
 					</span>
 				</div>
-				<button
+				<Button
 					onclick={runSync}
-					class="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700 transition-colors shadow-sm"
+					variant="primary"
+					class="bg-orange-600 hover:bg-orange-700 h-8 text-[10px]"
 				>
 					Sync now
-				</button>
+				</Button>
 			</div>
 		{/if}
 
@@ -323,176 +329,177 @@
 				{/each}
 			</div>
 		{:else if categories.length === 0}
-			<div
-				class="bg-white rounded-xl border border-gray-200 p-12 text-center"
-			>
-				<p class="text-gray-500">
-					No categories found. Create one to get started.
+			<Card class="p-20 text-center">
+				<div
+					class="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+				>
+					<div class="w-10 h-10 border-4 border-gray-100 rounded-lg"></div>
+				</div>
+				<h3 class="text-lg font-bold text-gray-900">
+					No categories found
+				</h3>
+				<p class="text-sm text-gray-500 mt-2 max-w-[300px] mx-auto">
+					You haven't added any categories to this store yet.
 				</p>
-			</div>
+				<Button
+					variant="primary"
+					onclick={openAddModal}
+					class="mt-6 mx-auto"
+				>
+					Add your first category
+				</Button>
+			</Card>
 		{:else}
-			<div
-				class="bg-white rounded-xl border border-gray-200 overflow-hidden"
-			>
-				<table class="w-full text-sm">
-					<thead class="bg-gray-50 border-b border-gray-200">
-						<tr>
-							<th
-								class="px-6 py-3 text-left font-medium text-gray-700"
-								>Name</th
-							>
-							<th
-								class="px-6 py-3 text-left font-medium text-gray-700"
-								>Parent Category</th
-							>
-							<th
-								class="px-6 py-3 text-left font-medium text-gray-700"
-								>Products</th
-							>
-							<th
-								class="px-6 py-3 text-left font-medium text-gray-700"
-								>Actions</th
-							>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-gray-100">
-						{#each categories as category (category.id)}
-							<tr class="hover:bg-gray-50">
-								<td class="px-6 py-4 font-medium text-gray-900"
-									>{category.name}</td
+			<Card class="overflow-hidden p-0">
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead class="bg-gray-50/80 border-b border-gray-100">
+							<tr>
+								<th
+									class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+									>Name</th
 								>
-								<td class="px-6 py-4 text-gray-700"
-									>{getCategoryParentName(
-										category.parent_id,
-									)}</td
+								<th
+									class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+									>Parent Category</th
 								>
-								<td class="px-6 py-4 text-gray-700"
-									>{productCounts[category.id] || 0}</td
+								<th
+									class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+									>Products</th
 								>
-								<td class="px-6 py-4">
-									<div class="flex items-center gap-2">
-										<button
-											onclick={() =>
-												openEditModal(category)}
-											class="p-1.5 hover:bg-gray-100 rounded text-gray-600"
-											title="Edit"
-										>
-											<Pencil size={16} />
-										</button>
-										<button
-											onclick={() =>
-												deleteCategory(category.id)}
-											class="p-1.5 hover:bg-red-50 rounded text-red-600"
-											title="Delete"
-										>
-											<Trash2 size={16} />
-										</button>
-									</div>
-								</td>
+								<th
+									class="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400"
+									>Actions</th
+								>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+						</thead>
+						<tbody class="divide-y divide-gray-100">
+							{#each categories as category (category.id)}
+								<tr class="hover:bg-gray-50/50 transition-colors">
+									<td class="px-6 py-4 font-bold text-gray-900"
+										>{category.name}</td
+									>
+									<td class="px-6 py-4">
+										<Badge variant="secondary" class="border-none font-medium">
+											{getCategoryParentName(category.parent_id)}
+										</Badge>
+									</td>
+									<td class="px-6 py-4">
+										<span class="font-black text-gray-900">{productCounts[category.id] || 0}</span>
+										<span class="text-[10px] text-gray-400 font-bold ml-1 uppercase">items</span>
+									</td>
+									<td class="px-6 py-4 text-right">
+										<div class="flex items-center justify-end gap-1">
+											<Button
+												variant="secondary"
+												size="sm"
+												onclick={() => openEditModal(category)}
+												class="p-2 border-none h-auto"
+											>
+												<Pencil size={15} />
+											</Button>
+											<Button
+												variant="secondary"
+												size="sm"
+												onclick={() => deleteCategory(category.id)}
+												class="p-2 border-none h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
+											>
+												<Trash2 size={15} />
+											</Button>
+										</div>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</Card>
 		{/if}
 	</div>
 
 	{#if showModal}
 		<div
-			class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 backdrop-blur-sm"
+			class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200"
+			onclick={(e) => e.target === e.currentTarget && closeModal()}
 			onkeydown={(e) => e.key === "Escape" && closeModal()}
 			role="presentation"
 		>
-			<div
-				class="bg-white rounded-2xl shadow-2xl w-full max-w-lg"
+			<Card
+				class="w-full max-w-lg shadow-2xl p-0 overflow-hidden animate-in zoom-in-95 duration-200"
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="modal-title"
 			>
 				<div
-					class="flex items-center justify-between p-6 border-b border-gray-200"
+					class="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50"
 				>
 					<h2
 						id="modal-title"
-						class="text-xl font-bold text-gray-900"
+						class="text-xl font-black text-gray-900"
 					>
 						{isEditing ? "Edit Category" : "Add Category"}
 					</h2>
-					<button
+					<Button
 						onclick={closeModal}
-						class="p-1 hover:bg-gray-100 rounded-lg text-gray-500"
+						variant="secondary"
+						size="sm"
+						class="p-1 border-none h-auto text-gray-400 hover:text-gray-600"
 					>
 						<X size={20} />
-					</button>
+					</Button>
 				</div>
 
-				<div class="p-6 space-y-4">
-					<div>
-						<label
-							for="category-name"
-							class="block text-sm font-medium text-gray-700 mb-1"
-							>Name *</label
-						>
-						<input
-							id="category-name"
-							type="text"
-							bind:value={formData.name}
-							oninput={() => erroredFields.delete("name")}
-							class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 {erroredFields.has(
-								'name',
-							)
-								? 'border-red-500 bg-red-50'
-								: 'border-gray-300'}"
-							placeholder="Category name"
-						/>
-						{#if erroredFields.has("name")}
-							<p class="text-xs text-red-600 mt-1">
-								Name is required
-							</p>
-						{/if}
-					</div>
+				<div class="p-6 space-y-6">
+					<Input
+						id="category-name"
+						label="Category Name"
+						bind:value={formData.name}
+						oninput={() => erroredFields.delete("name")}
+						placeholder="e.g. Smartphones, Summer Collection"
+						error={erroredFields.has('name') ? 'Name is required' : ''}
+					/>
 
-					<div>
+					<div class="space-y-1.5">
 						<label
 							for="category-parent"
-							class="block text-sm font-medium text-gray-700 mb-1"
+							class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1"
 							>Parent Category</label
 						>
-						<select
+						<Select
 							id="category-parent"
 							bind:value={formData.parent_id}
-							class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-						>
-							<option value="">None</option>
-							{#each getSelectableCategories as cat (cat.id)}
-								<option value={cat.id}>{cat.name}</option>
-							{/each}
-						</select>
+							options={[
+								{ value: '', label: 'None (Root Category)' },
+								...getSelectableCategories.map(cat => ({ value: cat.id.toString(), label: cat.name }))
+							]}
+						/>
 					</div>
 				</div>
 
-				<div class="flex gap-3 p-6 border-t border-gray-200 bg-gray-50">
-					<button
+				<div class="flex gap-3 p-6 border-t border-gray-100 bg-gray-50/50">
+					<Button
 						onclick={closeModal}
-						class="flex-1 border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-gray-300 focus:ring-offset-1 outline-none"
+						variant="secondary"
+						class="flex-1"
 						disabled={saving}
 					>
 						Cancel
-					</button>
-					<button
+					</Button>
+					<Button
 						onclick={saveCategory}
-						class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+						variant="primary"
+						class="flex-1"
 						disabled={saving}
 					>
 						{#if saving}
 							<RefreshCw size={16} class="animate-spin" />
-							{isEditing ? "Updating..." : "Creating..."}
+							Syncing...
 						{:else}
-							{isEditing ? "Update" : "Create"}
+							{isEditing ? "Update Category" : "Create Category"}
 						{/if}
-					</button>
+					</Button>
 				</div>
-			</div>
+			</Card>
 		</div>
 	{/if}
 

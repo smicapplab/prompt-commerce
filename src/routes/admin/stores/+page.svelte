@@ -5,22 +5,25 @@
     Trash2,
     Copy,
     Check,
-    ToggleLeft,
-    ToggleRight,
     Store,
     Search,
-    Loader,
+    RefreshCw,
+    Building2,
+    ChevronLeft,
+    ShieldAlert,
+    X,
+    Key,
+    Info,
+    CheckCircle2
   } from "@lucide/svelte";
 
-  interface StoreItem {
-    id: number;
-    slug: string;
-    name: string;
-    description: string | null;
-    gateway_key: string | null;
-    active: number;
-    created_at: string;
-  }
+  import type { StoreItem } from "$lib/types/stores.js";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Card from "$lib/components/ui/Card.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
+  import Toggle from "$lib/components/ui/Toggle.svelte";
+  import { goto } from "$app/navigation";
 
   let stores = $state<StoreItem[]>([]);
   let loading = $state(true);
@@ -192,287 +195,269 @@
   });
 </script>
 
-<svelte:head><title>Stores — Prompt Commerce</title></svelte:head>
+<svelte:head>
+  <title>Manage Stores — Prompt Commerce</title>
+</svelte:head>
 
 <!-- Toast -->
 {#if toast}
   <div
-    class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-medium shadow-lg
+    class="fixed top-6 right-6 z-[110] px-6 py-4 rounded-2xl text-sm font-black shadow-2xl animate-in slide-in-from-right-10
     {toastType === 'success'
-      ? 'bg-green-600 text-white'
+      ? 'bg-emerald-600 text-white'
       : 'bg-red-600 text-white'}"
   >
-    {toast}
+    <div class="flex items-center gap-3">
+      {#if toastType === 'success'}
+        <CheckCircle2 size={18} />
+      {:else}
+        <ShieldAlert size={18} />
+      {/if}
+      <span class="uppercase tracking-widest">{toast}</span>
+    </div>
   </div>
 {/if}
 
-<div class="p-6">
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h1 class="text-xl font-semibold text-gray-900">Stores</h1>
-      <p class="text-sm text-gray-500 mt-0.5">
-        Manage stores hosted on this server
-      </p>
+<div class="px-6 pt-6 pb-20 max-w-6xl mx-auto">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+    <div class="flex items-center gap-6">
+      <Button 
+        variant="secondary" 
+        size="sm" 
+        onclick={() => goto('/admin')}
+        class="h-10 w-10 p-0 rounded-2xl shadow-none border-gray-100"
+      >
+        <ChevronLeft size={20} />
+      </Button>
+      <div>
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight leading-none mb-1">Store Registries</h1>
+        <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Configure external platform connections</p>
+      </div>
     </div>
-    <button
+    <Button
+      variant="primary"
       onclick={openCreate}
-      class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+      class="bg-gray-900 border-none hover:bg-black shadow-xl shadow-gray-200"
     >
-      <Plus class="w-4 h-4" /> Add store
-    </button>
+      <Plus size={18} class="mr-2" /> Connect Platform
+    </Button>
   </div>
 
   {#if loading}
-    <div class="text-sm text-gray-400 py-12 text-center">Loading…</div>
+    <div class="py-24 text-center">
+      <RefreshCw size={32} class="animate-spin text-indigo-600 mx-auto mb-4" />
+      <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 animate-pulse">Syncing store records...</p>
+    </div>
   {:else if stores.length === 0}
-    <div class="text-center py-16 text-gray-400">
-      <Store class="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p class="text-sm">No stores yet. Add your first store to get started.</p>
+    <div class="py-24 text-center">
+      <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+        <Store size={32} />
+      </div>
+      <h2 class="text-xl font-black text-gray-900 uppercase tracking-tight mb-2">Registry Empty</h2>
+      <p class="text-sm font-medium text-gray-400">Connect your first store to begin managing inventory and orders.</p>
     </div>
   {:else}
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th class="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-600">Slug</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-600"
-              >Gateway Key</th
-            >
-            <th class="text-left px-4 py-3 font-medium text-gray-600">Status</th
-            >
-            <th class="px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          {#each stores as s}
-            <tr class="hover:bg-gray-50">
-              <td class="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-              <td class="px-4 py-3 text-gray-500 font-mono text-xs">{s.slug}</td
-              >
-              <td class="px-4 py-3">
-                {#if s.gateway_key}
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-xs text-gray-500"
-                      >{s.gateway_key.slice(0, 12)}…</span
-                    >
-                    <button
-                      onclick={() => copyKey(s)}
-                      class="text-gray-400 hover:text-gray-600"
-                    >
-                      {#if copiedKey === s.id}<Check
-                          class="w-3.5 h-3.5 text-green-500"
-                        />{:else}<Copy class="w-3.5 h-3.5" />{/if}
-                    </button>
-                  </div>
-                {:else}
-                  <span class="text-gray-300 text-xs">Not set</span>
-                {/if}
-              </td>
-              <td class="px-4 py-3">
-                <button
-                  onclick={() => toggleActive(s)}
-                  class="flex items-center gap-1.5 text-xs"
-                >
-                  {#if s.active}
-                    <ToggleRight class="w-5 h-5 text-green-500" />
-                    <span class="text-green-600">Active</span>
-                  {:else}
-                    <ToggleLeft class="w-5 h-5 text-gray-400" />
-                    <span class="text-gray-400">Inactive</span>
-                  {/if}
-                </button>
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex items-center gap-1 justify-end">
-                  <button
-                    onclick={() => openEdit(s)}
-                    class="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-                  >
-                    <Pencil class="w-4 h-4" />
-                  </button>
-                  <button
-                    onclick={() => deleteStore(s)}
-                    class="p-1.5 rounded hover:bg-red-50 text-gray-500 hover:text-red-600"
-                  >
-                    <Trash2 class="w-4 h-4" />
-                  </button>
-                </div>
-              </td>
+    <Card class="p-0 overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="bg-gray-50/50">
+              <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Store Entity</th>
+              <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Platform Identity</th>
+              <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Security Token</th>
+              <th class="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Access State</th>
+              <th class="px-6 py-4"></th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {#each stores as s}
+              <tr class="group hover:bg-gray-50/20 transition-colors">
+                <td class="px-6 py-6 whitespace-nowrap">
+                   <div class="flex items-center gap-4">
+                      <div class="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-sm shadow-sm group-hover:scale-105 transition-transform">
+                        {s.name[0].toUpperCase()}
+                      </div>
+                      <span class="text-sm font-black text-gray-900">{s.name}</span>
+                   </div>
+                </td>
+                <td class="px-6 py-6 whitespace-nowrap">
+                  <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest font-mono bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">{s.slug}</span>
+                </td>
+                <td class="px-6 py-6 whitespace-nowrap">
+                  {#if s.gateway_key}
+                    <div class="flex items-center gap-2 group/key">
+                      <span class="font-mono text-[10px] text-gray-400 font-bold bg-white px-2 py-1 rounded-lg border border-gray-100"
+                        >{s.gateway_key.slice(0, 12)}••••</span>
+                      <button
+                        onclick={() => copyKey(s)}
+                        class="text-gray-300 hover:text-indigo-600 transition-all opacity-0 group-hover/key:opacity-100"
+                      >
+                        {#if copiedKey === s.id}<Check
+                            size={14} class="text-emerald-500"
+                          />{:else}<Copy size={14} />{/if}
+                      </button>
+                    </div>
+                  {:else}
+                    <Badge variant="secondary" class="bg-gray-50 text-gray-300 border-none font-bold text-[9px] uppercase tracking-tighter italic">Not Assigned</Badge>
+                  {/if}
+                </td>
+                <td class="px-6 py-6 whitespace-nowrap">
+                   <div class="flex items-center gap-2">
+                      <Toggle
+                        checked={!!s.active}
+                        onchange={() => toggleActive(s)}
+                        size="sm"
+                      />
+                      <span class="text-[10px] font-black uppercase tracking-widest {s.active ? 'text-emerald-600' : 'text-gray-300'}">
+                        {s.active ? 'Active' : 'Offline'}
+                      </span>
+                   </div>
+                </td>
+                <td class="px-6 py-6 whitespace-nowrap text-right">
+                  <div class="flex items-center gap-2 justify-end opacity-0 group-hover:opacity-100 transition-all">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onclick={() => openEdit(s)}
+                      class="h-8 w-8 p-0 border-none hover:bg-indigo-50 hover:text-indigo-600 shadow-none"
+                    >
+                      <Pencil size={14} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onclick={() => deleteStore(s)}
+                      class="h-8 w-8 p-0 border-none hover:bg-red-50 hover:text-red-600 shadow-none"
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   {/if}
 </div>
 
-<!-- Add / Edit Modal -->
+<!-- Unified Modal -->
 {#if showModal}
-  <div
-    class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4"
-  >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
-      <div class="px-6 py-4 border-b border-gray-100">
-        <h2 class="font-semibold text-gray-900">
-          {editTarget ? "Edit store" : "Connect store"}
-        </h2>
+  <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div 
+      class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+      onclick={() => (showModal = false)}
+      role="presentation"
+    ></div>
+    
+    <Card class="w-full max-w-md shadow-2xl p-8 animate-in zoom-in-95 duration-200 z-10">
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-3">
+           <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-900">
+              {#if editTarget}<Pencil size={24} />{:else}<Store size={24} />{/if}
+           </div>
+           <div>
+              <h3 class="text-xl font-black text-gray-900 leading-none">{editTarget ? 'Edit Store' : 'Connect Store'}</h3>
+              <p class="text-xs text-gray-400 font-medium mt-1">
+                {editTarget ? `Modify registry for ${editTarget.name}` : 'Link a new external storefront key'}
+              </p>
+           </div>
+        </div>
+        <button onclick={() => (showModal = false)} class="text-gray-300 hover:text-gray-900 transition-colors">
+          <X size={20} />
+        </button>
       </div>
 
       {#if editTarget}
-        <!-- ── Edit mode: full form ── -->
-        <div class="px-6 py-4 space-y-4">
-          <div>
-            <label
-              for="edit-name"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Store name *</label
-            >
-            <input
-              id="edit-name"
-              bind:value={form.name}
-              type="text"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        <!-- Edit Form -->
+        <div class="space-y-6">
+          <Input id="edit-name" label="Store Identity" bind:value={form.name} placeholder="Official Name" />
+          <Input id="edit-slug" label="Identifier (Slug)" bind:value={form.slug} placeholder="store-slug" class="font-mono text-xs" />
+          <div class="space-y-2">
+            <label for="edit-desc" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Internal Description</label>
+            <textarea id="edit-desc" bind:value={form.description} rows="2" class="w-full rounded-2xl border border-gray-100 bg-gray-50/50 p-4 text-sm focus:bg-white focus:border-indigo-200 outline-none transition-all resize-none"></textarea>
           </div>
-          <div>
-            <label
-              for="edit-slug"
-              class="block text-sm font-medium text-gray-700 mb-1">Slug</label
-            >
-            <input
-              id="edit-slug"
-              bind:value={form.slug}
-              type="text"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          <Input id="edit-key" label="Permanent Platform Key" bind:value={form.gateway_key} class="font-mono text-xs" />
+          
+          <div class="flex flex-col gap-3 pt-4">
+            <Button variant="primary" onclick={saveStore} disabled={!form.slug || !form.name} class="w-full h-12 bg-gray-900 border-none hover:bg-black font-black uppercase text-xs tracking-widest shadow-xl">
+               Apply Global Changes
+            </Button>
+            <Button variant="secondary" onclick={() => (showModal = false)} class="w-full h-12 border-none bg-gray-100 text-gray-500 hover:bg-gray-200 font-black uppercase text-xs tracking-widest">Cancel</Button>
           </div>
-          <div>
-            <label
-              for="edit-desc"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Description</label
-            >
-            <textarea
-              id="edit-desc"
-              bind:value={form.description}
-              rows="2"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            ></textarea>
-          </div>
-          <div>
-            <label
-              for="edit-key"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Gateway key</label
-            >
-            <input
-              id="edit-key"
-              bind:value={form.gateway_key}
-              type="text"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-          <button
-            onclick={() => (showModal = false)}
-            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-            >Cancel</button
-          >
-          <button
-            onclick={saveStore}
-            disabled={!form.slug || !form.name}
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-            >Save changes</button
-          >
         </div>
       {:else}
-        <!-- ── Add mode: key → lookup → confirm ── -->
-        <div class="px-6 py-5 space-y-4">
-          <!-- Key input + lookup button -->
-          <div>
-            <label
-              for="add-key"
-              class="block text-sm font-medium text-gray-700 mb-1"
-              >Platform key</label
-            >
-            <div class="flex gap-2">
-              <input
+        <!-- Connect Flow -->
+        <div class="space-y-8">
+          <div class="space-y-4">
+            <label for="add-key" class="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Platform Secret Key</label>
+            <div class="flex gap-3">
+              <Input
                 id="add-key"
                 bind:value={keyInput}
-                onkeydown={(e) => {
-                  if (e.key === "Enter") lookupKey();
-                }}
-                type="text"
-                placeholder="gk_…"
-                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onkeydown={(e: KeyboardEvent) => { if (e.key === "Enter") lookupKey(); }}
+                placeholder="gk_••••••••••••"
+                class="flex-1 font-mono text-xs"
               />
-              <button
+              <Button
+                variant="secondary"
                 onclick={lookupKey}
                 disabled={!keyInput.trim() || lookupState === "loading"}
-                class="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                class="h-11 px-4 border-gray-100"
               >
                 {#if lookupState === "loading"}
-                  <Loader class="w-4 h-4 animate-spin" />
+                  <RefreshCw size={16} class="animate-spin" />
                 {:else}
-                  <Search class="w-4 h-4" />
+                  <Search size={16} />
                 {/if}
-                Look up
-              </button>
+              </Button>
             </div>
-            <p class="text-xs text-gray-400 mt-1">
-              Paste the key issued by the gateway admin.
+            <p class="text-[10px] text-gray-400 font-medium px-1 italic">
+              Use the unique key provided by the commerce gateway.
             </p>
           </div>
 
-          <!-- Error state -->
           {#if lookupState === "error"}
-            <div
-              class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
-            >
-              {lookupError}
+            <div class="rounded-2xl bg-red-50 border border-red-100 p-4 flex items-start gap-3 text-red-700 animate-in shake-in-1">
+              <ShieldAlert size={18} class="shrink-0 mt-0.5" />
+              <p class="text-xs font-bold leading-relaxed">{lookupError}</p>
             </div>
           {/if}
 
-          <!-- Found state: show store details read-only -->
           {#if lookupState === "found" && looked}
-            <div
-              class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 space-y-2"
-            >
-              <p
-                class="text-xs font-medium text-green-700 uppercase tracking-wide"
-              >
-                Store found
-              </p>
-              <div class="flex items-baseline justify-between">
-                <span class="text-sm font-semibold text-gray-900"
-                  >{looked.name}</span
-                >
-                <span class="text-xs font-mono text-gray-500"
-                  >{looked.slug}</span
-                >
+            <div class="rounded-3xl bg-indigo-50 border border-indigo-100 p-6 space-y-4 animate-in zoom-in-95">
+              <div class="flex items-center gap-2">
+                <CheckCircle2 size={16} class="text-indigo-600" />
+                <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Valid Entity Identified</span>
               </div>
-              <p class="text-xs text-gray-400 truncate">
-                {looked.mcpServerUrl}
-              </p>
+              <div>
+                <h4 class="text-lg font-black text-gray-900 leading-tight mb-1">{looked.name}</h4>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest font-mono italic">@{looked.slug}</span>
+                </div>
+              </div>
+              <div class="pt-3 border-t border-indigo-100 flex items-center gap-2 text-indigo-500 overflow-hidden">
+                <Info size={12} class="shrink-0" />
+                <span class="text-[9px] font-mono truncate">{looked.mcpServerUrl}</span>
+              </div>
             </div>
           {/if}
-        </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-          <button
-            onclick={() => (showModal = false)}
-            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-            >Cancel</button
-          >
-          <button
-            onclick={connectStore}
-            disabled={lookupState !== "found"}
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-            >Connect store</button
-          >
+
+          <div class="flex flex-col gap-3 pt-4">
+            <Button
+              variant="primary"
+              onclick={connectStore}
+              disabled={lookupState !== "found"}
+              class="w-full h-12 bg-indigo-600 border-none hover:bg-indigo-700 font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-100"
+            >
+              Initialize Connection
+            </Button>
+            <Button variant="secondary" onclick={() => (showModal = false)} class="w-full h-12 border-none bg-gray-100 text-gray-500 hover:bg-gray-200 font-black uppercase text-xs tracking-widest">Discard</Button>
+          </div>
         </div>
       {/if}
-    </div>
+    </Card>
   </div>
 {/if}

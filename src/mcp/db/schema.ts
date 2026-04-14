@@ -35,6 +35,7 @@ export function initRegistrySchema(db: Database.Database): void {
       slug         TEXT    NOT NULL UNIQUE,
       name         TEXT    NOT NULL,
       description  TEXT,
+      logo_url     TEXT,
       gateway_key  TEXT,
       active       INTEGER NOT NULL DEFAULT 1,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),

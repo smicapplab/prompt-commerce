@@ -165,8 +165,8 @@ export const PATCH: RequestHandler = async (event) => {
           if (!gatewayUrl) return;
 
           const storeRow = registry
-            .prepare('SELECT gateway_key FROM stores WHERE slug = ? AND active = 1')
-            .get(slug) as { gateway_key: string | null } | undefined;
+            .prepare('SELECT gateway_key, logo_url FROM stores WHERE slug = ? AND active = 1')
+            .get(slug) as { gateway_key: string | null, logo_url: string | null } | undefined;
           if (!storeRow?.gateway_key) return;
 
           // Read all relevant settings from the store DB (post-save)
@@ -188,6 +188,11 @@ export const PATCH: RequestHandler = async (event) => {
             'Content-Type': 'application/json',
             'x-gateway-key': storeRow.gateway_key,
           };
+
+          const sellerUrlRow = registry
+            .prepare('SELECT value FROM settings WHERE key = ?')
+            .get('seller_public_url') as { value: string } | undefined;
+          const sellerUrl = sellerUrlRow?.value?.replace(/\/$/, '') || process.env.SELLER_PUBLIC_URL?.replace(/\/$/, '') || process.env.ORIGIN?.replace(/\/$/, '') || '';
 
           // ── Push AI config ─────────────────────────────────────────────────
           if (hasAiChange) {
@@ -234,14 +239,19 @@ export const PATCH: RequestHandler = async (event) => {
             });
           }
 
-          // ── Push store config (pickup) ─────────────────────────────────────
+          // ── Push store config (pickup, logo) ───────────────────────────────
           if (hasStoreConfigChange) {
+            const absoluteLogoUrl = storeRow.logo_url
+              ? (storeRow.logo_url.startsWith('http') ? storeRow.logo_url : `${sellerUrl}${storeRow.logo_url.startsWith('/') ? '' : '/'}${storeRow.logo_url}`)
+              : null;
+
             await fetch(`${gatewayUrl}/api/stores/${slug}/store-config`, {
               method: 'PATCH',
               headers,
               signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
                 allowsPickup: s['allows_pickup'] === '1',
+                logoUrl: absoluteLogoUrl,
               }),
             });
           }
@@ -287,24 +297,19 @@ export const PATCH: RequestHandler = async (event) => {
           }
 
           // ── Push Server config (seller_public_url) ────────────────────────
-          const sellerPublicUrlRow = registry
-            .prepare('SELECT value FROM settings WHERE key = ?')
-            .get('seller_public_url') as { value: string } | undefined;
-          const sellerPublicUrl = sellerPublicUrlRow?.value;
-
-          if (sellerPublicUrl) {
+          if (sellerUrl) {
             await fetch(`${gatewayUrl}/api/stores/${slug}/server-config`, {
               method: 'PATCH',
               headers,
               signal: AbortSignal.timeout(10000),
               body: JSON.stringify({
-                publicUrl: sellerPublicUrl,
+                publicUrl: sellerUrl,
               }),
             });
           }
-        } catch {
+        } catch (e) {
           // Non-blocking — log but don't fail the response
-          console.error('[settings] Failed to push config to gateway');
+          console.error('[settings] Failed to push config to gateway:', e);
         }
       })();
     }

@@ -1,9 +1,36 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import { page } from "$app/state";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import { goto } from "$app/navigation";
   import type { Order } from "$lib/types/orders.js";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Card from "$lib/components/ui/Card.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
+  import { 
+    ChevronLeft, 
+    RefreshCw, 
+    Package, 
+    User, 
+    CreditCard, 
+    Truck, 
+    MapPin, 
+    Pencil, 
+    Trash2, 
+    Plus, 
+    FileText, 
+    Image as ImageIcon,
+    Download,
+    Paperclip,
+    ArrowRight,
+    CheckCircle2,
+    Clock,
+    X,
+    Printer,
+    Link as LinkIcon
+  } from "@lucide/svelte";
 
   let { data } = $props();
 
@@ -50,67 +77,7 @@
   let showDeletedFiles = $state(false);
   let uploadingFile = $state(false);
 
-  const CHANNELS = [
-    { value: "manual", label: "Manual Entry" },
-    { value: "telegram", label: "Telegram" },
-    { value: "facebook", label: "Facebook Messenger" },
-    { value: "instagram", label: "Instagram" },
-    { value: "whatsapp", label: "WhatsApp" },
-    { value: "viber", label: "Viber" },
-  ];
-
-  const STATUS_STEPS = [
-    {
-      id: "pending_payment",
-      label: "Payment",
-      icon: "M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z",
-    },
-    {
-      id: "pending",
-      label: "Pending",
-      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-    },
-    {
-      id: "paid",
-      label: "Paid",
-      icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
-    },
-    {
-      id: "picking",
-      label: "Picking",
-      icon: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
-    },
-    {
-      id: "packing",
-      label: "Packing",
-      icon: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4",
-    },
-    {
-      id: "ready_for_pickup",
-      label: "Ready",
-      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
-    },
-    {
-      id: "in_transit",
-      label: "In Transit",
-      icon: "M13 10V3L4 14h7v7l9-11h-7z",
-    },
-    { id: "delivered", label: "Delivered", icon: "M5 13l4 4L19 7" },
-  ];
-
-  const STATUS_COLORS: Record<string, string> = {
-    pending_payment: "text-orange-600 bg-orange-50 border-orange-200",
-    pending: "text-amber-600 bg-amber-50 border-amber-200",
-    paid: "text-blue-600 bg-blue-50 border-blue-200",
-    picking: "text-indigo-600 bg-indigo-50 border-indigo-200",
-    packing: "text-violet-600 bg-violet-50 border-violet-200",
-    ready_for_pickup: "text-cyan-600 bg-cyan-50 border-cyan-200",
-    picked_up: "text-emerald-600 bg-emerald-50 border-emerald-200",
-    in_transit: "text-sky-600 bg-sky-50 border-sky-200",
-    delivered: "text-emerald-600 bg-emerald-50 border-emerald-200",
-    cancelled: "text-red-600 bg-red-50 border-red-200",
-    refunded: "text-gray-600 bg-gray-50 border-gray-200",
-  };
+  import { CHANNELS, STATUS_STEPS, STATUS_COLORS } from "$lib/constants/orders.js";
 
   // ── Tracking Info Edit State ────────────────────────────────────
   let showingTrackingForm = $state(false);
@@ -619,86 +586,68 @@
   });
 </script>
 
-<svelte:head
-  ><title>Order #{String(id).padStart(6, "0")} — Prompt Commerce</title
-  ></svelte:head
->
+<svelte:head>
+  <title>Order #{String(id).padStart(6, "0")} — Prompt Commerce</title>
+</svelte:head>
 
-<div class="p-6 max-w-5xl mx-auto pb-24">
+<div class="p-6 max-w-6xl mx-auto pb-24">
   <!-- Header -->
-  <div class="flex items-center gap-4 mb-8">
-    <button
-      onclick={() => goto("/admin/orders")}
-      class="p-2 -ml-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
-      aria-label="Back to orders list"
-    >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        ><path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M10 19l-7-7m0 0l7-7m-7 7h18"
-        /></svg
+  <div class="flex flex-col md:flex-row md:items-center gap-6 mb-10">
+    <div class="flex items-center gap-4">
+      <Button
+        onclick={() => goto("/admin/orders")}
+        variant="secondary"
+        size="sm"
+        class="rounded-full w-10 h-10 p-0 border-none bg-gray-100 hover:bg-gray-200"
       >
-    </button>
-    <div>
-      <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-bold text-gray-900">
-          Order #{String(id).padStart(6, "0")}
-        </h1>
+        <ChevronLeft size={20} />
+      </Button>
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-3xl font-black text-gray-900 tracking-tight">
+            Order #{String(id).padStart(6, "0")}
+          </h1>
+          {#if order}
+            <Badge variant="secondary" class="font-bold {STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}">
+              {order.status.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+            </Badge>
+            <Badge class="border-none font-bold text-[10px] {(order as any).delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}">
+              {(order as any).delivery_type === "pickup" ? "🏪 Store Pickup" : "🚚 Home Delivery"}
+            </Badge>
+          {/if}
+        </div>
         {#if order}
-          <span
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border {STATUS_COLORS[
-              order.status
-            ] ?? 'bg-gray-100 text-gray-600 border-gray-200'}"
-          >
-            {order.status
-              .split("_")
-              .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-              .join(" ")}
-          </span>
-          <span
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border {(
-              order as any
-            ).delivery_type === 'pickup'
-              ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
-              : 'bg-emerald-50 text-emerald-600 border-emerald-200'}"
-          >
-            {(order as any).delivery_type === "pickup"
-              ? "🏪 Pickup"
-              : "🚚 Delivery"}
-          </span>
+          <p class="text-sm text-gray-400 font-medium mt-1">
+            Placed on {formatDate(order.created_at)} via {order.channel}
+          </p>
         {/if}
       </div>
-      {#if order}
-        <p class="text-sm text-gray-500 mt-1">
-          Placed on {formatDate(order.created_at)}
-        </p>
-      {/if}
     </div>
 
-    <div class="ml-auto flex items-center gap-3">
+    <div class="md:ml-auto flex items-center gap-3">
       {#if order && order.status !== "cancelled" && order.status !== "delivered" && order.status !== "picked_up" && order.status !== "refunded"}
-        <button
+        <Button
           onclick={() => updateStatus("cancelled")}
-          class="px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+          variant="secondary"
+          class="text-red-500 hover:text-red-700 hover:bg-red-50 border-none"
         >
           Cancel Order
-        </button>
+        </Button>
       {/if}
       {#if nextStep}
-        <button
+        <Button
           onclick={() => updateStatus(nextStep.id)}
           disabled={updating}
-          class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2 text-sm font-bold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all active:scale-95 disabled:opacity-50"
+          variant="primary"
+          size="lg"
+          class="min-w-[180px]"
         >
           {#if updating}
-            <div
-              class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
-            ></div>
+            <RefreshCw size={18} class="animate-spin mr-2" />
           {/if}
           Mark as {nextStep.label}
-        </button>
+          <ArrowRight size={18} class="ml-1" />
+        </Button>
       {/if}
     </div>
   </div>
@@ -706,368 +655,253 @@
   <!-- Modals -->
   {#if showingTrackingForm}
     <div
-      class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      onclick={(e) => e.target === e.currentTarget && (showingTrackingForm = false)}
+      role="presentation"
     >
-      <div
-        class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200"
-      >
-        <div class="p-6">
-          <h3 class="text-lg font-bold text-gray-900 mb-1">
-            Add Tracking Information
-          </h3>
-          <p class="text-sm text-gray-500 mb-6">
-            Enter tracking details for this delivery.
-          </p>
-
-          <div class="space-y-4">
-            <div>
-              <label
-                for="courier"
-                class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                >Courier Name</label
-              >
-              <input
-                id="courier"
-                bind:value={editCourierName}
-                placeholder="e.g. Lalamove, Grab, J&T"
-                class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label
-                for="tracking"
-                class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                >Tracking Number</label
-              >
-              <input
-                id="tracking"
-                bind:value={editTrackingNumber}
-                placeholder="e.g. TRK-12345678"
-                class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label
-                for="url"
-                class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                >Tracking URL (Optional)</label
-              >
-              <input
-                id="url"
-                bind:value={editTrackingUrl}
-                placeholder="https://..."
-                class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-              />
-            </div>
+      <Card class="w-full max-w-sm shadow-2xl p-0 overflow-hidden animate-in zoom-in-95 duration-200">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+          <div>
+            <h3 class="text-xl font-black text-gray-900 leading-none">Shipping Details</h3>
+            <p class="text-xs text-gray-400 font-medium mt-2">Enter carrier information for the buyer.</p>
           </div>
+          <Button onclick={() => (showingTrackingForm = false)} variant="secondary" size="sm" class="p-1 border-none bg-transparent h-auto">
+            <X size={20} />
+          </Button>
         </div>
-        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-          <button
+
+        <div class="p-6 space-y-6">
+          <Input
+            id="courier"
+            label="Courier Name"
+            bind:value={editCourierName}
+            placeholder="e.g. Lalamove, Grab, J&T"
+            required
+          />
+          <Input
+            id="tracking"
+            label="Tracking Number"
+            bind:value={editTrackingNumber}
+            placeholder="e.g. TRK-12345678"
+            required
+          />
+          <Input
+            id="url"
+            label="Tracking URL"
+            bind:value={editTrackingUrl}
+            placeholder="https://..."
+            description="Optional link for real-time tracking."
+          />
+        </div>
+
+        <div class="p-6 flex gap-3 border-t border-gray-100 bg-gray-50/50">
+          <Button
             onclick={() => (showingTrackingForm = false)}
-            class="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            variant="secondary"
+            class="flex-1"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onclick={saveTracking}
             disabled={savingTracking || !editCourierName || !editTrackingNumber}
-            class="inline-flex items-center gap-2 px-6 py-2 text-sm font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-all active:scale-95 disabled:opacity-50"
+            variant="primary"
+            class="flex-1"
           >
             {#if savingTracking}
-              <div
-                class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
-              ></div>
+              <RefreshCw size={16} class="animate-spin mr-2" />
             {/if}
-            Save Tracking Info
-          </button>
+            Save & Update
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   {/if}
 
   {#if showingCancelForm}
     <div
-      class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      onclick={(e) => e.target === e.currentTarget && (showingCancelForm = false)}
+      role="presentation"
     >
-      <div
-        class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200"
-      >
-        <div class="p-6 text-center">
-          <div
-            class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4"
-          >
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              /></svg
-            >
-          </div>
-          <h3 class="text-lg font-bold text-gray-900 mb-1">Cancel Order</h3>
-          <p class="text-sm text-gray-500 mb-6">
-            Are you sure? This action cannot be undone.
-          </p>
-
-          <div class="text-left">
-            <label
-              for="reason"
-              class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-              >Cancellation Reason</label
-            >
-            <textarea
-              id="reason"
-              bind:value={editCancelReason}
-              placeholder="e.g. Out of stock, Customer request..."
-              rows="3"
-              class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-500/10 outline-none transition-all resize-none"
-            ></textarea>
-          </div>
+      <Card class="w-full max-w-sm shadow-2xl p-6 text-center animate-in zoom-in-95 duration-200">
+        <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <X size={32} />
         </div>
-        <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-          <button
+        <h3 class="text-xl font-black text-gray-900 leading-tight mb-2">Cancel Order?</h3>
+        <p class="text-sm text-gray-400 font-medium mb-6">
+          This will notify the customer and stop all processing. This action cannot be undone.
+        </p>
+
+        <div class="text-left mb-8">
+          <label for="reason" class="block text-[11px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2">Reason for Cancellation</label>
+          <textarea
+            id="reason"
+            bind:value={editCancelReason}
+            placeholder="e.g. Out of stock, customer requested refund..."
+            rows="3"
+            class="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-500/10 outline-none transition-all resize-none font-medium"
+          ></textarea>
+        </div>
+
+        <div class="flex gap-3">
+          <Button
             onclick={() => (showingCancelForm = false)}
-            class="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            variant="secondary"
+            class="flex-1"
           >
-            Go Back
-          </button>
-          <button
+            Keep Order
+          </Button>
+          <Button
             onclick={saveCancel}
             disabled={savingCancel || !editCancelReason.trim()}
-            class="inline-flex items-center gap-2 px-6 py-2 text-sm font-bold bg-red-600 text-white rounded-lg hover:bg-red-500 transition-all active:scale-95 disabled:opacity-50"
+            variant="primary"
+            class="flex-1 bg-red-600 hover:bg-red-700 font-black"
           >
             {#if savingCancel}
-              <div
-                class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
-              ></div>
+              <RefreshCw size={16} class="animate-spin mr-2" />
             {/if}
-            Confirm Cancellation
-          </button>
+            Cancel Order
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   {/if}
 
   {#if loading}
-    <div class="py-24 flex flex-col items-center gap-4">
-      <div
-        class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"
-      ></div>
-      <p class="text-gray-400 font-medium animate-pulse">
-        Fetching order details...
-      </p>
+    <div class="py-24 flex flex-col items-center gap-4 text-center">
+      <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-gray-400 font-black uppercase tracking-widest text-[10px] animate-pulse">Syncing order status...</p>
     </div>
   {:else if order}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <!-- Left Column: Details & Items -->
       <div class="lg:col-span-2 space-y-8">
         <!-- Status Stepper -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h2
-            class="text-sm font-bold text-gray-900 mb-6 uppercase tracking-wider"
-          >
-            Order Progress
+        <Card class="p-8">
+          <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-10">
+            Order Lifecycle
           </h2>
           <div class="relative">
             <div class="absolute top-5 left-0 w-full h-0.5 bg-gray-100">
               <div
-                class="h-full bg-indigo-600 transition-all duration-500"
-                style="width: {currentStepIndex >= 0
-                  ? (currentStepIndex / (STATUS_STEPS.length - 1)) * 100
-                  : 0}%"
+                class="h-full bg-indigo-600 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(79,70,229,0.4)]"
+                style="width: {currentStepIndex >= 0 ? (currentStepIndex / (STATUS_STEPS.length - 1)) * 100 : 0}%"
               ></div>
             </div>
             <div class="relative flex justify-between">
               {#each STATUS_STEPS as step, i}
                 <div class="flex flex-col items-center">
                   <div
-                    class="w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-300 z-10
+                    class="w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-500 z-10
                     {i <= currentStepIndex
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'bg-white border-gray-200 text-gray-300'}"
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg'
+                      : 'bg-white border-gray-100 text-gray-300'}"
                   >
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      ><path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d={step.icon}
-                      /></svg
-                    >
+                    {#if i < currentStepIndex}
+                      <CheckCircle2 size={18} />
+                    {:else if i === currentStepIndex}
+                      <Clock size={18} class="animate-pulse" />
+                    {:else}
+                      <div class="w-1.5 h-1.5 rounded-full bg-gray-200"></div>
+                    {/if}
                   </div>
-                  <p
-                    class="mt-3 text-[10px] font-bold uppercase tracking-wide {i <=
-                    currentStepIndex
-                      ? 'text-indigo-600'
-                      : 'text-gray-400'}"
-                  >
+                  <p class="mt-4 text-[9px] font-black uppercase tracking-widest {i <= currentStepIndex ? 'text-indigo-600' : 'text-gray-400'}">
                     {step.label}
                   </p>
                 </div>
               {/each}
             </div>
           </div>
-          <!-- Cancelled/Refunded badge outside stepper -->
+          <!-- Cancelled/Refunded alert -->
           {#if order.status === "cancelled" || order.status === "refunded"}
-            <div
-              class="mt-6 flex items-center gap-2 text-sm font-bold {order.status ===
-              'cancelled'
-                ? 'text-red-600'
-                : 'text-gray-500'}"
-            >
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                ><path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                /></svg
-              >
-              This order is {order.status === "cancelled"
-                ? "Cancelled"
-                : "Refunded"}
+            <div class="mt-10 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-100">
+              <X size={18} class="text-red-500" />
+              <div class="text-[10px] font-black uppercase tracking-widest text-red-600">
+                Order is {order.status}
+              </div>
             </div>
           {/if}
-        </div>
+        </Card>
 
         <!-- Items Table -->
-        <div
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div
-            class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center"
-          >
-            <h2
-              class="text-sm font-bold text-gray-900 uppercase tracking-wider"
-            >
-              Order Items
+        <Card class="overflow-hidden p-0">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">
+              Cart Items
             </h2>
-            <span
-              class="text-xs font-bold text-gray-400 bg-white px-2 py-1 rounded border border-gray-100"
-              >{order.items.length} Items</span
-            >
+            <Badge variant="secondary" class="font-bold border-none bg-indigo-50 text-indigo-600">
+              {order?.items?.length || 0} Items
+            </Badge>
           </div>
-          <table class="w-full text-left text-sm">
-            <tbody class="divide-y divide-gray-100">
-              {#each order.items as item}
-                <tr class="group">
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0 overflow-hidden"
-                      >
-                        {#if item.product_images?.[0]}
-                          <img
-                            src={item.product_images[0]}
-                            alt={item.title}
-                            class="w-full h-full object-cover"
-                          />
-                        {:else}
-                          <div
-                            class="w-full h-full flex items-center justify-center text-gray-300 text-[9px] font-bold"
-                          >
-                            NO IMG
-                          </div>
-                        {/if}
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <tbody class="divide-y divide-gray-100">
+                {#each order.items as item}
+                  <tr class="group hover:bg-gray-50/50 transition-colors">
+                    <td class="px-6 py-4">
+                      <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 flex-shrink-0 overflow-hidden shadow-sm">
+                          {#if item.product_images?.[0]}
+                            <img src={item.product_images[0]} alt={item.title} class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          {:else}
+                            <div class="w-full h-full flex items-center justify-center text-gray-300">
+                              <Package size={20} class="opacity-30" />
+                            </div>
+                          {/if}
+                        </div>
+                        <div>
+                          <p class="font-black text-gray-900 group-hover:text-indigo-600 transition-colors">
+                            {item.title}
+                          </p>
+                          <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wide mt-1">
+                             {formatCurrency(item.price)} per unit
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p
-                          class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors"
-                        >
-                          {item.title}
-                        </p>
-                        <p class="text-xs text-gray-400 mt-0.5">
-                          Unit price: {formatCurrency(item.price)}
-                        </p>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                      <div class="flex flex-col items-center">
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Quantity</span>
+                        <span class="font-black text-lg text-gray-900">{item.quantity}</span>
                       </div>
-                    </div>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                      <div class="flex flex-col items-end">
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Subtotal</span>
+                        <span class="font-black text-gray-900">{formatCurrency(item.price * item.quantity)}</span>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot class="bg-indigo-50/20">
+                <tr class="border-t border-gray-100">
+                  <td colspan="2" class="px-6 py-6 text-right">
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Grand Total Amount</span>
                   </td>
-                  <td class="px-6 py-4 text-center">
-                    <span class="text-gray-400 text-xs font-bold uppercase mr-1"
-                      >Qty:</span
-                    >
-                    <span class="font-bold text-gray-900">{item.quantity}</span>
-                  </td>
-                  <td class="px-6 py-4 text-right font-bold text-gray-900">
-                    {formatCurrency(item.price * item.quantity)}
+                  <td class="px-6 py-6 text-right">
+                    <span class="text-2xl font-black text-indigo-600 tracking-tight leading-none">
+                      {formatCurrency(order.total)}
+                    </span>
                   </td>
                 </tr>
-              {/each}
-            </tbody>
-            <tfoot class="bg-gray-50/30">
-              <tr class="border-t border-gray-200">
-                <td
-                  colspan="2"
-                  class="px-6 py-4 text-sm font-medium text-gray-500 text-right uppercase tracking-wider"
-                  >Grand Total</td
-                >
-                <td
-                  class="px-6 py-4 text-right text-lg font-black text-indigo-600"
-                  >{formatCurrency(order.total)}</td
-                >
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              </tfoot>
+            </table>
+          </div>
+        </Card>
 
-        <!-- High-level Notes (existing) -->
-        <div
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div
-            class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between"
-          >
-            <div class="flex items-center gap-2">
-              <svg
-                class="w-4 h-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                ><path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                /></svg
-              >
-              <h2
-                class="text-sm font-bold text-gray-900 uppercase tracking-wider"
-              >
-                Delivery Instructions
-              </h2>
-            </div>
+        <!-- Delivery Instructions -->
+        <Card class="p-0 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">
+              Buyer Notes
+            </h2>
             {#if !editingNotes}
-              <button
-                onclick={startEditNotes}
-                class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded hover:bg-indigo-50"
-              >
-                <svg
-                  class="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  ><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  /></svg
-                >
+              <Button onclick={startEditNotes} variant="secondary" size="sm" class="h-8 border-none bg-transparent group">
+                <Pencil size={14} class="mr-1.5 text-indigo-600" />
                 Edit
-              </button>
+              </Button>
             {/if}
           </div>
           <div class="p-6">
@@ -1075,257 +909,172 @@
               <textarea
                 bind:value={editNotesVal}
                 rows="3"
-                placeholder="Add delivery instructions, address, or internal notes…"
-                class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none"
+                placeholder="Add special delivery instructions or buyer remarks…"
+                class="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none font-medium"
               ></textarea>
-              <div class="flex justify-end gap-2 mt-3">
-                <button
-                  onclick={() => (editingNotes = false)}
-                  class="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
+              <div class="flex justify-end gap-3 mt-4">
+                <Button onclick={() => (editingNotes = false)} variant="secondary" size="sm">
                   Cancel
-                </button>
-                <button
-                  onclick={saveNotes}
-                  disabled={savingNotes}
-                  class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50"
-                >
+                </Button>
+                <Button onclick={saveNotes} disabled={savingNotes} variant="primary" size="sm">
                   {#if savingNotes}
-                    <div
-                      class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
-                    ></div>
+                    <RefreshCw size={14} class="animate-spin mr-1" />
                   {/if}
                   Save Notes
-                </button>
+                </Button>
               </div>
             {:else if order.notes}
-              <p class="text-sm text-gray-700 font-medium leading-relaxed">
-                {order.notes}
-              </p>
+              <div class="flex gap-3">
+                <FileText size={18} class="text-gray-300 flex-shrink-0 mt-0.5" />
+                <p class="text-sm text-gray-700 font-medium leading-relaxed italic">
+                  "{order.notes}"
+                </p>
+              </div>
             {:else}
-              <p class="text-sm text-gray-400 italic">
-                No instructions yet. Click Edit to add remarks.
-              </p>
+              <div class="flex flex-col items-center py-4 text-gray-400">
+                <FileText size={24} class="opacity-20 mb-2" />
+                <p class="text-[10px] font-black uppercase tracking-widest">No instructions provided</p>
+              </div>
             {/if}
           </div>
-        </div>
+        </Card>
 
-        <!-- Collaborative Notes / Timeline -->
-        <div
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div
-            class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between"
-          >
-            <h2
-              class="text-sm font-bold text-gray-900 uppercase tracking-wider"
-            >
+        <!-- Internal Timeline -->
+        <Card class="p-0 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">
               Internal Timeline
             </h2>
-            <label class="flex items-center gap-2 cursor-pointer">
+            <label class="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
                 bind:checked={showDeletedNotes}
                 onchange={loadNotes}
-                class="w-3 h-3 rounded text-indigo-600 focus:ring-indigo-500"
+                class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 bg-white"
               />
-              <span
-                class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-                >Show Deleted</span
-              >
+              <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition-colors">Show Deleted</span>
             </label>
           </div>
           <div class="p-6">
-            <div class="space-y-6">
+            <div class="space-y-8 relative before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-px before:bg-gray-100">
               {#if loadingNotes && orderNotes.length === 0}
-                <div class="py-4 text-center text-xs text-gray-400">
-                  Loading timeline…
+                <div class="flex items-center gap-4 py-2">
+                  <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center animate-spin">
+                    <RefreshCw size={14} class="text-gray-300" />
+                  </div>
+                  <p class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Loading history…</p>
                 </div>
               {:else if orderNotes.length === 0}
-                <div class="py-4 text-center text-xs text-gray-400 italic">
-                  No internal notes yet.
+                <div class="flex flex-col items-center py-8 text-gray-400">
+                  <FileText size={28} class="opacity-20 mb-3" />
+                  <p class="text-[10px] font-black uppercase tracking-widest">No notes in the timeline</p>
                 </div>
               {:else}
                 {#each orderNotes as note}
-                  <div
-                    class="flex gap-4 group {note.deleted_at
-                      ? 'opacity-50'
-                      : ''}"
-                  >
-                    <div
-                      class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-500"
-                    >
+                  <div class="relative flex gap-6 group {note.deleted_at ? 'opacity-40 grayscale' : ''}">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full border-2 border-white bg-indigo-600 text-white flex items-center justify-center font-black text-[10px] shadow-sm z-10">
                       {note.created_by[0].toUpperCase()}
                     </div>
-                    <div class="flex-1">
-                      <div class="flex items-center justify-between mb-1">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between gap-4 mb-1">
                         <div class="flex items-center gap-2">
-                          <span class="text-xs font-bold text-gray-900"
-                            >{note.created_by}</span
-                          >
-                          <span class="text-[10px] text-gray-400"
-                            >{formatDate(note.created_at)}</span
-                          >
+                          <span class="text-xs font-black text-gray-900 truncate">{note.created_by}</span>
+                          <span class="text-[9px] font-bold text-gray-300 uppercase tracking-tight">{formatDate(note.created_at)}</span>
                         </div>
                         {#if !note.deleted_at}
-                          <button
-                            onclick={() => deleteNote(note.id)}
-                            class="hidden group-hover:block text-red-500 hover:text-red-700"
-                            aria-label="Delete note"
-                          >
-                            <svg
-                              class="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              ><path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              /></svg
-                            >
+                          <button onclick={() => deleteNote(note.id)} class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all p-1 hover:bg-red-50 rounded-lg">
+                            <Trash2 size={12} />
                           </button>
-                        {:else}
-                          <span
-                            class="text-[9px] font-black text-red-400 uppercase tracking-widest"
-                            >Deleted by {note.deleted_by}</span
-                          >
                         {/if}
                       </div>
-                      <p
-                        class="text-sm text-gray-600 leading-relaxed {note.deleted_at
-                          ? 'line-through'
-                          : ''}"
-                      >
+                      <p class="text-sm text-gray-600 font-medium leading-relaxed {note.deleted_at ? 'line-through decoration-2' : ''}">
                         {note.note}
                       </p>
+                      {#if note.deleted_at}
+                        <p class="mt-2 text-[8px] font-black uppercase tracking-[0.2em] text-red-400">
+                          DELETED BY {note.deleted_by || 'Admin'} AT {formatDate(note.deleted_at)}
+                        </p>
+                      {/if}
                     </div>
                   </div>
                 {/each}
               {/if}
             </div>
 
-            <div class="mt-8 pt-6 border-t border-gray-100">
+            <!-- New Note Box -->
+            <div class="mt-10 pt-8 border-t border-gray-100">
               <textarea
                 bind:value={newNoteText}
                 rows="2"
-                placeholder="Add internal note or update…"
-                class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none bg-gray-50"
+                placeholder="Share an internal update or remark…"
+                class="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none font-medium mb-3"
               ></textarea>
-              <div class="flex justify-end mt-2">
-                <button
-                  onclick={addNote}
-                  disabled={addingNote || !newNoteText.trim()}
-                  class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-gray-900 text-white rounded-lg hover:bg-black transition-all active:scale-95 disabled:opacity-50"
-                >
+              <div class="flex justify-end">
+                <Button onclick={addNote} disabled={addingNote || !newNoteText.trim()} variant="primary" size="sm" class="px-6">
                   {#if addingNote}
-                    <div
-                      class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
-                    ></div>
+                    <RefreshCw size={14} class="animate-spin mr-1.5" />
                   {/if}
-                  Add Timeline Entry
-                </button>
+                  Share Note
+                </Button>
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         <!-- Order Files / Attachments -->
-        <div
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div
-            class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between"
-          >
-            <h2
-              class="text-sm font-bold text-gray-900 uppercase tracking-wider"
-            >
-              Attachments
+        <Card class="p-0 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">
+              File Attachments
             </h2>
-            <label class="flex items-center gap-2 cursor-pointer">
+            <label class="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
                 bind:checked={showDeletedFiles}
                 onchange={loadFiles}
-                class="w-3 h-3 rounded text-indigo-600 focus:ring-indigo-500"
+                class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 bg-white"
               />
-              <span
-                class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-                >Show Deleted</span
-              >
+              <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition-colors">Show Deleted</span>
             </label>
           </div>
           <div class="p-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {#each orderFiles as file}
                 <div
-                  class="relative group p-4 border border-gray-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50/30 transition-all {file.deleted_at
-                    ? 'opacity-50'
-                    : ''}"
+                  class="relative group p-4 border border-gray-100 rounded-2xl hover:border-indigo-200 hover:bg-indigo-50/40 transition-all shadow-sm flex flex-col {file.deleted_at ? 'opacity-40' : ''}"
                 >
                   <div class="flex items-start gap-3">
-                    <div
-                      class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600"
-                    >
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 group-hover:bg-white transition-colors">
                       {#if file.mime_type.startsWith("image/")}
-                        <svg
-                          class="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          ><path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          /></svg
-                        >
+                        <ImageIcon size={20} />
                       {:else}
-                        <svg
-                          class="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          ><path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                          /></svg
-                        >
+                        <Paperclip size={20} />
                       {/if}
                     </div>
                     <div class="flex-1 min-w-0">
-                      <p
-                        class="text-xs font-bold text-gray-900 truncate {file.deleted_at
-                          ? 'line-through'
-                          : ''}"
-                        title={file.original_name}
-                      >
+                      <p class="text-xs font-black text-gray-900 truncate group-hover:text-indigo-600 transition-colors {file.deleted_at ? 'line-through' : ''}" title={file.original_name}>
                         {file.original_name}
                       </p>
-                      <p class="text-[10px] text-gray-400 mt-0.5 uppercase">
+                      <p class="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-wider">
                         {(file.size_bytes / 1024).toFixed(1)} KB • {file.uploaded_by}
                       </p>
-                      <div class="flex items-center gap-3 mt-2">
+                      <div class="flex items-center gap-4 mt-3">
                         <a
                           href={file.file_url}
                           target="_blank"
-                          class="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
-                          >Download</a
+                          class="inline-flex items-center gap-1 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-800"
                         >
+                          <Download size={12} />
+                          Get File
+                        </a>
                         {#if !file.deleted_at}
                           <button
                             onclick={() => deleteFile(file.id)}
-                            class="text-[10px] font-black text-red-500 uppercase tracking-widest hover:underline"
-                            >Delete</button
+                            class="inline-flex items-center gap-1 text-[10px] font-black text-red-500 uppercase tracking-widest hover:text-red-700"
                           >
-                        {:else}
-                          <span
-                            class="text-[9px] font-black text-red-400 uppercase tracking-widest"
-                            >Deleted</span
-                          >
+                            <Trash2 size={12} />
+                            Remove
+                          </button>
                         {/if}
                       </div>
                     </div>
@@ -1333,475 +1082,270 @@
                 </div>
               {/each}
 
-              <label
-                class="border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center gap-2 hover:border-indigo-300 hover:bg-gray-50 cursor-pointer transition-all"
-              >
+              <label class="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50/20 cursor-pointer transition-all group min-h-[120px]">
                 {#if uploadingFile}
-                  <div
-                    class="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"
-                  ></div>
-                  <span
-                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-                    >Uploading…</span
-                  >
+                  <RefreshCw size={24} class="text-indigo-600 animate-spin" />
+                  <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Uploading…</span>
                 {:else}
-                  <svg
-                    class="w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    ><path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 4v16m8-8H4"
-                    /></svg
-                  >
-                  <span
-                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-                    >Attach File</span
-                  >
+                  <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+                    <Plus size={24} />
+                  </div>
+                  <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-indigo-600 transition-all">Upload Document</span>
                 {/if}
-                <input
-                  type="file"
-                  class="hidden"
-                  onchange={uploadFile}
-                  disabled={uploadingFile}
-                />
+                <input type="file" class="hidden" onchange={uploadFile} disabled={uploadingFile} />
               </label>
             </div>
-            <p
-              class="mt-4 text-[10px] text-gray-400 text-center uppercase tracking-widest"
-            >
-              PDF, Excel, Word, or Images up to 20MB
-            </p>
+            <div class="mt-6 flex items-center justify-center gap-2 p-3 bg-gray-50 rounded-xl">
+              <Clock size={14} class="text-gray-400" />
+              <p class="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">MAX SIZE 20MB • PDF, XLSX, IMAGES</p>
+            </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       <!-- Right Column: Buyer & Meta -->
-      <div class="space-y-6">
+      <div class="space-y-8">
         <!-- Buyer Card -->
-        <div
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div
-            class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between"
-          >
-            <h2
-              class="text-sm font-bold text-gray-900 uppercase tracking-wider"
-            >
-              Buyer Information
+        <Card class="p-0 overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">
+              Buyer Profile
             </h2>
             {#if !editingBuyer}
-              <button
-                onclick={startEditBuyer}
-                class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded hover:bg-indigo-50"
-              >
-                <svg
-                  class="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  ><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  /></svg
-                >
+              <Button onclick={startEditBuyer} variant="secondary" size="sm" class="h-8 border-none bg-transparent group">
+                <Pencil size={14} class="mr-1.5 text-indigo-600" />
                 Edit
-              </button>
+              </Button>
             {/if}
           </div>
           <div class="p-6">
             {#if editingBuyer}
-              <div class="space-y-3">
-                <div>
-                  <label
-                    for="edit-buyer-name"
-                    class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                    >Customer Name</label
-                  >
-                  <input
-                    id="edit-buyer-name"
-                    bind:value={editBuyerName}
-                    placeholder="e.g. John Dela Cruz"
-                    class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label
-                    for="edit-buyer-email"
-                    class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                    >Email Address</label
-                  >
-                  <input
-                    id="edit-buyer-email"
-                    type="email"
-                    bind:value={editBuyerEmail}
-                    placeholder="e.g. john@example.com"
-                    class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label
-                    for="edit-buyer-ref"
-                    class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                    >Platform Ref / ID</label
-                  >
-                  <input
-                    id="edit-buyer-ref"
-                    bind:value={editBuyerRef}
-                    placeholder="e.g. TG-123456"
-                    class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label
-                    for="edit-channel"
-                    class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                    >Source Channel</label
-                  >
-                  <select
+              <div class="space-y-6">
+                <Input id="edit-buyer-name" label="Customer Name" bind:value={editBuyerName} placeholder="e.g. John Dela Cruz" />
+                <Input id="edit-buyer-email" label="Email Address" type="email" bind:value={editBuyerEmail} placeholder="e.g. john@example.com" />
+                <Input id="edit-buyer-ref" label="Platform Ref / ID" bind:value={editBuyerRef} placeholder="e.g. TG-123456" />
+                <div class="space-y-1.5">
+                  <label for="edit-channel" class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">Source Channel</label>
+                  <Select
                     id="edit-channel"
                     bind:value={editChannel}
-                    class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                  >
-                    {#each CHANNELS as ch}
-                      <option value={ch.value}>{ch.label}</option>
-                    {/each}
-                  </select>
+                    options={CHANNELS}
+                  />
                 </div>
-                <div class="flex justify-end gap-2 pt-1">
-                  <button
-                    onclick={() => (editingBuyer = false)}
-                    class="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
+                <div class="flex gap-3 pt-2">
+                  <Button onclick={() => (editingBuyer = false)} variant="secondary" class="flex-1">
                     Cancel
-                  </button>
-                  <button
-                    onclick={saveBuyer}
-                    disabled={savingBuyer}
-                    class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button onclick={saveBuyer} disabled={savingBuyer} variant="primary" class="flex-1">
                     {#if savingBuyer}
-                      <div
-                        class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
-                      ></div>
+                      <RefreshCw size={14} class="animate-spin" />
                     {/if}
-                    Save
-                  </button>
+                    Apply Changes
+                  </Button>
                 </div>
               </div>
             {:else}
-              <div class="flex items-center gap-4 mb-5">
-                <div
-                  class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-lg flex-shrink-0"
-                >
+              <div class="flex items-center gap-4 mb-6">
+                <div class="w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-100">
                   {((order as any).buyer_name || order.buyer_ref || "G")[0].toUpperCase()}
                 </div>
-                <div>
-                  <p class="font-bold text-gray-900 leading-none">
+                <div class="min-w-0">
+                  <p class="font-black text-lg text-gray-900 truncate">
                     {(order as any).buyer_name || "Guest Buyer"}
                   </p>
                   {#if (order as any).buyer_email}
-                    <p class="text-xs text-gray-500 mt-1">{ (order as any).buyer_email }</p>
+                    <p class="text-xs text-gray-400 font-bold mt-0.5 truncate uppercase tracking-tight">{ (order as any).buyer_email }</p>
                   {/if}
-                  <div
-                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-600 mt-2"
-                  >
-                    {order.channel} {order.buyer_ref ? `• ${order.buyer_ref}` : ''}
-                  </div>
                 </div>
               </div>
 
-              <!-- Delivery Type Section -->
-              <div class="mt-6 pt-4 border-t border-gray-50">
-                <div class="flex items-center justify-between mb-2">
-                  <p
-                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-                  >
-                    Delivery Details
-                  </p>
+              <div class="flex flex-wrap gap-2 mb-8">
+                <Badge class="bg-gray-100 text-gray-500 border-none font-bold text-[9px]">
+                  {order.channel.toUpperCase()}
+                </Badge>
+                {#if order.buyer_ref}
+                  <Badge class="bg-indigo-50 text-indigo-600 border-none font-bold text-[9px] font-mono">
+                    ID: {order.buyer_ref}
+                  </Badge>
+                {/if}
+              </div>
+
+              <!-- Delivery Detail Box -->
+              <div class="pt-6 border-t border-gray-100">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Delivery Handover</p>
                   {#if !editingDelivery}
-                    <button
-                      onclick={startEditDelivery}
-                      class="text-[10px] font-bold text-indigo-600 hover:underline"
-                      >Edit</button
-                    >
+                    <Button onclick={startEditDelivery} variant="secondary" size="sm" class="p-1 h-auto border-none bg-transparent text-indigo-600">
+                      <Pencil size={12} />
+                    </Button>
                   {/if}
                 </div>
+
                 {#if editingDelivery}
-                  <div class="space-y-3">
-                    <div>
-                      <label for="delivery-type" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Type</label>
-                      <select
-                        id="delivery-type"
-                        bind:value={editDeliveryType}
-                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                      >
-                        <option value="delivery">🚚 Home Delivery</option>
-                        <option value="pickup">🏪 Store Pickup</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label for="delivery-address" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clean Address</label>
-                      <textarea
-                        id="delivery-address"
-                        bind:value={editDeliveryAddress}
-                        placeholder="Complete address for delivery..."
-                        rows="3"
-                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none"
-                      ></textarea>
-                    </div>
-                    <div class="flex justify-end gap-2">
-                      <button
-                        onclick={() => (editingDelivery = false)}
-                        class="text-xs font-bold text-gray-500 px-2 py-1"
-                        >Cancel</button
-                      >
-                      <button
-                        onclick={saveDelivery}
-                        disabled={savingDelivery}
-                        class="text-xs font-bold text-indigo-600 px-2 py-1 disabled:opacity-50"
-                      >
-                        {savingDelivery ? "Saving..." : "Save"}
-                      </button>
+                  <!-- Inline delivery edit -->
+                  <div class="space-y-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 animate-in slide-in-from-top-2">
+                    <Select
+                      id="delivery-type"
+                      bind:value={editDeliveryType}
+                      options={[
+                        { value: 'delivery', label: '🚚 Home Delivery' },
+                        { value: 'pickup', label: '🏪 Store Pickup' }
+                      ]}
+                    />
+                    <textarea
+                      id="delivery-address"
+                      bind:value={editDeliveryAddress}
+                      placeholder="Street, City, Province, ZIP Code..."
+                      rows="3"
+                      class="w-full rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all resize-none font-medium"
+                    ></textarea>
+                    <div class="flex gap-2">
+                      <Button onclick={() => (editingDelivery = false)} variant="secondary" size="sm" class="flex-1 bg-white">
+                        Cancel
+                      </Button>
+                      <Button onclick={saveDelivery} disabled={savingDelivery} variant="primary" size="sm" class="flex-1">
+                        {#if savingDelivery}
+                          <RefreshCw size={12} class="animate-spin" />
+                        {/if}
+                        Save
+                      </Button>
                     </div>
                   </div>
                 {:else}
                   <div class="space-y-2">
-                    <p class="text-sm font-semibold text-gray-900">
-                      {(order as any).delivery_type === "pickup"
-                        ? "🏪 Store Pickup"
-                        : "🚚 Home Delivery"}
+                    <p class="text-sm font-black text-gray-900">
+                      {(order as any).delivery_type === "pickup" ? "🏪 Store Pickup" : "🚚 Home Delivery"}
                     </p>
                     {#if (order as any).delivery_address}
-                      <p class="text-xs text-gray-600 leading-relaxed font-medium">
-                        {(order as any).delivery_address}
+                      <p class="text-[11px] text-gray-500 leading-relaxed font-bold italic">
+                        "{(order as any).delivery_address}"
                       </p>
                     {/if}
                   </div>
                 {/if}
               </div>
 
-              {#if (order as any).tracking_number}
-                <div
-                  class="mt-6 p-4 bg-sky-50 rounded-xl border border-sky-100"
-                >
-                  <p
-                    class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"
-                  >
-                    <svg
-                      class="w-3 h-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      ><path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      /></svg
-                    >
-                    Tracking Information
-                  </p>
-                  <div class="space-y-1">
-                    <p class="text-sm font-bold text-sky-900">
-                      {(order as any).courier_name}: {(order as any)
-                        .tracking_number}
-                    </p>
-                    {#if (order as any).tracking_url}
-                      <a
-                        href={(order as any).tracking_url}
-                        target="_blank"
-                        class="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
-                      >
-                        Track Package
-                        <svg
-                          class="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          ><path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                          /></svg
-                        >
-                      </a>
-                    {/if}
-                  </div>
-                </div>
-              {/if}
-
-              <!-- Payment Method Section -->
-              <div class="mt-4 pt-4 border-t border-gray-50">
-                <div class="flex items-center justify-between mb-2">
-                  <p
-                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-                  >
-                    Payment Method
-                  </p>
-                  {#if !editingPayment}
-                    <button
-                      onclick={startEditPayment}
-                      class="text-[10px] font-bold text-indigo-600 hover:underline"
-                      >Edit</button
-                    >
-                  {/if}
-                </div>
-                {#if editingPayment}
-                  <div class="space-y-2">
-                    <select
-                      bind:value={editPaymentProvider}
-                      class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                    >
-                      <option value="cod">💵 Cash on Delivery</option>
-                      <option value="mock">🧪 Mock / Test</option>
-                      <option value="assisted">🤝 Assisted / Manual</option>
-                      <option value="paymongo">🇵🇭 PayMongo</option>
-                      <option value="stripe">🌍 Stripe</option>
-                    </select>
-                    <div class="flex justify-end gap-2">
-                      <button
-                        onclick={() => (editingPayment = false)}
-                        class="text-xs font-bold text-gray-500 px-2 py-1"
-                        >Cancel</button
-                      >
-                      <button
-                        onclick={savePayment}
-                        disabled={savingPayment}
-                        class="text-xs font-bold text-indigo-600 px-2 py-1 disabled:opacity-50"
-                      >
-                        {savingPayment ? "Saving..." : "Save"}
-                      </button>
+              <!-- Tracking/Payment Section -->
+              <div class="mt-6 pt-6 border-t border-gray-100 space-y-6">
+                <!-- Tracking -->
+                {#if (order as any).tracking_number}
+                  <div class="p-4 bg-sky-50/50 rounded-2xl border border-sky-100 flex gap-3">
+                    <Truck size={20} class="text-sky-600 flex-shrink-0" />
+                    <div>
+                      <p class="text-[10px] font-black text-sky-400 uppercase tracking-widest leading-none mb-1.5 focus:outline-none">Live Tracking Info</p>
+                      <p class="text-sm font-black text-sky-900 leading-none">
+                        {(order as any).courier_name || 'Carrier'}: {(order as any).tracking_number}
+                      </p>
+                      {#if (order as any).tracking_url}
+                        <a href={(order as any).tracking_url} target="_blank" class="inline-flex items-center gap-1.5 text-[10px] font-black text-sky-600 uppercase tracking-widest hover:underline mt-2">
+                          <LinkIcon size={12} />
+                          Trace Package
+                        </a>
+                      {/if}
                     </div>
                   </div>
-                {:else}
-                  <p class="text-sm font-semibold text-gray-900 uppercase">
-                    {(order as any).payment_provider || "NONE"}
-                  </p>
-                  {#if (order as any).payment_instructions}
-                    <p class="text-xs text-gray-500 mt-1 italic">
-                      {(order as any).payment_instructions}
-                    </p>
-                  {/if}
                 {/if}
+
+                <!-- Payment Method -->
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest focus:outline-none">Payment Provider</p>
+                    {#if !editingPayment}
+                      <Button onclick={startEditPayment} variant="secondary" size="sm" class="p-1 h-auto border-none bg-transparent text-indigo-600">
+                        <Pencil size={12} />
+                      </Button>
+                    {/if}
+                  </div>
+                  {#if editingPayment}
+                    <div class="space-y-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 animate-in slide-in-from-top-2">
+                      <Select
+                        bind:value={editPaymentProvider}
+                        options={[
+                          { value: 'cod', label: '💵 Cash on Delivery' },
+                          { value: 'mock', label: '🧪 Mock / Test' },
+                          { value: 'assisted', label: '🤝 Assisted / Manual' },
+                          { value: 'paymongo', label: '🇵🇭 PayMongo' },
+                          { value: 'stripe', label: '🌍 Stripe' }
+                        ]}
+                      />
+                      <div class="flex gap-2">
+                        <Button onclick={() => (editingPayment = false)} variant="secondary" size="sm" class="flex-1 bg-white">
+                          Cancel
+                        </Button>
+                        <Button onclick={savePayment} disabled={savingPayment} variant="primary" size="sm" class="flex-1">
+                          {#if savingPayment}
+                            <RefreshCw size={12} class="animate-spin" />
+                          {/if}
+                          Update
+                        </Button>
+                      </div>
+                    </div>
+                  {:else}
+                    <div class="flex items-center gap-2">
+                      <CreditCard size={18} class="text-gray-300" />
+                      <p class="text-xs font-black text-gray-900 uppercase tracking-wide">
+                        {(order as any).payment_provider || "NONE"}
+                      </p>
+                    </div>
+                    {#if (order as any).payment_instructions}
+                      <p class="text-[10px] text-gray-500 mt-2 font-bold italic bg-gray-50 p-2 rounded-lg border border-gray-100">
+                         "{(order as any).payment_instructions}"
+                      </p>
+                    {/if}
+                  {/if}
+                </div>
               </div>
 
               {#if (order as any).cancellation_reason}
-                <div
-                  class="mt-6 p-4 bg-red-50 rounded-xl border border-red-100"
-                >
-                  <p
-                    class="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1"
-                  >
-                    Cancellation Reason
-                  </p>
-                  <p class="text-sm font-medium text-red-900">
-                    {(order as any).cancellation_reason}
+                <div class="mt-6 p-4 bg-red-50/50 rounded-2xl border border-red-100 gap-3 flex flex-col">
+                  <div class="flex items-center gap-2">
+                    <X size={16} class="text-red-500" />
+                    <p class="text-[10px] font-black text-red-400 uppercase tracking-widest text-center">Order was Cancelled</p>
+                  </div>
+                  <p class="text-xs font-bold text-red-900 leading-relaxed bg-white/50 p-3 rounded-xl">
+                    "{(order as any).cancellation_reason}"
                   </p>
                 </div>
               {/if}
             {/if}
           </div>
-        </div>
+        </Card>
 
         <!-- Delivery Location Card -->
-        <div
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div
-            class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between"
-          >
-            <h2
-              class="text-sm font-bold text-gray-900 uppercase tracking-wider"
-            >
-              Delivery Location
+        <Card class="p-0 overflow-hidden text-center justify-items-center">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between focus:outline-none">
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest">
+              Geospatial Pin
             </h2>
             {#if !editingLocation}
-              <button
-                onclick={startEditLocation}
-                class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-2 py-1 rounded hover:bg-indigo-50"
-              >
-                <svg
-                  class="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  ><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  /></svg
-                >
-                {order.lat && order.lng ? 'Edit' : 'Add Pin'}
-              </button>
+              <Button onclick={startEditLocation} variant="secondary" size="sm" class="h-8 border-none bg-transparent group">
+                <MapPin size={14} class="mr-1.5 text-indigo-600" />
+                {order.lat && order.lng ? 'Remap' : 'Add Map'}
+              </Button>
             {/if}
           </div>
           <div class="p-6">
             {#if editingLocation}
-              <div class="space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      for="edit-lat"
-                      class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                      >Latitude</label
-                    >
-                    <input
-                      id="edit-lat"
-                      type="number"
-                      step="any"
-                      bind:value={editLat}
-                      placeholder="e.g. 14.5995"
-                      class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      for="edit-lng"
-                      class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-                      >Longitude</label
-                    >
-                    <input
-                      id="edit-lng"
-                      type="number"
-                      step="any"
-                      bind:value={editLng}
-                      placeholder="e.g. 120.9842"
-                      class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all"
-                    />
-                  </div>
+              <div class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                  <Input id="edit-lat" label="Latitude" type="number" bind:value={editLat} placeholder="e.g. 14.5995" />
+                  <Input id="edit-lng" label="Longitude" type="number" bind:value={editLng} placeholder="e.g. 120.9842" />
                 </div>
-                <div class="flex justify-end gap-2 pt-1">
-                  <button
-                    onclick={() => (editingLocation = false)}
-                    class="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
+                <div class="flex gap-3">
+                  <Button onclick={() => (editingLocation = false)} variant="secondary" class="flex-1">
                     Cancel
-                  </button>
-                  <button
-                    onclick={saveLocation}
-                    disabled={savingLocation}
-                    class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button onclick={saveLocation} disabled={savingLocation} variant="primary" class="flex-1">
                     {#if savingLocation}
-                      <div
-                        class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
-                      ></div>
+                      <RefreshCw size={14} class="animate-spin mr-1.5" />
                     {/if}
-                    Save Coordinates
-                  </button>
+                    Save Pin
+                  </Button>
                 </div>
               </div>
             {:else if order.lat && order.lng}
-              <div class="space-y-4">
-                <div class="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50 relative">
+              <div class="space-y-6">
+                <div class="aspect-video w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 relative group shadow-sm">
                   <iframe
                     title="Order Location"
                     width="100%"
@@ -1810,108 +1354,61 @@
                     style="border:0"
                     src="https://www.google.com/maps/embed/v1/place?key={data.googlePlacesApiKey}&q={order.lat},{order.lng}&zoom=15"
                     allowfullscreen
+                    class="group-hover:opacity-90 transition-opacity"
                   ></iframe>
                 </div>
-                <div class="flex items-center justify-between">
-                  <div class="text-[10px] text-gray-400 font-mono">
-                    {order.lat.toFixed(6)}, {order.lng.toFixed(6)}
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div class="px-3 py-1.5 bg-gray-100 rounded-lg">
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">GPS Coordinates</span>
+                    <code class="text-[11px] font-mono font-bold text-gray-700">{order.lat.toFixed(6)}, {order.lng.toFixed(6)}</code>
                   </div>
-                  <a
-                    href="https://www.google.com/maps/search/?api=1&query={order.lat},{order.lng}"
-                    target="_blank"
-                    class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:underline"
+                  <Button
+                    variant="secondary"
+                    onclick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${order?.lat},${order?.lng}`, '_blank')}
+                    class="font-black text-[10px] tracking-widest uppercase border-gray-200"
                   >
-                    Open in Google Maps
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
+                    Open Google Maps
+                    <LinkIcon size={14} class="ml-2" />
+                  </Button>
                 </div>
               </div>
             {:else}
-              <div class="py-8 flex flex-col items-center justify-center text-center px-4">
-                <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 mb-3">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+              <div class="py-12 flex flex-col items-center justify-center text-center">
+                <div class="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-200 mb-6 group">
+                   <MapPin size={28} class="group-hover:text-indigo-600 transition-colors" />
                 </div>
-                <p class="text-xs font-medium text-gray-500 mb-4">No coordinates available for this order.</p>
-                <button
-                  onclick={startEditLocation}
-                  class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100 transition-all"
-                >
-                  Set Pin Manually
-                </button>
+                <h3 class="text-sm font-black text-gray-900 uppercase tracking-tight mb-2">No GPS Pin Added</h3>
+                <p class="text-xs font-medium text-gray-400 mb-6 max-w-[200px]">Coordinates help delivery riders find the customer faster.</p>
+                <Button onclick={startEditLocation} variant="primary" size="sm" class="px-8 border-none bg-indigo-600 font-black">
+                  Set Coords
+                </Button>
               </div>
             {/if}
           </div>
-        </div>
+        </Card>
 
-        <!-- Meta Data -->
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm">
-          <div class="p-6 space-y-4">
-            <div>
-              <p
-                class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-              >
-                Order Placed
-              </p>
-              <p class="text-sm font-semibold text-gray-900">
-                {formatDate(order.created_at)}
-              </p>
-            </div>
-            <div class="pt-4 border-t border-gray-100">
-              <p
-                class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1"
-              >
-                Last Updated
-              </p>
-              <p class="text-sm font-semibold text-gray-900">
-                {formatDate(order.updated_at)}
-              </p>
-            </div>
+        <!-- Timestamps -->
+        <Card class="p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Order Created</span>
+            <span class="text-xs font-black text-gray-900">{formatDate(order.created_at)}</span>
           </div>
-        </div>
+          <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
+            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Last Synced</span>
+            <span class="text-xs font-black text-gray-900">{formatDate(order.updated_at)}</span>
+          </div>
+        </Card>
 
-        <!-- Action Buttons -->
-        <div class="flex flex-col gap-2">
-          <button
-            onclick={printPackingSlip}
-            class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-200"
-          >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              /></svg
-            >
+        <!-- Print Actions -->
+        <div class="flex flex-col gap-3">
+          <Button onclick={printPackingSlip} variant="primary" size="lg" class="bg-gray-900 hover:bg-black shadow-lg shadow-gray-200 py-6 uppercase font-black text-xs tracking-[0.2em]">
+            <Printer size={16} class="mr-2" />
             Print Packing Slip
-          </button>
-          <button
-            onclick={printReceipt}
-            class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition-all active:scale-95"
-          >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-              /></svg
-            >
+          </Button>
+          <Button onclick={printReceipt} variant="secondary" size="lg" class="bg-white border-gray-200 py-6 uppercase font-black text-xs tracking-[0.2em]">
+            <Download size={16} class="mr-2" />
             Export Receipt / PDF
-          </button>
+          </Button>
         </div>
       </div>
     </div>

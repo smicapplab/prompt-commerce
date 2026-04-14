@@ -711,13 +711,13 @@ export function registerProductTools(
     'Add a new variant to a product.',
     {
       product_id: z.number().int().describe('The ID of the parent product'),
-      sku: z.string().describe('Unique SKU for this variant'),
+      sku: z.string().optional().describe('Unique SKU for this variant. If omitted, one will be generated from product title and attributes.'),
       price: z.number().min(0).describe('Price for this variant'),
       stock: z.number().int().min(0).default(0).describe('Initial stock for this variant'),
       attributes: z.record(z.string(), z.any()).describe('Variation axes (e.g. {color: "Red", size: "M"})'),
     },
     async ({ product_id, sku, price, stock, attributes }) => {
-      const product = db.prepare('SELECT id FROM products WHERE id = ?').get(product_id);
+      const product = db.prepare('SELECT id, title FROM products WHERE id = ?').get(product_id) as any;
       if (!product) {
         return {
           content: [{ type: 'text', text: `Parent product ID ${product_id} not found.` }],
@@ -725,13 +725,21 @@ export function registerProductTools(
         };
       }
 
+      let finalSku = sku;
+      if (!finalSku) {
+        const titlePart = product.title.replace(/[^a-zA-Z0-9]/g, '');
+        const attrValues = Object.values(attributes || {}).map((v: any) => String(v).replace(/[^a-zA-Z0-9]/g, ''));
+        finalSku = [titlePart, ...attrValues].filter(Boolean).join('-').toUpperCase();
+        if (!finalSku) finalSku = `VAR-${product_id}-${Date.now()}`;
+      }
+
       try {
         const result = db.prepare(
           'INSERT INTO product_variants (product_id, sku, price, stock, attributes) VALUES (?, ?, ?, ?, ?)'
-        ).run(product_id, sku, price, stock, JSON.stringify(attributes));
+        ).run(product_id, finalSku, price, stock, JSON.stringify(attributes));
 
         return {
-          content: [{ type: 'text', text: `✅ Variant created successfully with ID ${result.lastInsertRowid}.` }],
+          content: [{ type: 'text', text: `✅ Variant created successfully with ID ${result.lastInsertRowid} (SKU: ${finalSku}).` }],
         };
       } catch (e: any) {
         return {

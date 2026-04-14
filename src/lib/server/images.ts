@@ -18,8 +18,9 @@ export function isSecureImageUrl(url: string | null | undefined): boolean {
         return true;
     }
 
-    // External URLs must be HTTPS
-    return url.toLowerCase().startsWith('https://');
+    // External URLs must be HTTPS, but allow localhost for local dev
+    const lower = url.toLowerCase();
+    return lower.startsWith('https://') || lower.startsWith('http://localhost') || lower.startsWith('http://127.0.0.1');
 }
 
 /**

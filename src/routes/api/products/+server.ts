@@ -25,7 +25,10 @@ export const GET: RequestHandler = async (event) => {
 	const db = getStoreDb(store);
 
 	let query = `
-		SELECT p.*, c.name AS category_name
+		SELECT p.*, c.name AS category_name,
+			(SELECT COUNT(*) FROM product_variants pv WHERE pv.product_id = p.id AND pv.active = 1) as variant_count,
+			(SELECT MIN(price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.active = 1) as min_price,
+			(SELECT SUM(stock) FROM product_variants pv WHERE pv.product_id = p.id AND pv.active = 1) as total_stock
 		FROM products p
 		LEFT JOIN categories c ON p.category_id = c.id
 		WHERE p.deleted_at IS NULL
@@ -51,6 +54,7 @@ export const GET: RequestHandler = async (event) => {
 		...p,
 		images: p.images ? JSON.parse(p.images) : [],
 		tags: p.tags ? JSON.parse(p.tags) : [],
+		metadata: p.metadata ? JSON.parse(p.metadata) : {},
 		active: !!p.active
 	}));
 
@@ -104,6 +108,17 @@ export const POST: RequestHandler = async (event) => {
 	}
 	const tagsStr = formData.get('tags') as string;
 	const active = (formData.get('active') as string) === '1' ? 1 : 0;
+	
+	const product_type = (formData.get('product_type') as string) || 'generic';
+	const metadataStr = formData.get('metadata') as string;
+	let metadata = null;
+	if (metadataStr) {
+		try {
+			metadata = JSON.parse(metadataStr);
+		} catch (e) {
+			return apiError(400, 'Invalid metadata JSON');
+		}
+	}
 
 	if (!title) return apiError(400, 'title is required');
 
@@ -121,7 +136,7 @@ export const POST: RequestHandler = async (event) => {
 		if (file.size === 0) continue;
 		const validationError = validateImageFile(file);
 		if (validationError) return apiError(422, validationError);
-		const imgPath = await saveUploadedFile(file);
+		const imgPath = await saveUploadedFile(file, store);
 		uploadedImages.push(imgPath);
 	}
 
@@ -132,8 +147,8 @@ export const POST: RequestHandler = async (event) => {
 	const tags = tagsStr ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
 	const result = db.prepare(`
-		INSERT INTO products (title, sku, description, price, stock_quantity, category_id, images, tags, active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO products (title, sku, description, price, stock_quantity, category_id, images, tags, active, product_type, metadata)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`).run(
 		title,
 		sku || null,
@@ -143,7 +158,9 @@ export const POST: RequestHandler = async (event) => {
 		category_id ?? null,
 		JSON.stringify(allImages),
 		JSON.stringify(tags),
-		active
+		active,
+		product_type,
+		metadata ? JSON.stringify(metadata) : null
 	);
 
 	const product = db.prepare(`

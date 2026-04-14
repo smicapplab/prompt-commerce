@@ -25,13 +25,18 @@ export function validateImageFile(file: File): string | null {
     return null;
 }
 
-export async function saveUploadedFile(file: File): Promise<string> {
-    const uploadDir = getUploadDir();
+export async function saveUploadedFile(file: File, slug?: string): Promise<string> {
+    const baseUploadDir = getUploadDir();
+    const uploadDir = slug ? join(baseUploadDir, slug) : baseUploadDir;
+    
     mkdirSync(uploadDir, { recursive: true });
+    
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = getFileExtension(file.name);
     const filename = `${Date.now()}-${randomBytes(8).toString('hex')}.${ext}`;
     const filepath = join(uploadDir, filename);
+    
     writeFileSync(filepath, buffer);
-    return `/uploads/${filename}`;
+    
+    return slug ? `/uploads/${slug}/${filename}` : `/uploads/${filename}`;
 }

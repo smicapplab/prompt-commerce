@@ -1,1 +1,37 @@
 @import 'tailwindcss';
+
+@theme {
+  --font-sans: "Inter", "Roobert", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .bg-mesh {
+    background-color: #f8fafc;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(210, 100%, 96%, 1) 0, transparent 50%),
+      radial-gradient(at 50% 0%, hsla(215, 100%, 92%, 1) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(220, 100%, 88%, 1) 0, transparent 50%),
+      radial-gradient(at 0% 50%, hsla(225, 100%, 94%, 1) 0, transparent 50%),
+      radial-gradient(at 50% 50%, hsla(230, 100%, 90%, 1) 0, transparent 50%),
+      radial-gradient(at 100% 50%, hsla(235, 100%, 86%, 1) 0, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(240, 100%, 92%, 1) 0, transparent 50%),
+      radial-gradient(at 50% 100%, hsla(245, 100%, 88%, 1) 0, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(250, 100%, 84%, 1) 0, transparent 50%);
+    background-size: 200% 200%;
+    animation: mesh 20s ease infinite;
+  }
+
+  @keyframes mesh {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+}

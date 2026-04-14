@@ -19,11 +19,7 @@
   } from "@lucide/svelte";
   import { marked } from "marked";
 
-  interface ModelOption {
-    id: string;
-    displayName: string;
-    provider: "claude" | "gemini" | "openai";
-  }
+  import type { ModelOption } from "$lib/types/ai.js";
 
   // State
   let inputText = $state("");
@@ -329,7 +325,7 @@
         <Bot class="w-4 h-4 text-white" />
       </div>
       <div>
-        <h1 class="text-sm font-semibold text-gray-900">AI Assistant</h1>
+        <h1 class="text-base font-bold text-gray-900">AI Assistant</h1>
         <p class="text-xs text-gray-500">{activeStore.name}</p>
       </div>
     </div>

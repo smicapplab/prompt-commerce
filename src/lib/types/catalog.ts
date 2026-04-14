@@ -6,13 +6,32 @@ export interface Product {
   category_id: number | null;
   category_name?: string | null;
   price: number | null;
-  stock_quantity: number;
+  stock_quantity: number | null;
+  product_type: 'generic' | 'wearable' | 'food' | 'device' | 'travel';
+  metadata: Record<string, unknown>;
+  variant_count?: number;
+  min_price?: number;
+  total_stock?: number;
   tags?: string[] | null;
-  images?: any[] | null;
+  images?: string[] | null;
   active: boolean;
   is_synced?: number;
   deleted_at?: string | null;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface ProductVariant {
+  id: number;
+  product_id: number;
+  sku: string;
+  price: number;
+  stock: number;
+  attributes: Record<string, string | number | boolean>;
+  active: boolean;
+  is_synced?: number;
+  deleted_at?: string | null;
+  created_at?: string;
   updated_at?: string;
 }
 

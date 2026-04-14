@@ -145,6 +145,10 @@ for (const stmt of [
   }
 }
 
+try {
+  db.exec('ALTER TABLE stores ADD COLUMN logo_url TEXT');
+} catch { /* column already exists */ }
+
 // Add scoped_role and label columns to user_temp_keys if not yet present
 for (const stmt of [
   'ALTER TABLE user_temp_keys ADD COLUMN scoped_role TEXT',

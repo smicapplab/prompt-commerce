@@ -1,36 +1,29 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { activeStore } from '$lib/stores/activeStore.svelte.js';
-  import { Send as SendIcon, MessageCircle, Mail, User, Bot, Check } from '@lucide/svelte';
+  import { 
+    Send as SendIcon, 
+    MessageCircle, 
+    Mail, 
+    User, 
+    Bot, 
+    Check, 
+    Search, 
+    Clock, 
+    ChevronLeft, 
+    ChevronRight,
+    RefreshCw,
+    MoreVertical,
+    CheckCircle2,
+    XCircle,
+    HandMetal
+  } from '@lucide/svelte';
 
-  interface Message {
-    id: number;
-    conversation_id: number;
-    sender: string;
-    sender_name: string | null;
-    body: string;
-    created_at: string;
-  }
+  import Button from '$lib/components/ui/Button.svelte';
+  import Badge from '$lib/components/ui/Badge.svelte';
+  import Input from '$lib/components/ui/Input.svelte';
 
-  interface Conversation {
-    id: number;
-    store: number;
-    buyer_ref: string;
-    buyer_name: string | null;
-    channel: string;
-    status: string;
-    mode: string;
-    assigned_to: string | null;
-    last_message: string | null;
-    last_message_at: string | null;
-    message_count: number;
-    created_at: string;
-    updated_at: string;
-  }
-
-  interface ConversationDetail extends Conversation {
-    messages: Message[];
-  }
+  import type { Conversation, ConversationDetail, Message } from "$lib/types/chat.js";
 
   let conversations = $state<Conversation[]>([]);
   let totalCount = $state(0);
@@ -177,7 +170,7 @@
     messagesEnd?.scrollIntoView({ behavior: 'smooth' });
   }
 
-  async function search() { page = 1; await load(); }
+  async function handleSearch() { page = 1; await load(); }
   const totalPages = $derived(Math.ceil(totalCount / limit));
 
   function relativeTime(d: string | null) {
@@ -222,178 +215,258 @@
   });
 </script>
 
-<svelte:head><title>Inbox — Prompt Commerce</title></svelte:head>
+<svelte:head>
+  <title>Inbox — {activeStore.name || 'Prompt Commerce'}</title>
+</svelte:head>
 
-<!-- Full-height two-panel inbox -->
-<div class="flex h-full overflow-hidden">
-  <!-- Left: Conversation List -->
-  <div class="w-80 border-r border-gray-200 bg-white flex flex-col flex-shrink-0">
-    <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-200">
-      <div class="mb-3">
-        <h1 class="text-sm font-semibold text-gray-900">Inbox</h1>
+<div class="flex h-[calc(100vh-64px)] overflow-hidden bg-white">
+  <!-- Sidebar: Conversation List -->
+  <div class="w-96 border-r border-gray-100 flex flex-col flex-shrink-0 bg-white shadow-[1px_0_0_0_rgba(0,0,0,0.02)]">
+    <!-- Search & Filter Area -->
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-black text-gray-900 tracking-tight">Inbox</h1>
+        <Badge variant="secondary" class="bg-indigo-50 text-indigo-600 border-none font-bold">
+          {totalCount} Total
+        </Badge>
       </div>
-      <input
-        type="search"
-        placeholder="Search buyers…"
+
+      <Input
+        placeholder="Find buyers..."
         bind:value={q}
-        onkeydown={(e) => e.key === 'Enter' && search()}
-        class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      />
-      <div class="flex gap-1 mt-2">
+        onkeydown={(e) => e.key === 'Enter' && handleSearch()}
+        class="bg-gray-50/50 border-none rounded-2xl"
+      >
+        {#snippet icon()}
+          <Search size={18} class="text-gray-400" />
+        {/snippet}
+      </Input>
+
+      <div class="flex p-1 bg-gray-50/80 rounded-2xl gap-1">
         {#each [['open','Open'],['resolved','Resolved'],['','All']] as [s, label]}
           <button
-            onclick={() => { filterStatus = s; search(); }}
-            class="flex-1 rounded-md py-1 text-xs font-medium transition-colors {filterStatus === s ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}"
+            onclick={() => { filterStatus = s; handleSearch(); }}
+            class="flex-1 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest transition-all
+            {filterStatus === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'}"
           >{label}</button>
         {/each}
       </div>
     </div>
 
-    <!-- List -->
-    <div class="flex-1 overflow-y-auto">
+    <!-- Conversation Feed -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar">
       {#if loading}
-        <div class="py-8 text-center text-sm text-gray-400">Loading…</div>
+        <div class="py-12 text-center">
+          <RefreshCw size={24} class="animate-spin text-indigo-600 mx-auto mb-3" />
+          <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Updating Feed...</p>
+        </div>
       {:else if !activeStore.slug}
-        <div class="py-8 text-center text-sm text-gray-400">Select a store</div>
+        <div class="py-24 text-center px-10">
+          <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+            <User size={32} />
+          </div>
+          <p class="text-sm font-medium text-gray-400">Select a store to view its customer messaging feed.</p>
+        </div>
       {:else if conversations.length === 0}
-        <div class="py-8 text-center text-sm text-gray-400">No conversations found.</div>
+        <div class="py-24 text-center px-10">
+          <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+            <MessageCircle size={32} />
+          </div>
+          <h2 class="text-lg font-black text-gray-900 mb-2 uppercase tracking-tight">Quiet Here</h2>
+          <p class="text-sm font-medium text-gray-400">No active conversations found matching your filters.</p>
+        </div>
       {:else}
         {#each conversations as conv}
           {@const ChannelIcon = channelIcon(conv.channel)}
           <button
             onclick={() => openConversation(conv)}
-            class="w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors {selectedConv?.id === conv.id ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''}"
+            class="w-full text-left px-6 py-5 border-b border-gray-50 hover:bg-gray-50/50 transition-all group relative
+            {selectedConv?.id === conv.id ? 'bg-indigo-50/30' : ''}"
           >
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-1.5 min-w-0">
-                <span class="text-base leading-none flex-shrink-0 mt-0.5"><ChannelIcon class="w-4 h-4 text-gray-400" /></span>
-                <span class="text-sm font-medium text-gray-900 truncate">{conv.buyer_name || conv.buyer_ref}</span>
-              </div>
-              <span class="text-xs text-gray-400 flex-shrink-0">{relativeTime(conv.last_message_at ?? conv.updated_at)}</span>
-            </div>
-            {#if conv.last_message}
-              <p class="text-xs text-gray-500 mt-1 truncate pl-5">{conv.last_message}</p>
+            {#if selectedConv?.id === conv.id}
+              <div class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full"></div>
             {/if}
-            <div class="flex items-center gap-2 mt-1.5 pl-5">
+            
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center text-indigo-600 font-black text-sm shadow-sm group-hover:scale-105 transition-transform">
+                  {(conv.buyer_name || conv.buyer_ref).charAt(0).toUpperCase()}
+                </div>
+                <div class="min-w-0">
+                  <span class="text-sm font-black text-gray-900 truncate block leading-none mb-1">
+                    {conv.buyer_name || conv.buyer_ref}
+                  </span>
+                  <div class="flex items-center gap-1.5">
+                    <ChannelIcon size={12} class="text-gray-300" />
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{conv.channel}</span>
+                  </div>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold text-gray-400 flex-shrink-0 uppercase">{relativeTime(conv.last_message_at ?? conv.updated_at)}</span>
+            </div>
+
+            {#if conv.last_message}
+              <p class="text-xs text-gray-500 line-clamp-2 leading-relaxed pl-[52px]">
+                {conv.last_message}
+              </p>
+            {/if}
+
+            <div class="flex items-center gap-2 mt-4 pl-[52px]">
               {#if conv.mode === 'human'}
-                <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
-                  <User class="w-2.5 h-2.5" /> Human
-                </span>
+                <Badge variant="secondary" class="bg-blue-50 text-blue-700 border-none font-bold text-[9px] uppercase px-2 py-0.5">
+                  <User size={10} class="mr-1" /> Human
+                </Badge>
               {:else if conv.mode === 'ai'}
-                <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
-                  <Bot class="w-2.5 h-2.5" /> AI
-                </span>
+                <Badge variant="secondary" class="bg-purple-50 text-purple-700 border-none font-bold text-[9px] uppercase px-2 py-0.5">
+                  <Bot size={10} class="mr-1" /> Agentic AI
+                </Badge>
               {:else}
-                <span class="inline-flex items-center gap-1 rounded-full bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-700">
-                  <Check class="w-2.5 h-2.5" /> Closed
-                </span>
+                <Badge variant="secondary" class="bg-gray-50 text-gray-700 border-none font-bold text-[9px] uppercase px-2 py-0.5">
+                  <Check size={10} class="mr-1" /> System
+                </Badge>
               {/if}
               
               {#if conv.status === 'resolved'}
-                <span class="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Resolved</span>
+                <Badge variant="secondary" class="bg-emerald-50 text-emerald-700 border-none font-bold text-[9px] uppercase px-2 py-0.5">
+                  Resolved
+                </Badge>
               {/if}
-              <span class="text-xs text-gray-400">{conv.message_count} msgs</span>
+              <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest ml-auto">{conv.message_count} msgs</span>
             </div>
           </button>
         {/each}
 
-        <!-- Pagination -->
+        <!-- Pager -->
         {#if totalPages > 1}
-          <div class="flex justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
-            <button onclick={() => { page--; load(); }} disabled={page <= 1} class="hover:text-gray-700 disabled:opacity-40">← Prev</button>
-            <span>{page}/{totalPages}</span>
-            <button onclick={() => { page++; load(); }} disabled={page >= totalPages} class="hover:text-gray-700 disabled:opacity-40">Next →</button>
+          <div class="flex items-center justify-between px-6 py-4 bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-t border-gray-50">
+            <button onclick={() => { page--; load(); }} disabled={page <= 1} class="hover:text-indigo-600 disabled:opacity-20 flex items-center gap-1">
+              <ChevronLeft size={14} /> Prev
+            </button>
+            <span>{page} / {totalPages}</span>
+            <button onclick={() => { page++; load(); }} disabled={page >= totalPages} class="hover:text-indigo-600 disabled:opacity-20 flex items-center gap-1">
+              Next <ChevronRight size={14} />
+            </button>
           </div>
         {/if}
       {/if}
     </div>
   </div>
 
-  <!-- Right: Message Thread -->
-  <div class="flex-1 flex flex-col bg-gray-50 min-w-0">
+  <!-- Content: Message Thread -->
+  <div class="flex-1 flex flex-col bg-gray-50/30">
     {#if !selectedConv}
-      <div class="flex-1 flex items-center justify-center">
-        <div class="text-center text-gray-400">
-          <div class="mb-3 flex justify-center text-gray-300">
-            <MessageCircle class="w-10 h-10" />
-          </div>
-          <p class="text-sm">Select a conversation to start</p>
+      <div class="flex-1 flex flex-col items-center justify-center text-center p-10">
+        <div class="w-24 h-24 bg-white rounded-3xl shadow-[0_20px_50px_rgba(79,70,229,0.1)] flex items-center justify-center text-indigo-500 mb-8 animate-bounce transition-all duration-1000">
+          <MessageCircle size={48} strokeWidth={1.5} />
         </div>
+        <h2 class="text-2xl font-black text-gray-900 tracking-tight mb-2">Omnichannel Inbox</h2>
+        <p class="text-sm font-medium text-gray-400 max-w-sm leading-relaxed">
+          Select a conversation from the sidebar to manage customer queries, take over from AI, or close resolved sessions.
+        </p>
       </div>
     {:else}
-      <!-- Thread Header -->
+      <!-- thread Header -->
       {@const SelectedChannelIcon = channelIcon(selectedConv.channel)}
-      <div class="px-5 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-semibold text-indigo-700">
+      <div class="px-8 py-4 bg-white border-b border-gray-100 flex items-center justify-between shadow-sm z-10">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg font-black shadow-lg shadow-indigo-100">
             {(selectedConv.buyer_name || selectedConv.buyer_ref).charAt(0).toUpperCase()}
           </div>
-          <div>
-            <p class="text-sm font-semibold text-gray-900">{selectedConv.buyer_name || selectedConv.buyer_ref}</p>
-            <p class="text-xs text-gray-500 flex items-center gap-1.5">
-              <span class="flex items-center gap-1">
-                <SelectedChannelIcon class="w-3 h-3" /> {selectedConv.channel}
-              </span>
-              {#if selectedConv.buyer_name}
-                <span class="text-gray-300">|</span>
-                <span class="font-mono text-[10px]">ID: {selectedConv.buyer_ref}</span>
-              {/if}
+          <div class="min-w-0">
+            <p class="text-base font-black text-gray-900 leading-none mb-1.5 truncate">
+              {selectedConv.buyer_name || selectedConv.buyer_ref}
             </p>
+            <div class="flex items-center gap-2">
+              <Badge variant="secondary" class="bg-gray-100 border-none font-bold text-[9px] uppercase px-2 py-0.5 inline-flex items-center gap-1">
+                <SelectedChannelIcon size={10} /> {selectedConv.channel}
+              </Badge>
+              {#if selectedConv.buyer_name}
+                <span class="text-gray-300">/</span>
+                <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest font-mono">ID: {selectedConv.buyer_ref}</span>
+              {/if}
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Active State</span>
+            </div>
           </div>
         </div>
+
         <div class="flex items-center gap-2">
           {#if selectedConv.mode === 'ai'}
-            <button
+            <Button
               onclick={() => takeOver(selectedConv!)}
-              class="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-            >Take over</button>
+              variant="secondary"
+              size="sm"
+              class="bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100 font-black uppercase text-[10px] tracking-widest"
+            >
+              <HandMetal size={14} class="mr-2" /> Take Over
+            </Button>
           {/if}
           
           {#if selectedConv.status === 'open'}
-            <button
+            <Button
               onclick={() => closeSession(selectedConv!)}
-              class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-            >Close session</button>
+              variant="secondary"
+              size="sm"
+              class="font-black uppercase text-[10px] tracking-widest text-emerald-600 hover:bg-emerald-50"
+            >
+              <CheckCircle2 size={14} class="mr-2" /> Resolve
+            </Button>
           {:else}
-            <button
+            <Button
               onclick={() => setConvStatus(selectedConv!.id, 'open')}
-              class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
-            >Reopen</button>
+              variant="secondary"
+              size="sm"
+              class="font-black uppercase text-[10px] tracking-widest text-amber-600 hover:bg-amber-50"
+            >
+              <RefreshCw size={14} class="mr-2" /> Reopen
+            </Button>
           {/if}
         </div>
       </div>
 
-      <!-- Messages -->
-      <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+      <!-- Messages Area -->
+      <div class="flex-1 overflow-y-auto px-8 py-10 space-y-6 custom-scrollbar bg-gray-50/50">
         {#if convLoading}
-          <div class="text-center text-sm text-gray-400 py-8">Loading…</div>
+          <div class="flex flex-col items-center justify-center py-24 gap-4">
+            <RefreshCw size={32} class="animate-spin text-indigo-200" />
+            <p class="text-[10px] font-black uppercase tracking-widest text-gray-300">Synchronizing thread content...</p>
+          </div>
         {:else if selectedConv.messages.length === 0}
-          <div class="text-center text-sm text-gray-400 py-8">No messages yet.</div>
+          <div class="text-center py-24 bg-white/50 rounded-3xl border border-dashed border-gray-200">
+            <Bot size={48} class="text-gray-200 mx-auto mb-4" />
+            <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 italic">Historical data stream is empty</p>
+          </div>
         {:else}
           {#each selectedConv.messages as msg}
             {#if msg.sender === 'system'}
-              <div class="flex justify-center my-2">
-                <span class="px-3 py-1 bg-gray-100 rounded-full text-[10px] text-gray-500 font-medium italic">
-                  {msg.body}
+              <div class="flex justify-center my-6">
+                <span class="px-5 py-1.5 bg-gray-200/50 backdrop-blur-sm rounded-full text-[9px] text-gray-500 font-black uppercase tracking-widest border border-gray-100 shadow-sm">
+                   {msg.body}
                 </span>
               </div>
             {:else}
               <div class="flex {msg.sender === 'seller' ? 'justify-end' : 'justify-start'}">
-                <div class="max-w-xs lg:max-w-md">
-                  {#if msg.sender !== 'seller'}
-                    <p class="text-xs text-gray-500 mb-1 ml-1">{msg.sender === 'ai' ? 'AI Bot' : (selectedConv.buyer_name || selectedConv.buyer_ref)}</p>
-                  {:else}
-                    <p class="text-xs text-gray-500 mb-1 mr-1 text-right">{msg.sender_name || 'Seller'}</p>
-                  {/if}
-                  <div class="rounded-2xl px-4 py-2.5 {msg.sender === 'seller' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm shadow-sm'} {msg.sender === 'ai' ? 'bg-purple-50 text-purple-900 border-purple-200' : ''}">
-                    <p class="text-sm whitespace-pre-wrap">{msg.body}</p>
+                <div class="max-w-[80%] lg:max-w-2xl">
+                  <div class="flex items-center gap-2 mb-1.5 {msg.sender === 'seller' ? 'flex-row-reverse space-x-reverse' : ''}">
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                       {msg.sender === 'seller' ? (msg.sender_name || 'Administrator') : (msg.sender === 'ai' ? 'Agentic AI' : (selectedConv.buyer_name || 'Customer'))}
+                    </span>
+                    <span class="text-[9px] font-bold text-gray-300 uppercase tracking-tighter">{formatTime(msg.created_at)}</span>
                   </div>
-                  <div class="flex items-center gap-1 mt-1 {msg.sender === 'seller' ? 'justify-end mr-1' : 'ml-1'}">
+                  
+                  <div class="relative group">
+                    <div class="rounded-3xl px-5 py-3 shadow-sm {msg.sender === 'seller' 
+                      ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-100' 
+                      : 'bg-white text-gray-900 border border-gray-100 rounded-tl-none shadow-gray-200/40'} 
+                      {msg.sender === 'ai' ? 'bg-purple-50 text-purple-900 border-purple-200 shadow-purple-100' : ''}">
+                      <p class="text-sm font-medium leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+                    </div>
+                    
                     {#if msg.sender === 'ai'}
-                      <span class="text-xs text-purple-400 inline-flex items-center gap-1"><Bot class="w-3 h-3" /> AI</span>
+                      <div class="absolute -right-2 -bottom-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg">
+                        <Bot size={12} />
+                      </div>
                     {/if}
-                    <span class="text-xs text-gray-400">{formatTime(msg.created_at)}</span>
                   </div>
                 </div>
               </div>
@@ -403,37 +476,75 @@
         {/if}
       </div>
 
-      <!-- Compose -->
-      <div class="px-5 py-3 bg-white border-t border-gray-200">
-        <div class="flex gap-3 items-end">
-          <textarea
-            bind:value={newMessage}
-            placeholder="Type a message…"
-            rows={1}
-            onkeydown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-            }}
-            class="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[42px] max-h-32"
-          ></textarea>
-          <button
-            onclick={sendMessage}
-            disabled={sending || !newMessage.trim()}
-            class="rounded-xl bg-indigo-600 px-4 py-2.5 text-white hover:bg-indigo-700 disabled:opacity-40 flex-shrink-0"
-          >
-            {#if sending}
-              <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-              </svg>
-            {:else}
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-              </svg>
-            {/if}
-          </button>
-        </div>
-        <p class="text-xs text-gray-400 mt-1.5">Enter to send · Shift+Enter for new line</p>
+      <!-- Footer Composing -->
+      <div class="p-8 bg-white border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+        {#if selectedConv.status === 'resolved'}
+          <div class="flex items-center justify-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <CheckCircle2 size={18} class="text-emerald-500" />
+            <p class="text-[10px] font-black uppercase tracking-widest text-emerald-600">This conversation is marked as resolved and closed.</p>
+            <Button size="sm" variant="secondary" onclick={() => setConvStatus(selectedConv!.id, 'open')} class="ml-4 h-7 text-[9px] bg-white">Reopen to reply</Button>
+          </div>
+        {:else}
+          <div class="flex gap-4 items-end max-w-5xl mx-auto">
+            <div class="flex-1 relative">
+              <textarea
+                bind:value={newMessage}
+                placeholder="Compose a response..."
+                rows={1}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+                }}
+                class="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-5 py-4 text-sm resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all min-h-[58px] max-h-48 font-medium custom-scrollbar"
+              ></textarea>
+              <div class="absolute right-4 bottom-4 flex items-center gap-2 text-gray-300">
+                <span class="text-[9px] font-black uppercase tracking-widest">Type Message</span>
+              </div>
+            </div>
+            <Button
+              onclick={sendMessage}
+              disabled={sending || !newMessage.trim()}
+              variant="primary"
+              class="h-[58px] w-[58px] rounded-2xl shadow-lg shadow-indigo-100 p-0 flex items-center justify-center"
+            >
+              {#if sending}
+                <RefreshCw size={24} class="animate-spin" />
+              {:else}
+                <SendIcon size={24} class="rotate-45 -mt-1 ml-0.5" />
+              {/if}
+            </Button>
+          </div>
+          <div class="mt-4 flex items-center justify-center gap-6">
+            <div class="flex items-center gap-2">
+              <span class="text-[8px] font-black text-gray-400 leading-none uppercase tracking-widest">Enter to Dispatch</span>
+              <kbd class="px-1.5 py-0.5 rounded bg-gray-100 text-[8px] font-black text-gray-500 border-b-2 border-gray-200">↵</kbd>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[8px] font-black text-gray-400 leading-none uppercase tracking-widest">Shift + Enter for Break</span>
+            </div>
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
 </div>
+
+<style>
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
+  }
+  
+  :global(.custom-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+</style>

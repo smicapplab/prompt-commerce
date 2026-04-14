@@ -14,44 +14,10 @@
     Clock,
     ArrowUpRight,
   } from "@lucide/svelte";
-
-  interface TrendPoint {
-    date: string;
-    revenue: number;
-    orders: number;
-  }
-  interface RecentOrder {
-    id: number;
-    buyer_ref: string | null;
-    channel: string;
-    status: string;
-    total: number | null;
-    created_at: string;
-  }
-  interface TopProduct {
-    title: string;
-    units_sold: number;
-    revenue: number;
-  }
-
-  interface Stats {
-    products: number;
-    categories: number;
-    promotions: number;
-    reviews: number;
-    orders: number;
-    conversations: number;
-    revenueTotal: number;
-    revenueThisMonth: number;
-    revenueThisWeek: number;
-    revenueToday: number;
-    ordersThisMonth: number;
-    ordersPending: number;
-    ordersByStatus: Record<string, number>;
-    revenueTrend: TrendPoint[];
-    recentOrders: RecentOrder[];
-    topProducts: TopProduct[];
-  }
+  import Badge from "$lib/components/ui/Badge.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Card from "$lib/components/ui/Card.svelte";
+  import type { Stats } from "$lib/types/dashboard.js";
 
   let stats = $state<Stats | null>(null);
   let loading = $state(true);
@@ -63,17 +29,7 @@
 
   const token = () => localStorage.getItem("pc_token") ?? "";
 
-  const STATUS_COLORS: Record<string, string> = {
-    pending: "bg-amber-400",
-    paid: "bg-blue-400",
-    picking: "bg-indigo-400",
-    packing: "bg-violet-400",
-    ready_for_pickup: "bg-cyan-400",
-    in_transit: "bg-sky-400",
-    delivered: "bg-emerald-400",
-    cancelled: "bg-red-400",
-    refunded: "bg-gray-400",
-  };
+  import { STATUS_CHART_COLORS } from "$lib/constants/orders.js";
 
   const STATUS_TEXT: Record<string, string> = {
     pending: "text-amber-700",
@@ -238,44 +194,38 @@
   );
 </script>
 
-<svelte:head
-  ><title>Dashboard — {activeStore.name || "Store"}</title></svelte:head
->
+<svelte:head>
+  <title>Dashboard — {activeStore.name || "Store"}</title>
+</svelte:head>
 
-<div class="p-6 max-w-7xl mx-auto space-y-8">
+<div class="px-6 pt-6 pb-20 max-w-6xl mx-auto space-y-8">
   <!-- Page header -->
   <div class="flex items-start justify-between">
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900">
+    <div class="flex items-center gap-2">
+      <h1 class="text-2xl font-black text-gray-900 tracking-tight">
         {activeStore.name || activeStore.slug}
       </h1>
-      <p class="text-sm text-gray-400 font-mono mt-0.5">{activeStore.slug}</p>
+      <Badge
+        class="bg-gray-100 text-gray-600 border-gray-200 font-mono tracking-normal"
+        >{activeStore.slug}</Badge
+      >
     </div>
-    <a
-      href="/admin/orders/new"
-      class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-500 active:scale-95 transition-all"
-    >
+    <Button href="/admin/orders/new" variant="primary">
       <ShoppingCart class="w-4 h-4" />
       New Order
-    </a>
+    </Button>
   </div>
 
   {#if loading}
     <!-- Skeleton -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       {#each Array(4) as _}
-        <div
-          class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-28"
-        ></div>
+        <Card class="p-5 animate-pulse h-28" />
       {/each}
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div
-        class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 animate-pulse h-52"
-      ></div>
-      <div
-        class="bg-white rounded-2xl border border-gray-100 animate-pulse h-52"
-      ></div>
+      <Card class="lg:col-span-2 animate-pulse h-52" />
+      <Card class="animate-pulse h-52" />
     </div>
   {:else if error}
     <div
@@ -286,10 +236,26 @@
   {:else if stats}
     <!-- ── Setup Checklist ────────────────────────────────────────────────── -->
     {#if !setupLoading && storeSettings}
-      {@const hasAiKey = storeSettings.claude_api_key_set || storeSettings.gemini_api_key_set || storeSettings.openai_api_key_set}
+      {@const hasAiKey =
+        storeSettings.claude_api_key_set ||
+        storeSettings.gemini_api_key_set ||
+        storeSettings.openai_api_key_set}
       {@const aiDone = hasAiKey && storeSettings.ai_enabled === "1"}
-      {@const hasMessaging = (storeSettings.telegram_bot_token_set && storeSettings.telegram_enabled === "1") || (!!storeSettings.whatsapp_notify_number && storeSettings.whatsapp_enabled === "1")}
-      {@const hasPayment = storeSettings.payment_api_key_set || (storeSettings.payment_methods && (() => { try { return JSON.parse(storeSettings.payment_methods).length > 0; } catch { return false; } })())}
+      {@const hasMessaging =
+        (storeSettings.telegram_bot_token_set &&
+          storeSettings.telegram_enabled === "1") ||
+        (!!storeSettings.whatsapp_notify_number &&
+          storeSettings.whatsapp_enabled === "1")}
+      {@const hasPayment =
+        storeSettings.payment_api_key_set ||
+        (storeSettings.payment_methods &&
+          (() => {
+            try {
+              return JSON.parse(storeSettings.payment_methods).length > 0;
+            } catch {
+              return false;
+            }
+          })())}
       {@const steps = [
         {
           id: "products",
@@ -317,18 +283,18 @@
         },
       ]}
       {#if steps.some((s) => !s.done)}
-        <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6">
+        <Card class="bg-indigo-50/50 border-indigo-100 p-6">
           <div class="flex items-center justify-between mb-4">
             <h2
               class="text-sm font-bold text-indigo-900 uppercase tracking-wider"
             >
               Getting Started
             </h2>
-            <span
+            <Badge
               class="text-xs font-medium text-indigo-600 bg-white px-2 py-1 rounded-lg border border-indigo-100 italic"
             >
               {steps.filter((s) => s.done).length} of {steps.length} steps complete
-            </span>
+            </Badge>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             {#each steps as step}
@@ -368,18 +334,18 @@
               </a>
             {/each}
           </div>
-        </div>
+        </Card>
       {/if}
     {/if}
 
     <!-- ── KPI Row ─────────────────────────────────────────────────────────── -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <!-- Revenue this month -->
-      <div
-        class="bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl p-5 text-white shadow-lg shadow-indigo-200"
+      <Card
+        class="bg-gradient-to-br from-indigo-600 to-violet-600 border-none p-5 text-white shadow-lg shadow-indigo-100"
       >
         <div class="flex items-center justify-between mb-3">
-          <p class="text-xs font-bold text-indigo-200 uppercase tracking-wider">
+          <p class="text-xs font-bold text-indigo-100 uppercase tracking-wider">
             Revenue · Month
           </p>
           <TrendingUp class="w-4 h-4 text-indigo-300" />
@@ -390,11 +356,11 @@
         <p class="text-xs text-indigo-200 mt-1.5 font-medium">
           All-time: {currency(stats.revenueTotal)}
         </p>
-      </div>
+      </Card>
 
       <!-- Revenue this week -->
-      <div
-        class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow"
+      <Card
+        class="p-5 hover:shadow-md transition-shadow"
       >
         <div class="flex items-center justify-between mb-3">
           <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -410,11 +376,11 @@
         <p class="text-xs text-gray-400 mt-1.5">
           Today: {currency(stats.revenueToday)}
         </p>
-      </div>
+      </Card>
 
       <!-- Orders this month -->
-      <div
-        class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow"
+      <Card
+        class="p-5 hover:shadow-md transition-shadow"
       >
         <div class="flex items-center justify-between mb-3">
           <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -428,12 +394,12 @@
           {stats.ordersThisMonth}
         </p>
         <p class="text-xs text-gray-400 mt-1.5">Total: {stats.orders} orders</p>
-      </div>
+      </Card>
 
       <!-- Pending / active orders -->
-      <a
-        href="/admin/orders"
-        class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow group block"
+      <Card
+        onclick={() => goto("/admin/orders")}
+        class="p-5 hover:shadow-md transition-shadow group cursor-pointer"
       >
         <div class="flex items-center justify-between mb-3">
           <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -451,7 +417,7 @@
         >
           View orders <ArrowUpRight class="w-3 h-3" />
         </p>
-      </a>
+      </Card>
     </div>
 
     <!-- ── Middle row: Chart + Status breakdown ────────────────────────────── -->
@@ -581,7 +547,8 @@
           <div class="flex rounded-full overflow-hidden h-2.5 mb-5 gap-px">
             {#each Object.entries(stats.ordersByStatus) as [status, n]}
               <div
-                class="{STATUS_COLORS[status] ?? 'bg-gray-300'} transition-all"
+                class="{STATUS_CHART_COLORS[status] ??
+                  'bg-gray-300'} transition-all"
                 style="width: {(n / totalOrdersForBar) * 100}%"
                 title="{statusLabel(status)}: {n}"
               ></div>
@@ -593,7 +560,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <span
-                    class="w-2 h-2 rounded-full flex-shrink-0 {STATUS_COLORS[
+                    class="w-2 h-2 rounded-full flex-shrink-0 {STATUS_CHART_COLORS[
                       status
                     ] ?? 'bg-gray-300'}"
                   ></span>
@@ -606,7 +573,7 @@
                     class="w-16 bg-gray-50 rounded-full h-1.5 overflow-hidden"
                   >
                     <div
-                      class="{STATUS_COLORS[status] ??
+                      class="{STATUS_CHART_COLORS[status] ??
                         'bg-gray-300'} h-full rounded-full"
                       style="width: {(n / totalOrdersForBar) * 100}%"
                     ></div>
@@ -625,19 +592,21 @@
     <!-- ── Bottom row: Recent orders + Top products ────────────────────────── -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Recent orders -->
-      <div
-        class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+      <Card
+        class="lg:col-span-2 shadow-sm overflow-hidden p-0"
       >
         <div
           class="px-6 py-4 border-b border-gray-50 flex items-center justify-between"
         >
           <h2 class="text-sm font-bold text-gray-900">Recent Orders</h2>
-          <a
+          <Button
             href="/admin/orders"
-            class="text-xs font-bold text-indigo-500 hover:text-indigo-700 transition-colors flex items-center gap-1"
+            variant="secondary"
+            size="sm"
+            class="text-xs font-bold text-indigo-500 hover:text-indigo-700 transition-colors border-none p-0 h-auto"
           >
-            All orders <ArrowUpRight class="w-3 h-3" />
-          </a>
+            All orders <ArrowUpRight class="w-3 h-3 ml-1" />
+          </Button>
         </div>
 
         {#if stats.recentOrders.length === 0}
@@ -652,11 +621,11 @@
                 href="/admin/orders/{o.id}"
                 class="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50/80 transition-colors group"
               >
-                <span
-                  class="font-mono text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded flex-shrink-0"
+                <Badge
+                  class="font-mono text-indigo-500 bg-indigo-50 border-none font-bold"
                 >
                   #{String(o.id).padStart(5, "0")}
-                </span>
+                </Badge>
                 <div class="flex-1 min-w-0">
                   <p
                     class="text-sm font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors"
@@ -669,14 +638,14 @@
                     {o.channel}
                   </p>
                 </div>
-                <span
-                  class="text-xs font-bold px-2 py-0.5 rounded-full border {STATUS_BG[
+                <Badge
+                  class="px-2 py-0.5 border {STATUS_BG[
                     o.status
                   ] ?? 'bg-gray-50 border-gray-100'} {STATUS_TEXT[o.status] ??
                     'text-gray-600'} flex-shrink-0"
                 >
                   {statusLabel(o.status)}
-                </span>
+                </Badge>
                 <span
                   class="text-sm font-black text-gray-900 flex-shrink-0 w-20 text-right"
                 >
@@ -690,7 +659,7 @@
             {/each}
           </div>
         {/if}
-      </div>
+      </Card>
 
       <!-- Top products + Quick links -->
       <div class="space-y-6">
@@ -754,9 +723,9 @@
     <!-- ── Catalog quick-links ─────────────────────────────────────────────── -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
       {#each countCards as card}
-        <a
-          href={card.href}
-          class="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition-shadow flex items-center gap-3 group"
+        <Card
+          onclick={() => goto(card.href)}
+          class="p-4 hover:shadow-md transition-shadow flex items-center gap-3 group cursor-pointer"
         >
           <div class="p-2 rounded-lg {card.color} flex-shrink-0">
             <card.icon class="w-4 h-4" />
@@ -771,7 +740,7 @@
               {stats[card.key as keyof Stats] ?? 0}
             </p>
           </div>
-        </a>
+        </Card>
       {/each}
     </div>
   {/if}
