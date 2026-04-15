@@ -142,13 +142,15 @@ export const POST: RequestHandler = async (event) => {
     type RawProduct = {
       id: number; title: string; description: string | null; sku: string | null;
       product_type: string; price: number | null; stock_quantity: number | null;
+      track_inventory: number;
       metadata: string | null; category_id: number | null;
       tags: string | null; images: string | null; active: number; deleted_at: string | null;
       updated_at: string;
     };
     type RawVariant = {
       id: number; product_id: number; sku: string | null; price: number;
-      stock: number; attributes: string; active: number; updated_at: string;
+      stock: number; attributes: string; images: string | null;
+      is_always_available: number; active: number; updated_at: string;
     };
 
     const dirtyCategories = storeDb
@@ -157,7 +159,7 @@ export const POST: RequestHandler = async (event) => {
 
     const dirtyProducts = storeDb
       .prepare(`
-        SELECT id, title, description, sku, product_type, price, stock_quantity,
+        SELECT id, title, description, sku, product_type, price, stock_quantity, track_inventory,
                metadata, category_id, tags, images, active, deleted_at, updated_at
         FROM products 
         WHERE is_synced = 0
@@ -222,16 +224,37 @@ export const POST: RequestHandler = async (event) => {
           })(),
           images: validImages,
           active: Boolean(p.active),
-          variants: variants.map(v => ({
-            id: v.id,
-            sku: v.sku,
-            price: v.price,
-            stock: v.stock,
-            attributes: (() => {
-              try { return v.attributes ? JSON.parse(v.attributes) : {}; } catch { return {}; }
-            })(),
-            active: Boolean(v.active),
-          })),
+          track_inventory: Boolean(p.track_inventory),
+          variants: variants.map(v => {
+            let vImages: string[] = [];
+            try {
+              vImages = v.images ? JSON.parse(v.images) : [];
+            } catch {
+              vImages = [];
+            }
+
+            const validVImages: string[] = [];
+            for (const img of vImages) {
+              if (img.startsWith('/')) {
+                if (sellerPublicUrl) validVImages.push(`${sellerPublicUrl}${img}`);
+              } else {
+                validVImages.push(...filterSecureImageUrls([img]));
+              }
+            }
+
+            return {
+              id: v.id,
+              sku: v.sku,
+              price: v.price,
+              stock: v.stock,
+              images: validVImages,
+              is_always_available: Boolean(v.is_always_available),
+              attributes: (() => {
+                try { return v.attributes ? JSON.parse(v.attributes) : {}; } catch { return {}; }
+              })(),
+              active: Boolean(v.active),
+            };
+          }),
         };
       });
 

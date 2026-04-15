@@ -15,27 +15,47 @@ export const PATCH: RequestHandler = async (event: RequestEvent) => {
 	const existing = db.prepare(`SELECT * FROM product_variants WHERE id = ?`).get(id) as any;
 	if (!existing) return json({ error: 'Variant not found' }, { status: 404 });
 
-	const body = await event.request.json().catch(() => null);
-	if (!body) return apiError(400, 'Invalid JSON body');
-
+	const formData = await event.request.formData();
 	const updates: string[] = [];
 	const values: any[] = [];
 
-	if (body.sku !== undefined) { updates.push('sku = ?'); values.push(body.sku || null); }
-	if (body.price !== undefined) { 
-		if (body.price < 0) return apiError(400, 'Invalid price');
-		updates.push('price = ?'); values.push(body.price); 
+	if (formData.has('sku')) { updates.push('sku = ?'); values.push(formData.get('sku') || null); }
+	if (formData.has('price')) {
+		const price = parseFloat(formData.get('price') as string);
+		if (isNaN(price) || price < 0) return apiError(400, 'Invalid price');
+		updates.push('price = ?'); values.push(price);
 	}
-	if (body.stock !== undefined) { 
-		if (body.stock < 0) return apiError(400, 'Invalid stock');
-		updates.push('stock = ?'); values.push(body.stock); 
+	if (formData.has('stock')) {
+		const stock = parseInt(formData.get('stock') as string);
+		if (isNaN(stock) || stock < 0) return apiError(400, 'Invalid stock');
+		updates.push('stock = ?'); values.push(stock);
 	}
-	if (body.active !== undefined) { updates.push('active = ?'); values.push(body.active ? 1 : 0); }
-	if (body.attributes !== undefined) { updates.push('attributes = ?'); values.push(JSON.stringify(body.attributes)); }
-	if (body.images !== undefined) { updates.push('images = ?'); values.push(JSON.stringify(body.images)); }
-	if (body.is_always_available !== undefined) { updates.push('is_always_available = ?'); values.push(body.is_always_available ? 1 : 0); }
+	if (formData.has('active')) { updates.push('active = ?'); values.push(formData.get('active') === '1' ? 1 : 0); }
+	if (formData.has('is_always_available')) { updates.push('is_always_available = ?'); values.push(formData.get('is_always_available') === '1' ? 1 : 0); }
+	if (formData.has('attributes')) { updates.push('attributes = ?'); values.push(formData.get('attributes')); }
 
-	if (updates.length > 0) {		updates.push('is_synced = 0');
+	// Process images if provided
+	if (formData.has('images_urls') || formData.has('images[]')) {
+		const imageUrlsRaw = (formData.get('images_urls') as string) || '';
+		const imageFiles = formData.getAll('images[]') as File[];
+		
+		const uploadedImages: string[] = [];
+		for (const file of imageFiles) {
+			if (file.size === 0) continue;
+			const imgPath = await (await import('../../../../lib/server/uploads.js')).saveUploadedFile(file, store);
+			uploadedImages.push(imgPath);
+		}
+
+		const existingImages = imageUrlsRaw ? imageUrlsRaw.split(',').map(u => u.trim()).filter(Boolean) : [];
+		// Note: we could use filterSecureImageUrls here if we wanted to enforce HTTPS on existing external URLs
+		const allImages = [...existingImages, ...uploadedImages];
+		
+		updates.push('images = ?');
+		values.push(JSON.stringify(allImages));
+	}
+
+	if (updates.length > 0) {
+		updates.push('is_synced = 0');
 		updates.push('updated_at = ?');
 		values.push(new Date().toISOString());
 		values.push(id);
@@ -49,6 +69,7 @@ export const PATCH: RequestHandler = async (event: RequestEvent) => {
 	return json({
 		...updated,
 		attributes: updated.attributes ? JSON.parse(updated.attributes) : {},
+		images: updated.images ? JSON.parse(updated.images) : [],
 		active: !!updated.active
 	});
 };

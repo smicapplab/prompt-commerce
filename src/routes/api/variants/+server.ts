@@ -30,18 +30,35 @@ export const POST: RequestHandler = async (event: RequestEvent) => {
 	if (auth instanceof Response) return auth;
 	if (!store) return apiError(400, 'store is required');
 
-	const body = await event.request.json().catch(() => null);
-	if (!body) return apiError(400, 'Invalid JSON body');
-
-	const { product_id, sku, price, stock, active, attributes, images, is_always_available } = body;
+	const formData = await event.request.formData();
+	const product_id = formData.get('product_id');
+	const sku = formData.get('sku') as string;
+	const price = parseFloat(formData.get('price') as string);
+	const stock = parseInt(formData.get('stock') as string);
+	const active = formData.get('active') === '1';
+	const is_always_available = formData.get('is_always_available') === '1';
+	const attributesRaw = formData.get('attributes') as string;
+	const imagesUrlsRaw = formData.get('images_urls') as string;
+	const imageFiles = formData.getAll('images[]') as File[];
 
 	if (!product_id) return apiError(400, 'product_id is required');
-	if (price === undefined || price < 0) return apiError(400, 'Invalid price');
-	if (stock === undefined || stock < 0) return apiError(400, 'Invalid stock');
+	if (isNaN(price) || price < 0) return apiError(400, 'Invalid price');
+	if (isNaN(stock) || stock < 0) return apiError(400, 'Invalid stock');
 
 	const db = getStoreDb(store);
 	const product = db.prepare('SELECT id FROM products WHERE id = ?').get(product_id);
 	if (!product) return apiError(404, 'Product not found');
+
+	// Process images
+	const uploadedImages: string[] = [];
+	for (const file of imageFiles) {
+		if (file.size === 0) continue;
+		const imgPath = await (await import('../../../lib/server/uploads.js')).saveUploadedFile(file, store);
+		uploadedImages.push(imgPath);
+	}
+
+	const existingImages = imagesUrlsRaw ? imagesUrlsRaw.split(',').map(u => u.trim()).filter(Boolean) : [];
+	const allImages = [...existingImages, ...uploadedImages];
 
 	const result = db.prepare(`
 		INSERT INTO product_variants (product_id, sku, price, stock, active, attributes, images, is_always_available)
@@ -51,9 +68,9 @@ export const POST: RequestHandler = async (event: RequestEvent) => {
 		sku || null,
 		price,
 		stock,
-		active === false ? 0 : 1,
-		JSON.stringify(attributes || {}),
-		JSON.stringify(images || []),
+		active ? 1 : 0,
+		attributesRaw || '{}',
+		JSON.stringify(allImages),
 		is_always_available ? 1 : 0
 	);
 
@@ -64,6 +81,7 @@ export const POST: RequestHandler = async (event: RequestEvent) => {
 	return json({
 		...newVariant,
 		attributes: newVariant.attributes ? JSON.parse(newVariant.attributes) : {},
+		images: newVariant.images ? JSON.parse(newVariant.images) : [],
 		active: !!newVariant.active
 	}, { status: 201 });
 };
