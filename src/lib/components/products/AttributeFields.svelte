@@ -7,6 +7,17 @@
 	function update(field: string, value: string | number | boolean) {
 		onChange({ ...attributes, [field]: value });
 	}
+
+	function handleInput(field: string) {
+		return (e: Event) => {
+			update(field, (e.currentTarget as HTMLInputElement).value);
+		};
+	}
+
+	function formatValue(val: string | number | boolean | undefined): string | number {
+		if (typeof val === "boolean") return val ? "true" : "false";
+		return val ?? "";
+	}
 </script>
 
 <div class="flex flex-wrap gap-3">
@@ -15,15 +26,15 @@
 			<Input
 				{id}
 				placeholder="Color (e.g. Red)"
-				value={attributes.color || ""}
-				oninput={(e) => update("color", e.currentTarget.value)}
+				value={formatValue(attributes.color)}
+				oninput={handleInput("color")}
 			/>
 		</div>
 		<div class="flex-1 min-w-[100px]">
 			<Input
 				placeholder="Size (e.g. XL)"
-				value={attributes.size || ""}
-				oninput={(e) => update("size", e.currentTarget.value)}
+				value={formatValue(attributes.size)}
+				oninput={handleInput("size")}
 			/>
 		</div>
 	{:else if type === "food"}
@@ -31,15 +42,15 @@
 			<Input
 				{id}
 				placeholder="Size/Weight (e.g. 500g)"
-				value={attributes.size || ""}
-				oninput={(e) => update("size", e.currentTarget.value)}
+				value={formatValue(attributes.size)}
+				oninput={handleInput("size")}
 			/>
 		</div>
 		<div class="flex-1 min-w-[100px]">
 			<Input
 				placeholder="Flavor (optional)"
-				value={attributes.flavor || ""}
-				oninput={(e) => update("flavor", e.currentTarget.value)}
+				value={formatValue(attributes.flavor)}
+				oninput={handleInput("flavor")}
 			/>
 		</div>
 	{:else if type === "device"}
@@ -47,15 +58,15 @@
 			<Input
 				{id}
 				placeholder="Storage (e.g. 256GB)"
-				value={attributes.storage || ""}
-				oninput={(e) => update("storage", e.currentTarget.value)}
+				value={formatValue(attributes.storage)}
+				oninput={handleInput("storage")}
 			/>
 		</div>
 		<div class="flex-1 min-w-[100px]">
 			<Input
 				placeholder="Color"
-				value={attributes.color || ""}
-				oninput={(e) => update("color", e.currentTarget.value)}
+				value={formatValue(attributes.color)}
+				oninput={handleInput("color")}
 			/>
 		</div>
 	{:else if type === "travel"}
@@ -63,8 +74,8 @@
 			<Input
 				{id}
 				placeholder="Class/Tier (e.g. Economy)"
-				value={attributes.tier || ""}
-				oninput={(e) => update("tier", e.currentTarget.value)}
+				value={formatValue(attributes.tier)}
+				oninput={handleInput("tier")}
 			/>
 		</div>
 	{:else}
@@ -73,9 +84,9 @@
 				{id}
 				placeholder="Custom attributes (JSON or comma list)..."
 				value={JSON.stringify(attributes)}
-				oninput={(e) => {
+				oninput={(e: Event) => {
 					try {
-						onChange(JSON.parse(e.currentTarget.value));
+						onChange(JSON.parse((e.currentTarget as HTMLInputElement).value));
 					} catch {
 						// Silently fail until valid JSON
 					}

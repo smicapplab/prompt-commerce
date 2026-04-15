@@ -4,7 +4,9 @@
    * Stores the selected store slug in localStorage as 'pc_store_slug'.
    * Dispatches 'store-changed' CustomEvent with detail = slug string.
    */
+  import { onMount } from "svelte";
   import { ChevronDown } from "@lucide/svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import type { StoreItem as Store } from "$lib/types/stores.js";
 
   let stores = $state<Store[]>([]);
@@ -47,13 +49,12 @@
     );
   }
 
-  import { ChevronDown } from "@lucide/svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { StoreItem as Store } from "$lib/types/stores.js";
+  onMount(() => {
+    loadStores();
+  });
+</script>
 
-  let stores = $state<Store[]>([]);
-  ...
-  {#if stores.length > 0}
+{#if stores.length > 0}
   <div class="relative">
     <Button
       variant="outline"
@@ -86,4 +87,4 @@
       </div>
     {/if}
   </div>
-  {/if}
+{/if}
