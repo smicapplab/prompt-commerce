@@ -66,9 +66,9 @@ export const PATCH: RequestHandler = async (event) => {
 		: null;
 	const tagsStr = formData.get('tags') as string;
 	const active = formData.get('active') ? (formData.get('active') as string) === '1' ? 1 : 0 : null;
+	const track_inventory = formData.has('track_inventory') ? (formData.get('track_inventory') as string) === '1' ? 1 : 0 : null;
 	const product_type = formData.has('product_type') ? (formData.get('product_type') as string) : null;
-	const metadataStr = formData.has('metadata') ? (formData.get('metadata') as string) : null;
-	let metadata = null;
+	const metadataStr = formData.has('metadata') ? (formData.get('metadata') as string) : null;	let metadata = null;
 	if (metadataStr !== null) {
 		try {
 			metadata = metadataStr ? JSON.parse(metadataStr) : null;
@@ -119,6 +119,7 @@ export const PATCH: RequestHandler = async (event) => {
 	if (formData.has('tags')) { updates.push('tags = ?'); values.push(JSON.stringify(tags)); }
 	if (formData.has('images_urls') || imageFiles.length > 0) { updates.push('images = ?'); values.push(JSON.stringify(allImages)); }
 	if (active !== null) { updates.push('active = ?'); values.push(active); }
+	if (track_inventory !== null) { updates.push('track_inventory = ?'); values.push(track_inventory); }
 	if (product_type !== null) { updates.push('product_type = ?'); values.push(product_type); }
 	if (metadataStr !== null) { updates.push('metadata = ?'); values.push(metadata ? JSON.stringify(metadata) : null); }
 

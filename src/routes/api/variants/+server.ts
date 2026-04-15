@@ -33,7 +33,7 @@ export const POST: RequestHandler = async (event: RequestEvent) => {
 	const body = await event.request.json().catch(() => null);
 	if (!body) return apiError(400, 'Invalid JSON body');
 
-	const { product_id, sku, price, stock, active, attributes } = body;
+	const { product_id, sku, price, stock, active, attributes, images, is_always_available } = body;
 
 	if (!product_id) return apiError(400, 'product_id is required');
 	if (price === undefined || price < 0) return apiError(400, 'Invalid price');
@@ -44,15 +44,17 @@ export const POST: RequestHandler = async (event: RequestEvent) => {
 	if (!product) return apiError(404, 'Product not found');
 
 	const result = db.prepare(`
-		INSERT INTO product_variants (product_id, sku, price, stock, active, attributes)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO product_variants (product_id, sku, price, stock, active, attributes, images, is_always_available)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`).run(
 		product_id,
 		sku || null,
 		price,
 		stock,
 		active === false ? 0 : 1,
-		JSON.stringify(attributes || {})
+		JSON.stringify(attributes || {}),
+		JSON.stringify(images || []),
+		is_always_available ? 1 : 0
 	);
 
 	db.prepare('UPDATE products SET is_synced = 0, updated_at = ? WHERE id = ?').run(new Date().toISOString(), product_id);

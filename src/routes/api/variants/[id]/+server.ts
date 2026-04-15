@@ -32,9 +32,10 @@ export const PATCH: RequestHandler = async (event: RequestEvent) => {
 	}
 	if (body.active !== undefined) { updates.push('active = ?'); values.push(body.active ? 1 : 0); }
 	if (body.attributes !== undefined) { updates.push('attributes = ?'); values.push(JSON.stringify(body.attributes)); }
+	if (body.images !== undefined) { updates.push('images = ?'); values.push(JSON.stringify(body.images)); }
+	if (body.is_always_available !== undefined) { updates.push('is_always_available = ?'); values.push(body.is_always_available ? 1 : 0); }
 
-	if (updates.length > 0) {
-		updates.push('is_synced = 0');
+	if (updates.length > 0) {		updates.push('is_synced = 0');
 		updates.push('updated_at = ?');
 		values.push(new Date().toISOString());
 		values.push(id);
