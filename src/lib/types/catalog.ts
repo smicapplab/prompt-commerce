@@ -7,6 +7,7 @@ export interface Product {
   category_name?: string | null;
   price: number | null;
   stock_quantity: number | null;
+  track_inventory: boolean;
   product_type: 'generic' | 'wearable' | 'food' | 'device' | 'travel';
   metadata: Record<string, unknown>;
   variant_count?: number;
@@ -27,6 +28,8 @@ export interface ProductVariant {
   sku: string;
   price: number;
   stock: number;
+  images?: string[] | null;
+  is_always_available: boolean;
   attributes: Record<string, string | number | boolean>;
   active: boolean;
   is_synced?: number;

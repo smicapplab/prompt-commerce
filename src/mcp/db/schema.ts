@@ -124,6 +124,7 @@ export function initStoreSchema(db: Database.Database): void {
       metadata       TEXT    DEFAULT '{}',
       tags           TEXT,
       images         TEXT,
+      track_inventory INTEGER NOT NULL DEFAULT 1,
       active         INTEGER NOT NULL DEFAULT 1,
       is_synced      INTEGER NOT NULL DEFAULT 0,  -- 0=dirty (needs push), 1=synced
       deleted_at     TEXT    DEFAULT NULL,        -- NULL=active; timestamp=soft-deleted
@@ -139,6 +140,8 @@ export function initStoreSchema(db: Database.Database): void {
       price          REAL    NOT NULL,
       stock          INTEGER NOT NULL DEFAULT 0,
       attributes     TEXT    NOT NULL DEFAULT '{}',
+      images         TEXT    DEFAULT '[]',
+      is_always_available INTEGER NOT NULL DEFAULT 0,
       active         INTEGER NOT NULL DEFAULT 1,
       is_synced      INTEGER NOT NULL DEFAULT 0,
       created_at     TEXT    NOT NULL DEFAULT (datetime('now')),

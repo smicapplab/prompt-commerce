@@ -293,6 +293,9 @@ if (fs.existsSync(storesDir)) {
       'ALTER TABLE orders ADD COLUMN is_synced INTEGER NOT NULL DEFAULT 0',
       'ALTER TABLE orders ADD COLUMN deleted_at TEXT DEFAULT NULL',
       'ALTER TABLE orders ADD COLUMN idempotency_key TEXT DEFAULT NULL',
+      'ALTER TABLE products ADD COLUMN track_inventory INTEGER NOT NULL DEFAULT 1',
+      'ALTER TABLE product_variants ADD COLUMN images TEXT DEFAULT \'[]\'',
+      'ALTER TABLE product_variants ADD COLUMN is_always_available INTEGER NOT NULL DEFAULT 0',
     ]) {
       try { sdb.exec(stmt); } catch { /* column already exists */ }
     }
