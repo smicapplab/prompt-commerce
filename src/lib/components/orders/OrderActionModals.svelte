@@ -31,15 +31,15 @@
 
   $effect(() => {
     if (showingTrackingForm && order) {
-      editTrackingNumber = (order as any).tracking_number ?? "";
-      editCourierName = (order as any).courier_name ?? "";
-      editTrackingUrl = (order as any).tracking_url ?? "";
+      editTrackingNumber = order.tracking_number ?? "";
+      editCourierName = order.courier_name ?? "";
+      editTrackingUrl = order.tracking_url ?? "";
     }
   });
 
   $effect(() => {
     if (showingCancelForm && order) {
-      editCancelReason = (order as any).cancellation_reason ?? "";
+      editCancelReason = order.cancellation_reason ?? "";
     }
   });
 

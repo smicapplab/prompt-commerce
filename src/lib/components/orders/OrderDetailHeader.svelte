@@ -5,7 +5,7 @@
   import Badge from "$lib/components/ui/Badge.svelte";
   import { STATUS_COLORS } from "$lib/constants/orders.js";
   import { formatDate } from "$lib/utils/format.js";
-  import type { Order } from "$lib/types/orders.js";
+  import type { Order, OrderStep } from "$lib/types/orders.js";
 
   let { 
     order, 
@@ -15,7 +15,7 @@
   } = $props<{ 
     order: Order, 
     updating: boolean, 
-    nextStep: any, 
+    nextStep: OrderStep | null, 
     onUpdateStatus: (status: string) => void 
   }>();
 

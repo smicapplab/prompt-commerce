@@ -3,12 +3,11 @@
   import { page } from "$app/state";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import { goto } from "$app/navigation";
-  import type { Order } from "$lib/types/orders.js";
+  import type { Order, OrderStatus } from "$lib/types/orders.js";
   import Card from "$lib/components/ui/Card.svelte";
   import { 
     Download,
     Printer,
-    Clock,
   } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
 
@@ -23,8 +22,8 @@
   import OrderLocationCard from "$lib/components/orders/OrderLocationCard.svelte";
   import OrderActionModals from "$lib/components/orders/OrderActionModals.svelte";
 
-  import { STATUS_STEPS } from "$lib/constants/orders.js";
   import { formatDate, formatCurrency } from "$lib/utils/format.js";
+  import { getAuthToken } from "$lib/utils/auth.js";
 
   let { data } = $props();
 
@@ -37,12 +36,10 @@
   let showingTrackingForm = $state(false);
   let showingCancelForm = $state(false);
 
-  const token = () => localStorage.getItem("pc_token") ?? "";
-
   async function load() {
     loading = true;
     const res = await fetch(`/api/orders/${id}?store=${activeStore.slug}`, {
-      headers: { Authorization: `Bearer ${token()}` },
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
     });
     loading = false;
     if (res.ok) {
@@ -57,7 +54,7 @@
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token()}`,
+        Authorization: `Bearer ${getAuthToken()}`,
       },
       body: JSON.stringify(fields),
     });
@@ -293,18 +290,18 @@
     const s = order.status;
     const isPickup = (order as any).delivery_type === "pickup";
 
-    if (s === "pending_payment") return { id: "paid", label: "Payment" };
+    if (s === "pending_payment") return { id: "paid" as OrderStatus, label: "Payment" };
     if (s === "pending" || s === "paid")
-      return { id: "picking", label: "Picking" };
-    if (s === "picking") return { id: "packing", label: "Packing" };
+      return { id: "picking" as OrderStatus, label: "Picking" };
+    if (s === "picking") return { id: "packing" as OrderStatus, label: "Packing" };
     if (s === "packing") {
       return isPickup
-        ? { id: "ready_for_pickup", label: "Ready for Pickup" }
-        : { id: "in_transit", label: "In Transit" };
+        ? { id: "ready_for_pickup" as OrderStatus, label: "Ready for Pickup" }
+        : { id: "in_transit" as OrderStatus, label: "In Transit" };
     }
     if (s === "ready_for_pickup")
-      return { id: "picked_up", label: "Picked Up" };
-    if (s === "in_transit") return { id: "delivered", label: "Delivered" };
+      return { id: "picked_up" as OrderStatus, label: "Picked Up" };
+    if (s === "in_transit") return { id: "delivered" as OrderStatus, label: "Delivered" };
 
     return null;
   });

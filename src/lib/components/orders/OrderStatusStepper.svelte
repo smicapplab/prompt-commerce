@@ -2,11 +2,12 @@
   import { STATUS_STEPS } from "$lib/constants/orders.js";
   import { CircleCheck, Clock, X } from "@lucide/svelte";
   import Card from "$lib/components/ui/Card.svelte";
+  import type { OrderStatus } from "$lib/types/orders.js";
 
-  let { status } = $props<{ status: string }>();
+  let { status } = $props<{ status: OrderStatus }>();
 
   const currentStepIndex = $derived(
-    STATUS_STEPS.findIndex((s: any) => s.id === status),
+    STATUS_STEPS.findIndex((s) => s.id === status),
   );
 </script>
 

@@ -2,14 +2,14 @@
   import { onMount } from "svelte";
   import { Clock, Download, Image as ImageIcon, Paperclip, Plus, RefreshCw, Trash2 } from "@lucide/svelte";
   import Card from "$lib/components/ui/Card.svelte";
-  import type { Order } from "$lib/types/orders.js";
+  import type { OrderFile } from "$lib/types/orders.js";
 
   let { orderId, slug } = $props<{ 
     orderId: number, 
     slug: string
   }>();
 
-  let orderFiles = $state<any[]>([]);
+  let orderFiles = $state<OrderFile[]>([]);
   let loadingFiles = $state(false);
   let showDeletedFiles = $state(false);
   let uploadingFile = $state(false);

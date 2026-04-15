@@ -4,7 +4,7 @@
   import Card from "$lib/components/ui/Card.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { formatDate } from "$lib/utils/format.js";
-  import type { Order } from "$lib/types/orders.js";
+  import type { Order, OrderNote } from "$lib/types/orders.js";
 
   let { order, onSaveBuyerNotes, slug } = $props<{ 
     order: Order, 
@@ -17,7 +17,7 @@
   let savingNotes = $state(false);
 
   // ── Notes & Files State ────────────────────────────────────────
-  let orderNotes = $state<any[]>([]);
+  let orderNotes = $state<OrderNote[]>([]);
   let loadingNotes = $state(false);
   let showDeletedNotes = $state(false);
   let newNoteText = $state("");

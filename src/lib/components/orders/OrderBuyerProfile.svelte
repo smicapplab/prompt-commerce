@@ -22,8 +22,8 @@
 
   function startEditBuyer() {
     editBuyerRef = order?.buyer_ref ?? "";
-    editBuyerName = (order as any)?.buyer_name ?? "";
-    editBuyerEmail = (order as any)?.buyer_email ?? "";
+    editBuyerName = order?.buyer_name ?? "";
+    editBuyerEmail = order?.buyer_email ?? "";
     editChannel = order?.channel ?? "manual";
     editingBuyer = true;
   }
@@ -82,14 +82,14 @@
     {:else}
       <div class="flex items-center gap-4 mb-6">
         <div class="w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-100">
-          {((order as any).buyer_name || order.buyer_ref || "G")[0].toUpperCase()}
+          {(order.buyer_name || order.buyer_ref || "G")[0].toUpperCase()}
         </div>
         <div class="min-w-0">
           <p class="font-black text-lg text-gray-900 truncate">
-            {(order as any).buyer_name || "Guest Buyer"}
+            {order.buyer_name || "Guest Buyer"}
           </p>
-          {#if (order as any).buyer_email}
-            <p class="text-xs text-gray-400 font-bold mt-0.5 truncate uppercase tracking-tight">{ (order as any).buyer_email }</p>
+          {#if order.buyer_email}
+            <p class="text-xs text-gray-400 font-bold mt-0.5 truncate uppercase tracking-tight">{ order.buyer_email }</p>
           {/if}
         </div>
       </div>

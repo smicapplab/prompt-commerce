@@ -41,7 +41,7 @@
     {#if !editingLocation}
       <Button onclick={startEditLocation} variant="secondary" size="sm" class="h-8 border-none bg-transparent group">
         <MapPin size={14} class="mr-1.5 text-indigo-600" />
-        {order.lat && order.lng ? 'Remap' : 'Add Map'}
+        {order.lat !== null && order.lng !== null ? 'Remap' : 'Add Map'}
       </Button>
     {/if}
   </div>
@@ -64,7 +64,7 @@
           </Button>
         </div>
       </div>
-    {:else if order.lat && order.lng}
+    {:else if order.lat !== null && order.lng !== null}
       <div class="space-y-6">
         <div class="aspect-video w-full rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 relative group shadow-sm">
           <iframe

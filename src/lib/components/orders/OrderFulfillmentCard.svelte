@@ -20,8 +20,8 @@
   let savingPayment = $state(false);
 
   function startEditDelivery() {
-    editDeliveryType = (order as any)?.delivery_type ?? "delivery";
-    editDeliveryAddress = (order as any)?.delivery_address ?? "";
+    editDeliveryType = order?.delivery_type ?? "delivery";
+    editDeliveryAddress = order?.delivery_address ?? "";
     editingDelivery = true;
   }
 
@@ -36,7 +36,7 @@
   }
 
   function startEditPayment() {
-    editPaymentProvider = (order as any)?.payment_provider ?? "cod";
+    editPaymentProvider = order?.payment_provider ?? "cod";
     editingPayment = true;
   }
 
@@ -92,15 +92,15 @@
     {:else}
       <div class="space-y-2">
         <p class="text-sm font-black text-gray-900 flex items-center gap-1.5">
-          {#if (order as any).delivery_type === "pickup"}
+          {#if order.delivery_type === "pickup"}
             <Store size={16} class="text-indigo-600" /> Store Pickup
           {:else}
             <Truck size={16} class="text-indigo-600" /> Home Delivery
           {/if}
         </p>
-        {#if (order as any).delivery_address}
+        {#if order.delivery_address}
           <p class="text-[11px] text-gray-500 leading-relaxed font-bold italic">
-            "{(order as any).delivery_address}"
+            "{order.delivery_address}"
           </p>
         {/if}
       </div>
@@ -110,16 +110,16 @@
   <!-- Tracking/Payment Section -->
   <Card class="p-6 space-y-6">
     <!-- Tracking -->
-    {#if (order as any).tracking_number}
+    {#if order.tracking_number}
       <div class="p-4 bg-sky-50/50 rounded-2xl border border-sky-100 flex gap-3">
         <Truck size={20} class="text-sky-600 shrink-0" />
         <div>
           <p class="text-[10px] font-black text-sky-400 uppercase tracking-widest leading-none mb-1.5">Live Tracking Info</p>
           <p class="text-sm font-black text-sky-900 leading-none">
-            {(order as any).courier_name || 'Carrier'}: {(order as any).tracking_number}
+            {order.courier_name || 'Carrier'}: {order.tracking_number}
           </p>
-          {#if (order as any).tracking_url}
-            <a href={(order as any).tracking_url} target="_blank" class="inline-flex items-center gap-1.5 text-[10px] font-black text-sky-600 uppercase tracking-widest hover:underline mt-2">
+          {#if order.tracking_url}
+            <a href={order.tracking_url} target="_blank" class="inline-flex items-center gap-1.5 text-[10px] font-black text-sky-600 uppercase tracking-widest hover:underline mt-2">
               <LinkIcon size={12} />
               Trace Package
             </a>
@@ -166,25 +166,25 @@
         <div class="flex items-center gap-2">
           <CreditCard size={18} class="text-gray-300" />
           <p class="text-xs font-black text-gray-900 uppercase tracking-wide">
-            {(order as any).payment_provider || "NONE"}
+            {order.payment_provider || "NONE"}
           </p>
         </div>
-        {#if (order as any).payment_instructions}
+        {#if order.payment_instructions}
           <p class="text-[10px] text-gray-500 mt-2 font-bold italic bg-gray-50 p-2 rounded-lg border border-gray-100">
-             "{(order as any).payment_instructions}"
+             "{order.payment_instructions}"
           </p>
         {/if}
       {/if}
     </div>
 
-    {#if (order as any).cancellation_reason}
+    {#if order.cancellation_reason}
       <div class="mt-6 p-4 bg-red-50/50 rounded-2xl border border-red-100 gap-3 flex flex-col">
         <div class="flex items-center gap-2">
           <X size={16} class="text-red-500" />
           <p class="text-[10px] font-black text-red-400 uppercase tracking-widest text-center">Order was Cancelled</p>
         </div>
         <p class="text-xs font-bold text-red-900 leading-relaxed bg-white/50 p-3 rounded-xl">
-          "{(order as any).cancellation_reason}"
+          "{order.cancellation_reason}"
         </p>
       </div>
     {/if}

@@ -17,7 +17,7 @@ export interface Order {
   buyer_email: string | null;
   delivery_address: string | null;
   channel: string;
-  status: string;
+  status: OrderStatus;
   total: number | null;
   notes: string | null;
   lat: number | null;
@@ -33,6 +33,37 @@ export interface Order {
   cancellation_reason?: string;
   payment_provider?: string;
   payment_instructions?: string;
+}
+
+export interface OrderNote {
+  id: number;
+  order_id: number;
+  note: string;
+  created_by: string;
+  created_at: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
+  is_synced: number;
+}
+
+export interface OrderFile {
+  id: number;
+  order_id: number;
+  file_path: string;
+  file_url: string;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_by: string;
+  uploaded_at: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
+  is_synced: number;
+}
+
+export interface OrderStep {
+  id: OrderStatus;
+  label: string;
 }
 
 export const ORDER_STATUSES = [
