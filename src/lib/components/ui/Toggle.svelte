@@ -1,23 +1,16 @@
 <script lang="ts">
-  let { 
-    id,
-    checked = $bindable(false),
-    label = "",
-    description = "",
-    disabled = false,
-    class: className = "",
-    onchange = undefined,
-    ...rest
-  } = $props<{
-    id?: string;
-    checked?: boolean;
-    label?: string;
-    description?: string;
-    disabled?: boolean;
-    class?: string;
-    onchange?: (e: Event) => void;
-    [key: string]: any;
-  }>();
+	import type { ToggleProps } from '$lib/types/ui.js';
+
+	let {
+		id,
+		checked = $bindable(false),
+		label = '',
+		description = '',
+		disabled = false,
+		class: className = '',
+		onchange = undefined,
+		...rest
+	}: ToggleProps = $props();
 
   function triggerChange(e: Event) {
     if (onchange) {

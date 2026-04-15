@@ -22,11 +22,13 @@
   import Input from "$lib/components/ui/Input.svelte";
   import Toggle from "$lib/components/ui/Toggle.svelte";
   import { fade } from "svelte/transition";
+  import type { StoreSettings } from "$lib/types/settings.js";
+  import type { StoreSettingsProps } from "$lib/types/components.js";
 
-  let { serverSettings } = $props<{ serverSettings: Record<string, string> }>();
+  let { serverSettings }: StoreSettingsProps = $props();
 
   // Internal state
-  let data = $state<Record<string, string>>({});
+  let data = $state<StoreSettings>({});
   let loading = $state(false);
   let saving = $state(false);
   let saved = $state(false);

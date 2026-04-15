@@ -1,26 +1,16 @@
 <script lang="ts">
-  let { 
-    id,
-    type = "text",
-    value = $bindable(""),
-    placeholder = "",
-    label = "",
-    disabled = false,
-    class: className = "",
-    ...rest
-  } = $props<{
-    id?: string;
-    type?: string;
-    value?: string | number | undefined;
-    placeholder?: string;
-    label?: string;
-    disabled?: boolean;
-    class?: string;
-    onkeydown?: (e: KeyboardEvent) => void;
-    oninput?: (e: Event) => void;
-    onchange?: (e: Event) => void;
-    [key: string]: any;
-  }>();
+	import type { InputProps } from '$lib/types/ui.js';
+
+	let {
+		id,
+		type = 'text',
+		value = $bindable(''),
+		placeholder = '',
+		label = '',
+		disabled = false,
+		class: className = '',
+		...rest
+	}: InputProps = $props();
 </script>
 
 <div class="flex flex-col gap-1.5 {className}">

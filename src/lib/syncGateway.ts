@@ -2,17 +2,7 @@
  * Shared gateway-sync helpers used by Products and Categories pages.
  */
 
-export interface SyncStatus {
-  dirty: number;
-  products: number;
-  categories: number;
-  variants: number;
-}
-
-export interface SyncResult {
-  upserted: { products: number; categories: number };
-  deleted:  { products: number; categories: number };
-}
+import type { SyncStatus, SyncResult } from "$lib/types/sync.js";
 
 function authHeader() {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('pc_token') : null;

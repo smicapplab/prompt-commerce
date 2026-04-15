@@ -1,11 +1,7 @@
 <script lang="ts">
-	interface Props {
-		type: string;
-		metadata: Record<string, unknown>;
-		onChange: (newMetadata: Record<string, unknown>) => void;
-	}
+	import type { MetadataFormProps } from '$lib/types/components.js';
 
-	let { type, metadata = {}, onChange }: Props = $props();
+	let { type, metadata = {}, onChange }: MetadataFormProps = $props();
 
 	function update(field: string, value: string | number | boolean | string[]) {
 		onChange({ ...metadata, [field]: value });

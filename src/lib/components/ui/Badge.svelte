@@ -1,13 +1,7 @@
 <script lang="ts">
-  let { 
-    class: className = "", 
-    variant = "secondary",
-    children 
-  } = $props<{
-    class?: string;
-    variant?: "primary" | "secondary" | "success" | "danger" | "warning";
-    children: any;
-  }>();
+	import type { BadgeProps } from '$lib/types/ui.js';
+
+	let { class: className = '', variant = 'secondary', children }: BadgeProps = $props();
 
   const variantStyle: Record<string, string> = {
     primary: "bg-indigo-50 text-indigo-700 border-indigo-100",
@@ -19,5 +13,7 @@
 </script>
 
 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border {variantStyle[variant]} {className}">
-  {@render children()}
+  {#if children}
+    {@render children()}
+  {/if}
 </span>

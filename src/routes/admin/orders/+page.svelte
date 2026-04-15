@@ -8,6 +8,7 @@
   import Input from "$lib/components/ui/Input.svelte";
   import Select from "$lib/components/ui/Select.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
+  import SyncBanner from "$lib/components/SyncBanner.svelte";
   import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight, Package, User, CreditCard, Truck } from "@lucide/svelte";
 
   import { STATUS_OPTIONS, STATUS_COLORS } from "$lib/constants/orders.js";
@@ -21,8 +22,7 @@
   let filterStatus = $state("");
   
   // Sync Status
-  let dirtyCount = $state(0);
-  let isSyncing = $state(false);
+  let syncBanner = $state<any>();
 
   const token = () => localStorage.getItem("pc_token") ?? "";
 
@@ -45,38 +45,7 @@
       orders = data.orders;
       totalCount = data.totalCount;
     }
-    loadSyncStatus(sid);
-  }
-
-  async function loadSyncStatus(sid = activeStore.slug) {
-    if (!sid) return;
-    try {
-      const res = await fetch(`/api/sync/status?store=${sid}&type=orders`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        dirtyCount = data.dirty;
-      }
-    } catch (e) {
-      console.error("Failed to load sync status", e);
-    }
-  }
-
-  async function syncNow() {
-    if (!activeStore.slug || isSyncing) return;
-    isSyncing = true;
-    try {
-      const res = await fetch(`/api/sync?store=${activeStore.slug}&type=orders`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token()}` },
-      });
-      if (res.ok) {
-        await loadSyncStatus();
-      }
-    } finally {
-      isSyncing = false;
-    }
+    syncBanner?.loadDirtyCount();
   }
 
   async function search() {
@@ -137,26 +106,8 @@
     </Button>
   </div>
 
-  {#if dirtyCount > 0}
-    <div
-      class="mb-6 rounded-2xl border border-orange-200 bg-orange-50/50 px-4 py-3 flex items-center justify-between animate-in slide-in-from-top-2 duration-300"
-    >
-      <div class="flex items-center gap-3">
-        <RefreshCw size={16} class="text-orange-600 {isSyncing ? 'animate-spin' : 'animate-spin-slow'}" />
-        <p class="text-sm font-bold text-orange-800">
-          {dirtyCount} order{dirtyCount !== 1 ? "s" : ""} changed since last sync.
-        </p>
-      </div>
-      <Button
-        onclick={syncNow}
-        disabled={isSyncing}
-        variant="primary"
-        class="bg-orange-600 hover:bg-orange-700 h-8 text-[10px]"
-      >
-        {isSyncing ? "Syncing..." : "Sync Now"}
-      </Button>
-    </div>
-  {/if}
+  <SyncBanner bind:this={syncBanner} onSyncComplete={load} />
+
 
   <!-- Filters -->
   <Card class="p-4 mb-6">
@@ -276,8 +227,8 @@
                   </Badge>
                 </td>
                 <td class="px-6 py-4 text-center">
-                  <Badge class="border-none font-bold text-[9px] {(order as any).delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}">
-                    {(order as any).delivery_type || 'delivery'}
+                  <Badge class="border-none font-bold text-[9px] {order.delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}">
+                    {order.delivery_type || 'delivery'}
                   </Badge>
                 </td>
                 <td class="px-6 py-4 text-center font-black text-gray-900">

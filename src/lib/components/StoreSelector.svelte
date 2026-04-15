@@ -5,13 +5,7 @@
    * Dispatches 'store-changed' CustomEvent with detail = slug string.
    */
   import { ChevronDown } from "@lucide/svelte";
-
-  interface Store {
-    id: number;
-    slug: string;
-    name: string;
-    active: number;
-  }
+  import type { StoreItem as Store } from "$lib/types/stores.js";
 
   let stores = $state<Store[]>([]);
   let selectedSlug = $state<string | null>(null);

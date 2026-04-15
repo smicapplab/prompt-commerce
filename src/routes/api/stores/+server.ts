@@ -3,17 +3,7 @@ import type { RequestHandler } from './$types.js';
 import { getDb } from '$lib/server/db.js';
 import { requireAuth } from '$lib/server/auth.js';
 import { randomBytes } from 'crypto';
-
-export interface Store {
-  id: number;
-  slug: string;
-  name: string;
-  description: string | null;
-  gateway_key: string | null;
-  active: number;
-  created_at: string;
-  updated_at: string;
-}
+import type { StoreItem as Store } from '$lib/types/stores.js';
 
 /** GET /api/stores — list all stores */
 export const GET: RequestHandler = async (event) => {

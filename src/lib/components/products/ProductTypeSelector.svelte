@@ -1,12 +1,9 @@
 <script lang="ts">
 	import { Box, Shirt, Utensils, Smartphone, Plane } from '@lucide/svelte';
 
-	interface Props {
-		value: string;
-		onSelect: (type: string) => void;
-	}
+	import type { ProductTypeSelectorProps } from '$lib/types/components.js';
 
-	let { value, onSelect }: Props = $props();
+	let { value, onSelect }: ProductTypeSelectorProps = $props();
 
 	const types = [
 		{ id: 'generic', label: 'Generic', icon: Box, description: 'Standard product' },

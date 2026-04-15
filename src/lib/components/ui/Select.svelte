@@ -1,22 +1,15 @@
 <script lang="ts">
-  let { 
-    id,
-    value = $bindable(""),
-    label = "",
-    disabled = false,
-    options = [],
-    class: className = "",
-    ...rest
-  } = $props<{
-    id?: string;
-    value?: string | number | undefined;
-    label?: string;
-    disabled?: boolean;
-    options: { value: string | number; label: string }[];
-    class?: string;
-    onchange?: (e: Event) => void;
-    [key: string]: any;
-  }>();
+	import type { SelectProps } from '$lib/types/ui.js';
+
+	let {
+		id,
+		value = $bindable(''),
+		label = '',
+		disabled = false,
+		options = [],
+		class: className = '',
+		...rest
+	}: SelectProps = $props();
 </script>
 
 <div class="flex flex-col gap-1.5 {className}">

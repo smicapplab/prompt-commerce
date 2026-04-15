@@ -24,42 +24,22 @@
 	import Input from "$lib/components/ui/Input.svelte";
 	import Select from "$lib/components/ui/Select.svelte";
 	import Badge from "$lib/components/ui/Badge.svelte";
+	import SyncBanner from "$lib/components/SyncBanner.svelte";
 	import {
 		fetchSyncStatus,
 		syncToGateway as doSync,
 	} from "$lib/syncGateway.js";
 	import type { Product, Category } from "$lib/types/catalog.js";
+	import type { SyncBannerInstance } from "$lib/types/components.js";
 
 	let products = $state<Product[]>([]);
 	let loading = $state(true);
 
 	// ── Sync banner state ──────────────────────────────────────────────────────
-	let dirtyCount = $state(0);
-	let syncing = $state(false);
-	let syncSuccess = $state("");
-	let syncError = $state("");
-
+	let syncBanner = $state<SyncBannerInstance>();
 
 	async function loadDirtyCount() {
-		if (!activeStore.slug) return;
-		const s = await fetchSyncStatus(activeStore.slug).catch(() => null);
-		dirtyCount = s?.dirty ?? 0;
-	}
-
-	async function runSync() {
-		if (!activeStore.slug || syncing) return;
-		syncing = true;
-		syncSuccess = "";
-		syncError = "";
-		try {
-			syncSuccess = await doSync(activeStore.slug);
-			dirtyCount = 0;
-			setTimeout(() => (syncSuccess = ""), 5000);
-		} catch (e: any) {
-			syncError = e?.message ?? "Sync failed";
-			setTimeout(() => (syncError = ""), 6000);
-		}
-		syncing = false;
+		syncBanner?.loadDirtyCount();
 	}
 	let currentPage = $state(1);
 	let totalCount = $state(0);
@@ -158,8 +138,8 @@
 		}, 300);
 	};
 
-	const handleFilterChange = (e: any) => {
-		activeFilter = e.target.value;
+	const handleFilterChange = (e: Event) => {
+		activeFilter = (e.target as HTMLSelectElement).value;
 		currentPage = 1;
 		loadProducts();
 	};
@@ -259,54 +239,7 @@
 			<h1 class="text-2xl font-black text-gray-900 tracking-tight">Products</h1>
 		</div>
 
-		<!-- Sync banner -->
-		{#if syncing}
-			<div
-				class="flex items-center gap-3 mb-6 rounded-2xl border border-blue-200 bg-blue-50/50 px-4 py-3 text-sm text-blue-800"
-			>
-				<RefreshCw size={15} class="animate-spin shrink-0" />
-				<span>Syncing changes to gateway…</span>
-			</div>
-		{:else if syncSuccess}
-			<div
-				class="flex items-center gap-3 mb-6 rounded-2xl border border-green-200 bg-green-50/50 px-4 py-3 text-sm text-green-800"
-			>
-				<span class="shrink-0">✓</span>
-				<span>{syncSuccess}</span>
-			</div>
-		{:else if syncError}
-			<div
-				class="flex items-center gap-3 mb-6 rounded-2xl border border-red-200 bg-red-50/50 px-4 py-3 text-sm text-red-700"
-			>
-				<span class="shrink-0">⚠</span>
-				<span>{syncError}</span>
-			</div>
-		{:else if dirtyCount > 0}
-			<div
-				class="mb-6 flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50/50 px-4 py-3 text-sm text-orange-800"
-			>
-				<div class="flex items-center gap-2">
-					<RefreshCw
-						size={16}
-						class="text-orange-600 animate-spin-slow"
-					/>
-					<span class="font-medium">
-						{dirtyCount} item{dirtyCount === 1 ? "" : "s"} not yet synced.
-						<span class="text-orange-600/70 font-normal ml-1">
-							({dirtyBreakdown.activeDirty} new/edited · {dirtyBreakdown
-								.deletedCount} deleted)
-						</span>
-					</span>
-				</div>
-				<Button
-					onclick={runSync}
-					variant="primary"
-					class="bg-orange-600 hover:bg-orange-700 h-8 text-[10px]"
-				>
-					Sync now
-				</Button>
-			</div>
-		{/if}
+		<SyncBanner bind:this={syncBanner} {dirtyBreakdown} />
 
 		<Card class="p-4 mb-6">
 			<div class="flex flex-col md:flex-row gap-4">

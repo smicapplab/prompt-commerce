@@ -18,13 +18,14 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Card from "$lib/components/ui/Card.svelte";
   import type { Stats } from "$lib/types/dashboard.js";
+  import type { StoreSettings } from "$lib/types/settings.js";
 
   let stats = $state<Stats | null>(null);
   let loading = $state(true);
   let error = $state("");
 
   // UX-R2-12: Setup checklist
-  let storeSettings = $state<any>(null);
+  let storeSettings = $state<StoreSettings | null>(null);
   let setupLoading = $state(true);
 
   const token = () => localStorage.getItem("pc_token") ?? "";
@@ -237,25 +238,18 @@
     <!-- ── Setup Checklist ────────────────────────────────────────────────── -->
     {#if !setupLoading && storeSettings}
       {@const hasAiKey =
-        storeSettings.claude_api_key_set ||
+        !!(storeSettings.claude_api_key_set ||
         storeSettings.gemini_api_key_set ||
-        storeSettings.openai_api_key_set}
-      {@const aiDone = hasAiKey && storeSettings.ai_enabled === "1"}
+        storeSettings.openai_api_key_set)}
+      {@const aiDone = hasAiKey && String(storeSettings.ai_enabled) === "1"}
       {@const hasMessaging =
         (storeSettings.telegram_bot_token_set &&
-          storeSettings.telegram_enabled === "1") ||
+          String(storeSettings.telegram_enabled) === "1") ||
         (!!storeSettings.whatsapp_notify_number &&
-          storeSettings.whatsapp_enabled === "1")}
+          String(storeSettings.whatsapp_enabled) === "1")}
       {@const hasPayment =
-        storeSettings.payment_api_key_set ||
-        (storeSettings.payment_methods &&
-          (() => {
-            try {
-              return JSON.parse(storeSettings.payment_methods).length > 0;
-            } catch {
-              return false;
-            }
-          })())}
+        !!(storeSettings.payment_api_key_set ||
+        (Array.isArray(storeSettings.payment_methods) && storeSettings.payment_methods.length > 0))}
       {@const steps = [
         {
           id: "products",

@@ -3,16 +3,12 @@
 	import { Plus, Edit2, Trash2, AlertCircle, Layers } from '@lucide/svelte';
 	import VariantRowForm from './VariantRowForm.svelte';
 
-	interface Props {
-		store: string;
-		productId: number;
-		productTitle: string;
-		productType: string;
-	}
+	import type { ProductVariant } from '$lib/types/catalog.js';
+	import type { VariantsTableProps } from '$lib/types/components.js';
 
-	let { store, productId, productTitle, productType }: Props = $props();
+	let { store, productId, productTitle, productType }: VariantsTableProps = $props();
 
-	let variants = $state<any[]>([]);
+	let variants = $state<ProductVariant[]>([]);
 	let loading = $state(true);
 	let error = $state('');
 	let showAdd = $state(false);
@@ -38,7 +34,7 @@
 		}
 	}
 
-	function handleSave(v: any) {
+	function handleSave(v: ProductVariant) {
 		const idx = variants.findIndex(item => item.id === v.id);
 		if (idx > -1) {
 			variants[idx] = v;
@@ -49,7 +45,7 @@
 		showAdd = false;
 	}
 
-	async function toggleActive(v: any) {
+	async function toggleActive(v: ProductVariant) {
 		try {
 			const token = localStorage.getItem('pc_token');
 			const res = await fetch(`/api/variants/${v.id}?store=${store}`, {
@@ -90,7 +86,7 @@
         }
     }
 
-	function formatAttr(attr: any) {
+	function formatAttr(attr: ProductVariant['attributes']) {
 		if (!attr) return '—';
 		return Object.entries(attr)
 			.filter(([_, v]) => !!v)

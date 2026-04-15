@@ -1,25 +1,17 @@
 <script lang="ts">
-  let {
-    type = "button",
-    variant = "primary",
-    size = "md",
-    class: className = "",
-    href = undefined,
-    disabled = false,
-    onclick = undefined,
-    children,
-    ...rest
-  } = $props<{
-    type?: "button" | "submit" | "reset";
-    variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
-    size?: "sm" | "md" | "lg" | "icon";
-    class?: string;
-    href?: string;
-    disabled?: boolean;
-    onclick?: (e: MouseEvent) => void;
-    children?: any;
-    [key: string]: any;
-  }>();
+	import type { ButtonProps } from '$lib/types/ui.js';
+
+	let {
+		type = 'button',
+		variant = 'primary',
+		size = 'md',
+		class: className = '',
+		href = undefined,
+		disabled = false,
+		onclick = undefined,
+		children,
+		...rest
+	}: ButtonProps = $props();
 
   const baseClasses =
     "inline-flex items-center justify-center gap-2 font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none";

@@ -23,9 +23,10 @@
   import Select from "$lib/components/ui/Select.svelte";
   import Toggle from "$lib/components/ui/Toggle.svelte";
   import { fade } from "svelte/transition";
+  import type { StoreSettings } from "$lib/types/settings.js";
 
   // Internal state
-  let data = $state<Record<string, string | boolean>>({});
+  let data = $state<StoreSettings>({});
   let loading = $state(false);
   let saving = $state(false);
   let saved = $state(false);

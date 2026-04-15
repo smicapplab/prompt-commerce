@@ -4,18 +4,9 @@
 	import { Save, X, Trash2, Check, AlertCircle } from '@lucide/svelte';
 
 	import type { ProductVariant } from '$lib/types/catalog.js';
+	import type { VariantRowFormProps } from '$lib/types/components.js';
 
-	interface Props {
-		store: string;
-		productId: number;
-		productTitle: string;
-		productType: string;
-		variant?: ProductVariant | null; // If null, we're adding
-		onSave: (v: ProductVariant) => void;
-		onCancel: () => void;
-	}
-
-	let { store, productId, productTitle, productType, variant, onSave, onCancel }: Props = $props();
+	let { store, productId, productTitle, productType, variant, onSave, onCancel }: VariantRowFormProps = $props();
 
 	let loading = $state(false);
 	let error = $state('');

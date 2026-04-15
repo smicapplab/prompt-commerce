@@ -15,16 +15,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Card from "$lib/components/ui/Card.svelte";
   import Badge from "$lib/components/ui/Badge.svelte";
-
-  interface StoreItem {
-    id: number;
-    slug: string;
-    name: string;
-    description: string | null;
-    logo_url: string | null;
-    gateway_key: string | null;
-    active: number;
-  }
+  import type { StoreItem } from "$lib/types/stores.js";
 
   let stores = $state<StoreItem[]>([]);
   let loading = $state(true);

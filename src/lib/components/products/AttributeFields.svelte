@@ -1,12 +1,7 @@
 <script lang="ts">
-	interface Props {
-		id?: string;
-		type: string;
-		attributes: Record<string, string | number | boolean>;
-		onChange: (newAttributes: Record<string, string | number | boolean>) => void;
-	}
+	import type { AttributeFieldsProps } from '$lib/types/components.js';
 
-	let { id, type, attributes = {}, onChange }: Props = $props();
+	let { id, type, attributes = {}, onChange }: AttributeFieldsProps = $props();
 
 	function update(field: string, value: string | number | boolean) {
 		onChange({ ...attributes, [field]: value });

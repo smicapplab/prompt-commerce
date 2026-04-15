@@ -8,16 +8,9 @@
 	import VariantsTable from './VariantsTable.svelte';
 	import type { Category } from '$lib/types/catalog.js';
 
-	interface Props {
-		store: string;
-		isEditing: boolean;
-		productId: number | null;
-		categories: Category[];
-		onClose: () => void;
-		onSave: () => void;
-	}
+	import type { ProductModalProps } from '$lib/types/components.js';
 
-	let { store, isEditing, productId, categories, onClose, onSave }: Props = $props();
+	let { store, isEditing, productId, categories, onClose, onSave }: ProductModalProps = $props();
 
 	let activeTab = $state<'basic' | 'metadata' | 'variants'>('basic');
 	let saving = $state(false);
