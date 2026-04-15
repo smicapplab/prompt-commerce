@@ -315,20 +315,21 @@
               <Badge class="bg-green-100 text-green-700 border-green-200">Active</Badge>
             {/if}
           </div>
-          <div class="relative">
-            <Input
-              type={showClaudeKey ? "text" : "password"}
-              bind:value={claudeKeyInput}
-              placeholder={data.claude_api_key_set ? "••••••••••••••••" : "sk-ant-..."}
-              class="font-mono text-xs"
-            />
-            <button
-              onclick={() => (showClaudeKey = !showClaudeKey)}
-              class="absolute right-3 top-[34px] -translate-y-1/2 text-gray-300 hover:text-gray-500"
-            >
-              {#if showClaudeKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-            </button>
-          </div>
+          <Input
+            type={showClaudeKey ? "text" : "password"}
+            bind:value={claudeKeyInput}
+            placeholder={data.claude_api_key_set ? "••••••••••••••••" : "sk-ant-..."}
+            class="font-mono text-xs"
+          >
+            {#snippet right()}
+              <button
+                onclick={() => (showClaudeKey = !showClaudeKey)}
+                class="text-gray-300 hover:text-gray-500 p-2"
+              >
+                {#if showClaudeKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
+              </button>
+            {/snippet}
+          </Input>
         </Card>
 
         <!-- Gemini Key -->
@@ -344,20 +345,21 @@
               <Badge class="bg-green-100 text-green-700 border-green-200">Active</Badge>
             {/if}
           </div>
-          <div class="relative">
-            <Input
-              type={showGeminiKey ? "text" : "password"}
-              bind:value={geminiKeyInput}
-              placeholder={data.gemini_api_key_set ? "••••••••••••••••" : "AIza..."}
-              class="font-mono text-xs"
-            />
-            <button
-              onclick={() => (showGeminiKey = !showGeminiKey)}
-              class="absolute right-3 top-[34px] -translate-y-1/2 text-gray-300 hover:text-gray-500"
-            >
-              {#if showGeminiKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-            </button>
-          </div>
+          <Input
+            type={showGeminiKey ? "text" : "password"}
+            bind:value={geminiKeyInput}
+            placeholder={data.gemini_api_key_set ? "••••••••••••••••" : "AIza..."}
+            class="font-mono text-xs"
+          >
+            {#snippet right()}
+              <button
+                onclick={() => (showGeminiKey = !showGeminiKey)}
+                class="text-gray-300 hover:text-gray-500 p-2"
+              >
+                {#if showGeminiKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
+              </button>
+            {/snippet}
+          </Input>
         </Card>
 
         <!-- OpenAI Key -->
@@ -373,20 +375,21 @@
               <Badge class="bg-green-100 text-green-700 border-green-200">Active</Badge>
             {/if}
           </div>
-          <div class="relative">
-            <Input
-              type={showOpenaiKey ? "text" : "password"}
-              bind:value={openaiKeyInput}
-              placeholder={data.openai_api_key_set ? "••••••••••••••••" : "sk-..."}
-              class="font-mono text-xs"
-            />
-            <button
-              onclick={() => (showOpenaiKey = !showOpenaiKey)}
-              class="absolute right-3 top-[34px] -translate-y-1/2 text-gray-300 hover:text-gray-500"
-            >
-              {#if showOpenaiKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-            </button>
-          </div>
+          <Input
+            type={showOpenaiKey ? "text" : "password"}
+            bind:value={openaiKeyInput}
+            placeholder={data.openai_api_key_set ? "••••••••••••••••" : "sk-..."}
+            class="font-mono text-xs"
+          >
+            {#snippet right()}
+              <button
+                onclick={() => (showOpenaiKey = !showOpenaiKey)}
+                class="text-gray-300 hover:text-gray-500 p-2"
+              >
+                {#if showOpenaiKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
+              </button>
+            {/snippet}
+          </Input>
         </Card>
 
         <!-- Serper Key -->
@@ -402,20 +405,21 @@
               <Badge class="bg-green-100 text-green-700 border-green-200">Active</Badge>
             {/if}
           </div>
-          <div class="relative">
-            <Input
-              type={showSerperKey ? "text" : "password"}
-              bind:value={serperKeyInput}
-              placeholder={data.serper_api_key_set ? "••••••••••••••••" : "Search API Key..."}
-              class="font-mono text-xs"
-            />
-            <button
-              onclick={() => (showSerperKey = !showSerperKey)}
-              class="absolute right-3 top-[34px] -translate-y-1/2 text-gray-300 hover:text-gray-500"
-            >
-              {#if showSerperKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-            </button>
-          </div>
+          <Input
+            type={showSerperKey ? "text" : "password"}
+            bind:value={serperKeyInput}
+            placeholder={data.serper_api_key_set ? "••••••••••••••••" : "Search API Key..."}
+            class="font-mono text-xs"
+          >
+            {#snippet right()}
+              <button
+                onclick={() => (showSerperKey = !showSerperKey)}
+                class="text-gray-300 hover:text-gray-500 p-2"
+              >
+                {#if showSerperKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
+              </button>
+            {/snippet}
+          </Input>
           <p class="text-[10px] text-gray-400">Used for real-time web search capabilities in chat.</p>
         </Card>
       </div>

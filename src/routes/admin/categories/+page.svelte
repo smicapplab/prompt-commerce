@@ -242,17 +242,20 @@
 <div class="px-6 pt-6 pb-20">
 	<div class="max-w-6xl mx-auto">
 		<div class="flex items-center justify-between mb-8">
-			<h1 class="text-2xl font-black text-gray-900 tracking-tight">Categories</h1>
-			<Button
-				onclick={openAddModal}
-				variant="primary"
-			>
+			<h1 class="text-2xl font-black text-gray-900 tracking-tight">
+				Categories
+			</h1>
+			<Button onclick={openAddModal} variant="primary">
 				<Plus size={18} />
 				Add category
 			</Button>
 		</div>
 
-		<SyncBanner bind:this={syncBanner} {dirtyBreakdown} onSyncComplete={loadCategories} />
+		<SyncBanner
+			bind:this={syncBanner}
+			{dirtyBreakdown}
+			onSyncComplete={loadCategories}
+		/>
 
 		{#if loading}
 			<div class="space-y-3">
@@ -267,12 +270,14 @@
 				<div
 					class="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
 				>
-					<div class="w-10 h-10 border-4 border-gray-100 rounded-lg"></div>
+					<div
+						class="w-10 h-10 border-4 border-gray-100 rounded-lg"
+					></div>
 				</div>
 				<h3 class="text-lg font-bold text-gray-900">
 					No categories found
 				</h3>
-				<p class="text-sm text-gray-500 mt-2 max-w-[300px] mx-auto">
+				<p class="text-sm text-gray-500 mt-2 max-w-[400px] mx-auto">
 					You haven't added any categories to this store yet.
 				</p>
 				<Button
@@ -280,7 +285,7 @@
 					onclick={openAddModal}
 					class="mt-6 mx-auto"
 				>
-					Add your first category
+					<Plus /> Add your first category
 				</Button>
 			</Card>
 		{:else}
@@ -309,25 +314,42 @@
 						</thead>
 						<tbody class="divide-y divide-gray-100">
 							{#each categories as category (category.id)}
-								<tr class="hover:bg-gray-50/50 transition-colors">
-									<td class="px-6 py-4 font-bold text-gray-900"
+								<tr
+									class="hover:bg-gray-50/50 transition-colors"
+								>
+									<td
+										class="px-6 py-4 font-bold text-gray-900"
 										>{category.name}</td
 									>
 									<td class="px-6 py-4">
-										<Badge variant="secondary" class="border-none font-medium">
-											{getCategoryParentName(category.parent_id)}
+										<Badge
+											variant="secondary"
+											class="border-none font-medium"
+										>
+											{getCategoryParentName(
+												category.parent_id,
+											)}
 										</Badge>
 									</td>
 									<td class="px-6 py-4">
-										<span class="font-black text-gray-900">{productCounts[category.id] || 0}</span>
-										<span class="text-[10px] text-gray-400 font-bold ml-1 uppercase">items</span>
+										<span class="font-black text-gray-900"
+											>{productCounts[category.id] ||
+												0}</span
+										>
+										<span
+											class="text-[10px] text-gray-400 font-bold ml-1 uppercase"
+											>items</span
+										>
 									</td>
 									<td class="px-6 py-4 text-right">
-										<div class="flex items-center justify-end gap-1">
+										<div
+											class="flex items-center justify-end gap-1"
+										>
 											<Button
 												variant="secondary"
 												size="sm"
-												onclick={() => openEditModal(category)}
+												onclick={() =>
+													openEditModal(category)}
 												class="p-2 border-none h-auto"
 											>
 												<Pencil size={15} />
@@ -335,7 +357,8 @@
 											<Button
 												variant="secondary"
 												size="sm"
-												onclick={() => deleteCategory(category.id)}
+												onclick={() =>
+													deleteCategory(category.id)}
 												class="p-2 border-none h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
 											>
 												<Trash2 size={15} />
@@ -390,7 +413,9 @@
 						bind:value={formData.name}
 						oninput={() => erroredFields.delete("name")}
 						placeholder="e.g. Smartphones, Summer Collection"
-						error={erroredFields.has('name') ? 'Name is required' : ''}
+						error={erroredFields.has("name")
+							? "Name is required"
+							: ""}
 					/>
 
 					<div class="space-y-1.5">
@@ -403,14 +428,19 @@
 							id="category-parent"
 							bind:value={formData.parent_id}
 							options={[
-								{ value: '', label: 'None (Root Category)' },
-								...getSelectableCategories.map(cat => ({ value: cat.id.toString(), label: cat.name }))
+								{ value: "", label: "None (Root Category)" },
+								...getSelectableCategories.map((cat) => ({
+									value: cat.id.toString(),
+									label: cat.name,
+								})),
 							]}
 						/>
 					</div>
 				</div>
 
-				<div class="flex gap-3 p-6 border-t border-gray-100 bg-gray-50/50">
+				<div
+					class="flex gap-3 p-6 border-t border-gray-100 bg-gray-50/50"
+				>
 					<Button
 						onclick={closeModal}
 						variant="secondary"

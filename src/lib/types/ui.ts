@@ -28,6 +28,9 @@ export interface InputProps {
     required?: boolean;
     error?: string;
     class?: string;
+    left?: Snippet;
+    right?: Snippet;
+    labelExtra?: Snippet;
     onkeydown?: (e: KeyboardEvent) => void;
     oninput?: (e: Event) => void;
     onchange?: (e: Event) => void;
@@ -43,6 +46,7 @@ export interface SelectProps {
     required?: boolean;
     error?: string;
     class?: string;
+    left?: Snippet;
     onchange?: (e: Event) => void;
     [key: string]: any;
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Eye, EyeOff, ShieldCheck, Lock, User } from "@lucide/svelte";
+  import { Eye, EyeOff, ShieldCheck, Lock, User, ArrowRight } from "@lucide/svelte";
   import { goto } from "$app/navigation";
   import { fade, fly, scale } from "svelte/transition";
   import Button from "$lib/components/ui/Button.svelte";
@@ -193,7 +193,7 @@
                 <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               {/if}
               {loading ? "Verifying..." : "Sign in"}
-              <div class="group-hover:translate-x-0.5 transition-transform">→</div>
+              <ArrowRight class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </Button>
           </form>
         </div>
@@ -308,7 +308,7 @@
               class="w-full mt-2 shadow-lg shadow-indigo-600/20 group"
             >
               {loading ? "Saving..." : "Set password & continue"}
-              <span class="inline-block group-hover:translate-x-0.5 transition-transform ml-1">→</span>
+              <ArrowRight class="w-4 h-4 group-hover:translate-x-0.5 transition-transform ml-1" />
             </Button>
           </form>
         </div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { RefreshCw } from "@lucide/svelte";
+  import { RefreshCw, Check, AlertTriangle } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import { fetchSyncStatus, syncToGateway as doSync } from "$lib/syncGateway.js";
@@ -54,12 +54,12 @@
   </div>
 {:else if syncSuccess}
   <div class="flex items-center gap-3 mb-6 rounded-2xl border border-green-200 bg-green-50/50 px-4 py-3 text-sm text-green-800">
-    <span class="shrink-0">✓</span>
+    <Check size={16} class="shrink-0" />
     <span>{syncSuccess}</span>
   </div>
 {:else if syncError}
   <div class="flex items-center gap-3 mb-6 rounded-2xl border border-red-200 bg-red-50/50 px-4 py-3 text-sm text-red-700">
-    <span class="shrink-0">⚠</span>
+    <AlertTriangle size={16} class="shrink-0" />
     <span>{syncError}</span>
   </div>
 {:else if dirtyCount > 0}

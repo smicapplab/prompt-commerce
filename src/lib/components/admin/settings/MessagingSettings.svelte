@@ -233,7 +233,6 @@
         </div>
 
         <div class="p-6 space-y-6 flex-1">
-          <!-- Bot Token -->
           <div class="space-y-2">
             <Input
               id="t-token"
@@ -255,16 +254,15 @@
                   <ExternalLink size={14} />
                 </a>
               {/snippet}
-              <button
-                type="button"
-                onclick={() => (showTelegramKey = !showTelegramKey)}
-                class="absolute right-3 top-[34px] -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                slot="right"
-              >
-                {#if showTelegramKey}<EyeOff size={18} />{:else}<Eye
-                    size={18}
-                  />{/if}
-              </button>
+              {#snippet right()}
+                <button
+                  type="button"
+                  onclick={() => (showTelegramKey = !showTelegramKey)}
+                  class="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {#if showTelegramKey}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
+                </button>
+              {/snippet}
             </Input>
           </div>
 
@@ -278,20 +276,26 @@
                 >Advanced</Badge
               >
             </span>
-            <div class="grid grid-cols-2 gap-3">
-              {#each [["polling", "🔄 Polling", "Simple, no HTTPS required."], ["webhook", "🔗 Webhook", "Fast, needs public HTTPS."]] as [modeId, label, desc]}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {#each [
+                { id: "polling", label: "Polling", Icon: RefreshCw, desc: "Simple, no HTTPS required." },
+                { id: "webhook", label: "Webhook", Icon: ExternalLink, desc: "Fast, needs public HTTPS." }
+              ] as mode}
                 <Button
-                  variant={telegramMode === modeId ? "primary" : "secondary"}
+                  variant={telegramMode === mode.id ? "primary" : "secondary"}
                   onclick={() =>
-                    (telegramMode = modeId as "polling" | "webhook")}
-                  class="flex-col items-start h-auto p-3 text-left {telegramMode ===
-                  modeId
+                    (telegramMode = mode.id as "polling" | "webhook")}
+                  class="flex-col items-start h-auto p-4 text-left {telegramMode ===
+                  mode.id
                     ? 'border-blue-600 bg-blue-50/50 shadow-blue-50'
                     : ''}"
                 >
-                  <span>{label}</span>
-                  <span class="text-[11px] mt-0.5 leading-tight font-medium">
-                    {desc}
+                  <div class="flex items-center gap-2 mb-1">
+                    <mode.Icon size={14} />
+                    <span class="font-bold">{mode.label}</span>
+                  </div>
+                  <span class="text-[11px] leading-tight font-medium opacity-70">
+                    {mode.desc}
                   </span>
                 </Button>
               {/each}
@@ -335,9 +339,13 @@
                           2000,
                         );
                       }}
-                      class="shrink-0 rounded-lg bg-white border border-gray-200 px-3 py-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors shadow-sm"
+                      class="shrink-0 rounded-lg bg-white border border-gray-200 px-3 py-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors shadow-sm flex items-center justify-center gap-1 min-w-[60px]"
                     >
-                      {telegramWebhookUrlCopied ? "✓" : "Copy"}
+                      {#if telegramWebhookUrlCopied}
+                        <Check size={12} /> Done
+                      {:else}
+                        Copy
+                      {/if}
                     </button>
                   </div>
                 </div>

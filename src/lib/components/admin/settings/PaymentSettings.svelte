@@ -328,27 +328,28 @@
 
           <div class="p-6 space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="relative">
-                <Input
-                  id="p-api"
-                  label="Secret Key"
-                  type={showPaymentApiKey ? "text" : "password"}
-                  bind:value={paymentApiKeyInput}
-                  placeholder={data.payment_api_key_set
-                    ? "••••••••••••••••••••••••••••"
-                    : "sk_test_..."}
-                  class="font-mono text-xs"
-                />
-                <button
-                  type="button"
-                  onclick={() => (showPaymentApiKey = !showPaymentApiKey)}
-                  class="absolute right-3 top-[34px] -translate-y-1/2 text-gray-300 hover:text-gray-500"
-                >
-                  {#if showPaymentApiKey}<EyeOff size={16} />{:else}<Eye
-                      size={16}
-                    />{/if}
-                </button>
-              </div>
+              <Input
+                id="p-api"
+                label="Secret Key"
+                type={showPaymentApiKey ? "text" : "password"}
+                bind:value={paymentApiKeyInput}
+                placeholder={data.payment_api_key_set
+                  ? "••••••••••••••••••••••••••••"
+                  : "sk_test_..."}
+                class="font-mono text-xs"
+              >
+                {#snippet right()}
+                  <button
+                    type="button"
+                    onclick={() => (showPaymentApiKey = !showPaymentApiKey)}
+                    class="text-gray-300 hover:text-gray-500 p-2"
+                  >
+                    {#if showPaymentApiKey}<EyeOff size={16} />{:else}<Eye
+                        size={16}
+                      />{/if}
+                  </button>
+                {/snippet}
+              </Input>
               <Input
                 id="p-pub"
                 label="Public Key / Merchant ID"
@@ -362,51 +363,52 @@
               />
             </div>
 
-            <div class="relative">
-              <Input
-                id="p-web"
-                label="Webhook Secret"
-                type={showPaymentWebhookSecret ? "text" : "password"}
-                bind:value={paymentWebhookSecretInput}
-                placeholder={data.payment_webhook_secret_set
-                  ? "••••••••••••••••••••••••••••"
-                  : "whsec_..."}
-                class="font-mono text-xs"
-              />
-              <button
-                type="button"
-                onclick={() =>
-                  (showPaymentWebhookSecret = !showPaymentWebhookSecret)}
-                class="absolute right-3 top-[34px] -translate-y-1/2 text-gray-300 hover:text-gray-500"
-              >
-                {#if showPaymentWebhookSecret}<EyeOff size={16} />{:else}<Eye
-                    size={16}
-                  />{/if}
-              </button>
-              <div
-                class="mt-4 p-4 rounded-xl bg-gray-900 text-gray-400 border border-gray-800"
-              >
-                <div class="flex items-center justify-between mb-3">
-                  <span
-                    class="text-[10px] font-black uppercase tracking-widest text-indigo-400"
-                    >Endpoint URL for Webhooks</span
-                  >
-                  <Button
-                    size="sm"
-                    class="bg-white/10 hover:bg-white/20 text-white border-none"
-                    onclick={() => {
-                      const url = `${serverSettings.gateway_url?.replace(/\/$/, "")}/webhooks/payment/${activeStore.slug}`;
-                      navigator.clipboard.writeText(url);
-                    }}>Copy URL</Button
-                  >
-                </div>
-                <code class="text-[11px] font-mono break-all text-white/90">
-                  {serverSettings.gateway_url?.replace(
-                    /\/$/,
-                    "",
-                  )}/webhooks/payment/{activeStore.slug}
-                </code>
+            <Input
+              id="p-web"
+              label="Webhook Secret"
+              type={showPaymentWebhookSecret ? "text" : "password"}
+              bind:value={paymentWebhookSecretInput}
+              placeholder={data.payment_webhook_secret_set
+                ? "••••••••••••••••••••••••••••"
+                : "whsec_..."}
+              class="font-mono text-xs"
+            >
+              {#snippet right()}
+                <button
+                  type="button"
+                  onclick={() =>
+                    (showPaymentWebhookSecret = !showPaymentWebhookSecret)}
+                  class="text-gray-300 hover:text-gray-500 p-2"
+                >
+                  {#if showPaymentWebhookSecret}<EyeOff size={16} />{:else}<Eye
+                      size={16}
+                    />{/if}
+                </button>
+              {/snippet}
+            </Input>
+            <div
+              class="mt-4 p-4 rounded-xl bg-gray-900 text-gray-400 border border-gray-800"
+            >
+              <div class="flex items-center justify-between mb-3">
+                <span
+                  class="text-[10px] font-black uppercase tracking-widest text-indigo-400"
+                  >Endpoint URL for Webhooks</span
+                >
+                <Button
+                  size="sm"
+                  class="bg-white/10 hover:bg-white/20 text-white border-none"
+                  onclick={() => {
+                    const url = `${serverSettings.gateway_url?.replace(/\/$/, "")}/webhooks/payment/${activeStore.slug}`;
+                    navigator.clipboard.writeText(url);
+                  }}>Copy URL</Button
+                >
               </div>
+              <code class="text-[11px] font-mono break-all text-white/90">
+                {serverSettings.gateway_url?.replace(
+                  /\/$/,
+                  "",
+                )}/webhooks/payment/{activeStore.slug}
+              </code>
             </div>
           </div>
         </Card>

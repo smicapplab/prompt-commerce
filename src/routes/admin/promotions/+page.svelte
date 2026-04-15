@@ -1,6 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { RefreshCw, Plus, Search, Trash2, Pencil, Calendar, Ticket, Percent, Banknote } from "@lucide/svelte";
+  import {
+    RefreshCw,
+    Plus,
+    Search,
+    Trash2,
+    Pencil,
+    Calendar,
+    Ticket,
+    Percent,
+    Banknote,
+    Rotate3D,
+    RotateCw,
+  } from "@lucide/svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";
   import Button from "$lib/components/ui/Button.svelte";
   import Card from "$lib/components/ui/Card.svelte";
@@ -221,10 +233,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between mb-8">
     <h1 class="text-2xl font-black text-gray-900 tracking-tight">Promotions</h1>
-    <Button
-      onclick={openCreate}
-      variant="primary"
-    >
+    <Button onclick={openCreate} variant="primary">
       <Plus size={18} />
       Add Promotion
     </Button>
@@ -252,17 +261,12 @@
           onchange={search}
           class="w-40"
           options={[
-            { value: '', label: 'All Status' },
-            { value: '1', label: 'Active' },
-            { value: '0', label: 'Inactive' }
+            { value: "", label: "All Status" },
+            { value: "1", label: "Active" },
+            { value: "0", label: "Inactive" },
           ]}
         />
-        <Button
-          onclick={search}
-          variant="secondary"
-        >
-          Search
-        </Button>
+        <Button onclick={search} variant="secondary">Search</Button>
       </div>
     </div>
   </Card>
@@ -273,30 +277,60 @@
       <table class="w-full text-sm">
         <thead class="bg-gray-50/80 border-b border-gray-100">
           <tr>
-            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Promotion</th>
-            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Code</th>
-            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Discount</th>
-            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Product</th>
-            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Validity</th>
-            <th class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">Status</th>
-            <th class="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Actions</th>
+            <th
+              class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >Promotion</th
+            >
+            <th
+              class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >Code</th
+            >
+            <th
+              class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >Discount</th
+            >
+            <th
+              class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >Product</th
+            >
+            <th
+              class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >Validity</th
+            >
+            <th
+              class="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >Status</th
+            >
+            <th
+              class="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-gray-400"
+              >Actions</th
+            >
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           {#if loading}
             <tr>
-              <td colspan="7" class="px-6 py-12 text-center text-gray-400 animate-pulse font-medium">
+              <td
+                colspan="7"
+                class="px-6 py-12 text-center text-gray-400 animate-pulse font-medium"
+              >
                 Loading promotions...
               </td>
             </tr>
           {:else if promotions.length === 0}
             <tr>
               <td colspan="7" class="px-6 py-20 text-center">
-                <div class="flex flex-col items-center justify-center max-w-sm mx-auto text-gray-400">
-                  <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                <div
+                  class="flex flex-col items-center justify-center max-w-sm mx-auto text-gray-400"
+                >
+                  <div
+                    class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4"
+                  >
                     <Ticket size={24} class="opacity-40" />
                   </div>
-                  <h3 class="text-lg font-bold text-gray-900 mb-1">No promotions found</h3>
+                  <h3 class="text-lg font-bold text-gray-900 mb-1">
+                    No promotions found
+                  </h3>
                   <p class="text-sm">
                     {#if q || filterActive}
                       No promotions match your current search or filters.
@@ -308,18 +342,18 @@
                     <Button
                       variant="secondary"
                       size="sm"
-                      onclick={() => { q = ""; filterActive = ""; search(); }}
+                      onclick={() => {
+                        q = "";
+                        filterActive = "";
+                        search();
+                      }}
                       class="mt-6"
                     >
-                      Clear filters
+                      <RotateCw /> Clear filters
                     </Button>
                   {:else}
-                    <Button
-                      variant="primary"
-                      onclick={openCreate}
-                      class="mt-6"
-                    >
-                      Create your first promotion
+                    <Button variant="primary" onclick={openCreate} class="mt-6">
+                      <Plus /> Create your first promotion
                     </Button>
                   {/if}
                 </div>
@@ -330,11 +364,16 @@
               <tr class="hover:bg-gray-50/50 transition-colors">
                 <td class="px-6 py-4">
                   <div class="font-bold text-gray-900">{promo.title}</div>
-                  <div class="text-[10px] text-gray-400 font-medium mt-0.5">ID: {promo.id}</div>
+                  <div class="text-[10px] text-gray-400 font-medium mt-0.5">
+                    ID: {promo.id}
+                  </div>
                 </td>
                 <td class="px-6 py-4">
                   {#if promo.voucher_code}
-                    <Badge variant="secondary" class="font-mono text-[10px] border-none">
+                    <Badge
+                      variant="secondary"
+                      class="font-mono text-[10px] border-none"
+                    >
                       {promo.voucher_code}
                     </Badge>
                   {:else}
@@ -342,8 +381,10 @@
                   {/if}
                 </td>
                 <td class="px-6 py-4">
-                  <div class="flex items-center gap-1.5 font-black text-emerald-600">
-                    {#if promo.discount_type === 'percentage'}
+                  <div
+                    class="flex items-center gap-1.5 font-black text-emerald-600"
+                  >
+                    {#if promo.discount_type === "percentage"}
                       <Percent size={14} />
                     {:else}
                       <Banknote size={14} />
@@ -358,12 +399,20 @@
                 </td>
                 <td class="px-6 py-4">
                   <div class="flex flex-col gap-1">
-                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-gray-900">
+                    <div
+                      class="flex items-center gap-1.5 text-[10px] font-bold text-gray-900"
+                    >
                       <Calendar size={12} class="text-gray-400" />
-                      <span>{formatDate(promo.start_date)} — {formatDate(promo.end_date)}</span>
+                      <span
+                        >{formatDate(promo.start_date)} — {formatDate(
+                          promo.end_date,
+                        )}</span
+                      >
                     </div>
                     {#if formatRelativeDate(promo.end_date, "Ends ")}
-                      <Badge class="bg-orange-50 text-orange-600 border-none px-1 text-[9px] w-fit">
+                      <Badge
+                        class="bg-orange-50 text-orange-600 border-none px-1 text-[9px] w-fit"
+                      >
                         {formatRelativeDate(promo.end_date, "Ends ")}
                       </Badge>
                     {/if}
@@ -371,11 +420,18 @@
                 </td>
                 <td class="px-6 py-4">
                   {#if isActive(promo)}
-                    <Badge class="bg-emerald-50 text-emerald-700 border-emerald-100">Active</Badge>
+                    <Badge
+                      class="bg-emerald-50 text-emerald-700 border-emerald-100"
+                      >Active</Badge
+                    >
                   {:else if !promo.active}
-                    <Badge class="bg-gray-100 text-gray-500 border-gray-200">Disabled</Badge>
+                    <Badge class="bg-gray-100 text-gray-500 border-gray-200"
+                      >Disabled</Badge
+                    >
                   {:else}
-                    <Badge class="bg-amber-50 text-amber-700 border-amber-100">Scheduled</Badge>
+                    <Badge class="bg-amber-50 text-amber-700 border-amber-100"
+                      >Scheduled</Badge
+                    >
                   {/if}
                 </td>
                 <td class="px-6 py-4 text-right">
@@ -391,7 +447,10 @@
                     <Button
                       variant="secondary"
                       size="sm"
-                      onclick={() => { deleteId = promo.id; deleteTitle = promo.title; }}
+                      onclick={() => {
+                        deleteId = promo.id;
+                        deleteTitle = promo.title;
+                      }}
                       class="p-2 border-none h-auto text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 size={15} />
@@ -409,12 +468,17 @@
   <!-- Pagination -->
   {#if totalPages > 1}
     <div class="mt-8 flex items-center justify-between">
-      <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+      <div
+        class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]"
+      >
         Page {page} of {totalPages} ({totalCount} items)
       </div>
       <div class="flex gap-2">
         <Button
-          onclick={() => { page--; load(); }}
+          onclick={() => {
+            page--;
+            load();
+          }}
           disabled={page <= 1}
           variant="secondary"
           size="sm"
@@ -424,7 +488,10 @@
           Previous
         </Button>
         <Button
-          onclick={() => { page++; load(); }}
+          onclick={() => {
+            page++;
+            load();
+          }}
           disabled={page >= totalPages}
           variant="secondary"
           size="sm"
@@ -455,10 +522,7 @@
       <div
         class="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50"
       >
-        <h2
-          id="promo-modal-title"
-          class="text-xl font-black text-gray-900"
-        >
+        <h2 id="promo-modal-title" class="text-xl font-black text-gray-900">
           {editingId ? "Edit Promotion" : "New Promotion"}
         </h2>
         <Button
@@ -490,13 +554,17 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label for="promo-type" class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">Type</label>
+            <label
+              for="promo-type"
+              class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1"
+              >Type</label
+            >
             <Select
               id="promo-type"
               bind:value={fDiscountType}
               options={[
-                { value: 'percentage', label: 'Percentage (%)' },
-                { value: 'fixed', label: 'Fixed Amount' }
+                { value: "percentage", label: "Percentage (%)" },
+                { value: "fixed", label: "Fixed Amount" },
               ]}
             />
           </div>
@@ -520,20 +588,37 @@
         />
 
         <div class="space-y-1.5">
-          <label for="promo-product" class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1">Apply to Product</label>
+          <label
+            for="promo-product"
+            class="text-[11px] font-black uppercase tracking-widest text-gray-400 px-1"
+            >Apply to Product</label
+          >
           <Select
             id="promo-product"
             bind:value={fProductId}
             options={[
-              { value: '', label: 'All Products (Store-wide)' },
-              ...products.map(p => ({ value: p.id.toString(), label: p.title }))
+              { value: "", label: "All Products (Store-wide)" },
+              ...products.map((p) => ({
+                value: p.id.toString(),
+                label: p.title,
+              })),
             ]}
           />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <Input id="promo-start" label="Start Date" type="date" bind:value={fStartDate} />
-          <Input id="promo-end" label="End Date" type="date" bind:value={fEndDate} />
+          <Input
+            id="promo-start"
+            label="Start Date"
+            type="date"
+            bind:value={fStartDate}
+          />
+          <Input
+            id="promo-end"
+            label="End Date"
+            type="date"
+            bind:value={fEndDate}
+          />
         </div>
 
         <Toggle
@@ -577,16 +662,20 @@
     onclick={(e) => e.target === e.currentTarget && (deleteId = null)}
     role="presentation"
   >
-    <Card class="w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+    <Card
+      class="w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 duration-200"
+    >
       <div class="flex flex-col items-center text-center">
-        <div class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+        <div
+          class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4"
+        >
           <Trash2 size={24} />
         </div>
-        <h2 class="text-lg font-black text-gray-900 mb-2">
-          Delete Promotion?
-        </h2>
+        <h2 class="text-lg font-black text-gray-900 mb-2">Delete Promotion?</h2>
         <p class="text-sm text-gray-500">
-          The promotion "<span class="font-bold text-gray-900">{deleteTitle}</span>" and its voucher code will be permanently removed.
+          The promotion "<span class="font-bold text-gray-900"
+            >{deleteTitle}</span
+          >" and its voucher code will be permanently removed.
         </p>
       </div>
       <div class="flex gap-3 mt-8">

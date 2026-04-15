@@ -141,58 +141,56 @@
 
         <div class="p-6 space-y-6">
           <!-- Places Key -->
-          <div class="relative">
-            <Input
-              id="places-key"
-              label="Address Picker Key"
-              type={showPlaces ? "text" : "password"}
-              bind:value={googlePlacesBrowserKeyInput}
-              placeholder={data.google_places_browser_key_set ? "••••••••••••••••" : "AIzaSy... (Client-side)"}
-              description="Used by the Buyer to find delivery addresses. Needs Places API enabled."
-              class="font-mono"
-            >
-              {#snippet labelExtra()}
-                {#if data.google_places_browser_key_set}
-                  <Badge class="bg-green-50 text-green-600 border-none px-1.5 py-0.5 ml-1">Configured</Badge>
-                {/if}
-              {/snippet}
+          <Input
+            id="places-key"
+            label="Address Picker Key"
+            type={showPlaces ? "text" : "password"}
+            bind:value={googlePlacesBrowserKeyInput}
+            placeholder={data.google_places_browser_key_set ? "••••••••••••••••" : "AIzaSy... (Client-side)"}
+            description="Used by the Buyer to find delivery addresses. Needs Places API enabled."
+            class="font-mono"
+          >
+            {#snippet labelExtra()}
+              {#if data.google_places_browser_key_set}
+                <Badge class="bg-green-50 text-green-600 border-none px-1.5 py-0.5 ml-1">Configured</Badge>
+              {/if}
+            {/snippet}
+            {#snippet right()}
               <button 
                 type="button"
                 onclick={() => showPlaces = !showPlaces}
-                class="absolute right-4 top-[34px] -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                slot="right"
+                class="text-gray-400 hover:text-gray-600 transition-colors p-2"
               >
                 {#if showPlaces}<EyeOff size={16} />{:else}<Eye size={16} />{/if}
               </button>
-            </Input>
-          </div>
+            {/snippet}
+          </Input>
 
           <!-- Maps Key -->
-          <div class="relative">
-            <Input
-              id="maps-key"
-              label="Order Map Key"
-              type={showMaps ? "text" : "password"}
-              bind:value={googleMapsEmbedKeyInput}
-              placeholder={data.google_maps_embed_key_set ? "••••••••••••••••" : "AIzaSy... (Staff-only)"}
-              description="Used in the Admin Panel to show order pins. Needs Maps Embed API enabled."
-              class="font-mono"
-            >
-              {#snippet labelExtra()}
-                {#if data.google_maps_embed_key_set}
-                  <Badge class="bg-green-50 text-green-600 border-none px-1.5 py-0.5 ml-1">Configured</Badge>
-                {/if}
-              {/snippet}
+          <Input
+            id="maps-key"
+            label="Order Map Key"
+            type={showMaps ? "text" : "password"}
+            bind:value={googleMapsEmbedKeyInput}
+            placeholder={data.google_maps_embed_key_set ? "••••••••••••••••" : "AIzaSy... (Staff-only)"}
+            description="Used in the Admin Panel to show order pins. Needs Maps Embed API enabled."
+            class="font-mono"
+          >
+            {#snippet labelExtra()}
+              {#if data.google_maps_embed_key_set}
+                <Badge class="bg-green-50 text-green-600 border-none px-1.5 py-0.5 ml-1">Configured</Badge>
+              {/if}
+            {/snippet}
+            {#snippet right()}
               <button 
                 type="button"
                 onclick={() => showMaps = !showMaps}
-                class="absolute right-4 top-[34px] -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                slot="right"
+                class="text-gray-400 hover:text-gray-600 transition-colors p-2"
               >
                 {#if showMaps}<EyeOff size={16} />{:else}<Eye size={16} />{/if}
               </button>
-            </Input>
-          </div>
+            {/snippet}
+          </Input>
         </div>
       </Card>
 

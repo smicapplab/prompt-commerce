@@ -402,6 +402,16 @@ export function initStoreSchema(db: Database.Database): void {
     BEGIN
       UPDATE products SET is_synced = 0 WHERE id = NEW.product_id;
     END;
+
+    CREATE TRIGGER IF NOT EXISTS product_variants_parent_dirty_insert AFTER INSERT ON product_variants FOR EACH ROW
+    BEGIN
+      UPDATE products SET is_synced = 0 WHERE id = NEW.product_id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS product_variants_parent_dirty_delete AFTER DELETE ON product_variants FOR EACH ROW
+    BEGIN
+      UPDATE products SET is_synced = 0 WHERE id = OLD.product_id;
+    END;
   `);
 }
 

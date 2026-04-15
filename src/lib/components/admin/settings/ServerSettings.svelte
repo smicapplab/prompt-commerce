@@ -129,7 +129,9 @@
             description="Must match the base URL of your NestJS gateway instance."
             class="font-mono"
           >
-            <Link2 size={14} slot="left" class="absolute left-4 top-[34px] -translate-y-1/2 text-gray-400" />
+            {#snippet left()}
+              <Link2 size={14} />
+            {/snippet}
           </Input>
 
           {#if userRole !== "super_admin"}

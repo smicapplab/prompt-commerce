@@ -388,6 +388,31 @@ export function registerProductTools(
     },
   );
 
+  // ─── delete_product ───────────────────────────────────────────────────────
+  server.tool(
+    'delete_product',
+    'Soft-delete a product by setting its deleted_at timestamp. This will remove it from search and listing.',
+    {
+      id: z.number().int().describe('ID of the product to delete'),
+    },
+    async ({ id }) => {
+      const result = db
+        .prepare(`UPDATE products SET deleted_at = datetime('now'), is_synced = 0 WHERE id = ?`)
+        .run(id);
+
+      if (result.changes === 0) {
+        return {
+          content: [{ type: 'text', text: `Product with ID ${id} not found.` }],
+          isError: true,
+        };
+      }
+
+      return {
+        content: [{ type: 'text', text: `✅ Product with ID ${id} soft-deleted successfully.` }],
+      };
+    },
+  );
+
   // ─── update_inventory ────────────────────────────────────────────────────
   server.tool(
     'update_inventory',

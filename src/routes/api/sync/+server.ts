@@ -159,7 +159,9 @@ export const POST: RequestHandler = async (event) => {
       .prepare(`
         SELECT id, title, description, sku, product_type, price, stock_quantity,
                metadata, category_id, tags, images, active, deleted_at, updated_at
-        FROM products WHERE is_synced = 0
+        FROM products 
+        WHERE is_synced = 0
+        OR id IN (SELECT product_id FROM product_variants WHERE is_synced = 0)
       `)
       .all() as RawProduct[];
 
@@ -200,8 +202,8 @@ export const POST: RequestHandler = async (event) => {
           }
         }
 
-        // Fetch variants for this product
-        const variants = storeDb.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1').all(p.id) as RawVariant[];
+        // Fetch ALL variants for this product (to handle deactivations)
+        const variants = storeDb.prepare('SELECT * FROM product_variants WHERE product_id = ?').all(p.id) as RawVariant[];
 
         return {
           id: p.id,

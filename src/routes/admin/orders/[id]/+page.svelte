@@ -29,7 +29,13 @@
     Clock,
     X,
     Printer,
-    Link as LinkIcon
+    Link as LinkIcon,
+    Store,
+    Banknote,
+    Handshake,
+    Globe,
+    FlaskConical,
+    Check
   } from "@lucide/svelte";
 
   let { data } = $props();
@@ -418,7 +424,7 @@
       <tr>
         <th>Item</th>
         <th>Qty</th>
-        <th>✓</th>
+        <th>Check</th>
       </tr>
     </thead>
     <tbody>${itemRows}</tbody>
@@ -611,8 +617,12 @@
             <Badge variant="secondary" class="font-bold {STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}">
               {order.status.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
             </Badge>
-            <Badge class="border-none font-bold text-[10px] {(order as any).delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}">
-              {(order as any).delivery_type === "pickup" ? "🏪 Store Pickup" : "🚚 Home Delivery"}
+            <Badge class="border-none font-bold text-[10px] gap-1.5 {(order as any).delivery_type === 'pickup' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}">
+              {#if (order as any).delivery_type === "pickup"}
+                <Store size={10} /> Store Pickup
+              {:else}
+                <Truck size={10} /> Home Delivery
+              {/if}
             </Badge>
           {/if}
         </div>
@@ -1188,8 +1198,8 @@
                       id="delivery-type"
                       bind:value={editDeliveryType}
                       options={[
-                        { value: 'delivery', label: '🚚 Home Delivery' },
-                        { value: 'pickup', label: '🏪 Store Pickup' }
+                        { value: 'delivery', label: 'Home Delivery' },
+                        { value: 'pickup', label: 'Store Pickup' }
                       ]}
                     />
                     <textarea
@@ -1213,8 +1223,12 @@
                   </div>
                 {:else}
                   <div class="space-y-2">
-                    <p class="text-sm font-black text-gray-900">
-                      {(order as any).delivery_type === "pickup" ? "🏪 Store Pickup" : "🚚 Home Delivery"}
+                    <p class="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                      {#if (order as any).delivery_type === "pickup"}
+                        <Store size={16} class="text-indigo-600" /> Store Pickup
+                      {:else}
+                        <Truck size={16} class="text-indigo-600" /> Home Delivery
+                      {/if}
                     </p>
                     {#if (order as any).delivery_address}
                       <p class="text-[11px] text-gray-500 leading-relaxed font-bold italic">
@@ -1261,11 +1275,11 @@
                       <Select
                         bind:value={editPaymentProvider}
                         options={[
-                          { value: 'cod', label: '💵 Cash on Delivery' },
-                          { value: 'mock', label: '🧪 Mock / Test' },
-                          { value: 'assisted', label: '🤝 Assisted / Manual' },
-                          { value: 'paymongo', label: '🇵🇭 PayMongo' },
-                          { value: 'stripe', label: '🌍 Stripe' }
+                          { value: 'cod', label: 'Cash on Delivery' },
+                          { value: 'mock', label: 'Mock / Test' },
+                          { value: 'assisted', label: 'Assisted / Manual' },
+                          { value: 'paymongo', label: 'PayMongo' },
+                          { value: 'stripe', label: 'Stripe' }
                         ]}
                       />
                       <div class="flex gap-2">
