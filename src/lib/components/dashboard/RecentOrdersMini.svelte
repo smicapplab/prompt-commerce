@@ -61,17 +61,17 @@
             </p>
           </div>
           <Badge
-            class="px-2 py-0.5 border {STATUS_COLORS[o.status] ?? 'bg-gray-50 border-gray-100 text-gray-600'} flex-shrink-0"
+            class="px-2 py-0.5 border {STATUS_COLORS[o.status] ?? 'bg-gray-50 border-gray-100 text-gray-600'} shrink-0"
           >
             {statusLabel(o.status)}
           </Badge>
           <span
-            class="text-sm font-black text-gray-900 flex-shrink-0 w-20 text-right"
+            class="text-sm font-black text-gray-900 shrink-0 w-20 text-right"
           >
             {formatCurrency(o.total)}
           </span>
           <span
-            class="text-[10px] text-gray-400 flex-shrink-0 w-14 text-right"
+            class="text-[10px] text-gray-400 shrink-0 w-14 text-right"
             >{relativeTime(o.created_at)}</span
           >
         </a>

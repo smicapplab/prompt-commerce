@@ -55,7 +55,7 @@
       onclick={() => goto(card.href)}
       class="p-4 hover:shadow-md transition-shadow flex items-center gap-3 group cursor-pointer"
     >
-      <div class="p-2 rounded-lg {card.color} flex-shrink-0">
+      <div class="p-2 rounded-lg {card.color} shrink-0">
         <card.icon class="w-4 h-4" />
       </div>
       <div>

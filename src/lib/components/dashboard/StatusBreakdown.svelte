@@ -49,7 +49,7 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span
-              class="w-2 h-2 rounded-full flex-shrink-0 {STATUS_CHART_COLORS[
+              class="w-2 h-2 rounded-full shrink-0 {STATUS_CHART_COLORS[
                 status
               ] ?? 'bg-gray-300'}"
             ></span>
