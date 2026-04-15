@@ -12,8 +12,15 @@ This repository contains the **Seller Admin Service** — a high-performance Sve
 
 ## 🚀 Live Demo
 
-- ⚡ **Admin Dashboard**: [https://admin.13.212.57.92.nip.io/](https://admin.13.212.57.92.nip.io/)
-- 🛒 **Customer Gateway**: [https://gateway.13.212.57.92.nip.io/](https://gateway.13.212.57.92.nip.io/)
+Experience the full Prompt Commerce ecosystem in real-time. Use the **Seller Admin** to manage inventory and the **Customer Gateway** to browse as a buyer.
+
+| Interface | URL | Credentials (Username / Password) |
+| :--- | :--- | :--- |
+| **⚡ Seller Admin** | [admin.13.212.57.92.nip.io](https://admin.13.212.57.92.nip.io/) | `admin` / `XnR9XxiI5WizHJkj` |
+| **🛒 Customer Gateway** | [gateway.13.212.57.92.nip.io](https://gateway.13.212.57.92.nip.io/) | `admin` / `xi5J3uOvlRuDT5PB` |
+
+> [!TIP]
+> Changes made in the Seller Admin (like adding products or updating status) are synchronized to the Customer Gateway automatically.
 
 ---
 
