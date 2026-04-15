@@ -10,7 +10,6 @@
     Ticket,
     Percent,
     Banknote,
-    Rotate3D,
     RotateCw,
   } from "@lucide/svelte";
   import { activeStore } from "$lib/stores/activeStore.svelte.js";

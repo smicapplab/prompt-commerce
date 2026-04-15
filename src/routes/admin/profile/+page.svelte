@@ -11,12 +11,12 @@
     ShieldCheck,
     Check,
     X,
-    UserCircle,
-    Fingerprint,
+    CircleUser,
+    FingerprintPattern,
     Calendar,
     Save,
-    AlertCircle,
-    Wand2,
+    CircleAlert,
+    WandSparkles,
   } from "@lucide/svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Card from "$lib/components/ui/Card.svelte";
@@ -177,7 +177,7 @@
         <div
           class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600"
         >
-          <Fingerprint size={20} />
+          <FingerprintPattern size={20} />
         </div>
         <div>
           <p
@@ -208,7 +208,7 @@
       <div
         class="w-16 h-16 bg-white rounded-2xl shadow-sm border border-red-100 flex items-center justify-center text-red-500 mx-auto"
       >
-        <AlertCircle size={32} />
+        <CircleAlert size={32} />
       </div>
       <h3 class="text-xl font-bold text-red-900">Connection Interrupted</h3>
       <p class="text-red-700/70 max-w-xs mx-auto text-sm">{error}</p>
@@ -331,7 +331,7 @@
             class="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-700 shadow-sm animate-in slide-in-from-top-2"
             transition:slide
           >
-            <AlertCircle size={18} />
+            <CircleAlert size={18} />
             <p class="text-sm font-bold">{error}</p>
           </div>
         {/if}
@@ -345,7 +345,7 @@
               <div
                 class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center"
               >
-                <UserCircle size={20} />
+                <CircleUser size={20} />
               </div>
               <h3 class="text-lg font-black text-gray-900">Personal Details</h3>
             </div>
@@ -419,7 +419,7 @@
                 class="text-indigo-600 hover:bg-indigo-50 font-black h-10 rounded-xl"
                 onclick={generatePassword}
               >
-                <Wand2 size={16} class="mr-2" />
+                <WandSparkles size={16} class="mr-2" />
                 Generate
               </Button>
             </div>

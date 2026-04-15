@@ -1,3 +1,7 @@
+/**
+ * Order related helpers and constants
+ */
+
 export const CHANNELS = [
   { value: "manual", label: "Manual Entry" },
   { value: "telegram", label: "Telegram" },
@@ -87,3 +91,16 @@ export const STATUS_OPTIONS = [
   "cancelled",
   "refunded",
 ];
+
+/**
+ * Converts a snake_case status to a title case label
+ * @param s Status string
+ * @returns Formatted label
+ */
+export function statusLabel(s: string) {
+  if (!s) return "";
+  return s
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}

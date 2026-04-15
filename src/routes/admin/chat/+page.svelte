@@ -9,13 +9,10 @@
     Bot, 
     Check, 
     Search, 
-    Clock, 
     ChevronLeft, 
     ChevronRight,
     RefreshCw,
-    MoreVertical,
-    CheckCircle2,
-    XCircle,
+    CircleCheck,
     HandMetal
   } from '@lucide/svelte';
 
@@ -221,7 +218,7 @@
 
 <div class="flex h-[calc(100vh-64px)] overflow-hidden bg-white">
   <!-- Sidebar: Conversation List -->
-  <div class="w-96 border-r border-gray-100 flex flex-col flex-shrink-0 bg-white shadow-[1px_0_0_0_rgba(0,0,0,0.02)]">
+  <div class="w-96 border-r border-gray-100 flex flex-col shrink-0 bg-white shadow-[1px_0_0_0_rgba(0,0,0,0.02)]">
     <!-- Search & Filter Area -->
     <div class="p-6 space-y-4">
       <div class="flex items-center justify-between">
@@ -302,16 +299,16 @@
                   </div>
                 </div>
               </div>
-              <span class="text-[10px] font-bold text-gray-400 flex-shrink-0 uppercase">{relativeTime(conv.last_message_at ?? conv.updated_at)}</span>
+              <span class="text-[10px] font-bold text-gray-400 shrink-0 uppercase">{relativeTime(conv.last_message_at ?? conv.updated_at)}</span>
             </div>
 
             {#if conv.last_message}
-              <p class="text-xs text-gray-500 line-clamp-2 leading-relaxed pl-[52px]">
+              <p class="text-xs text-gray-500 line-clamp-2 leading-relaxed pl-13">
                 {conv.last_message}
               </p>
             {/if}
 
-            <div class="flex items-center gap-2 mt-4 pl-[52px]">
+            <div class="flex items-center gap-2 mt-4 pl-13">
               {#if conv.mode === 'human'}
                 <Badge variant="secondary" class="bg-blue-50 text-blue-700 border-none font-bold text-[9px] uppercase px-2 py-0.5">
                   <User size={10} class="mr-1" /> Human
@@ -409,7 +406,7 @@
               size="sm"
               class="font-black uppercase text-[10px] tracking-widest text-emerald-600 hover:bg-emerald-50"
             >
-              <CheckCircle2 size={14} class="mr-2" /> Resolve
+              <CircleCheck size={14} class="mr-2" /> Resolve
             </Button>
           {:else}
             <Button
@@ -480,7 +477,7 @@
       <div class="p-8 bg-white border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
         {#if selectedConv.status === 'resolved'}
           <div class="flex items-center justify-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-            <CheckCircle2 size={18} class="text-emerald-500" />
+            <CircleCheck size={18} class="text-emerald-500" />
             <p class="text-[10px] font-black uppercase tracking-widest text-emerald-600">This conversation is marked as resolved and closed.</p>
             <Button size="sm" variant="secondary" onclick={() => setConvStatus(selectedConv!.id, 'open')} class="ml-4 h-7 text-[9px] bg-white">Reopen to reply</Button>
           </div>
@@ -494,7 +491,7 @@
                 onkeydown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                 }}
-                class="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-5 py-4 text-sm resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all min-h-[58px] max-h-48 font-medium custom-scrollbar"
+                class="w-full rounded-2xl border border-gray-100 bg-gray-50/50 px-5 py-4 text-sm resize-none focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white transition-all min-h-14.5 max-h-48 font-medium custom-scrollbar"
               ></textarea>
               <div class="absolute right-4 bottom-4 flex items-center gap-2 text-gray-300">
                 <span class="text-[9px] font-black uppercase tracking-widest">Type Message</span>
@@ -504,7 +501,7 @@
               onclick={sendMessage}
               disabled={sending || !newMessage.trim()}
               variant="primary"
-              class="h-[58px] w-[58px] rounded-2xl shadow-lg shadow-indigo-100 p-0 flex items-center justify-center"
+              class="h-14.5 w-14.5 rounded-2xl shadow-lg shadow-indigo-100 p-0 flex items-center justify-center"
             >
               {#if sending}
                 <RefreshCw size={24} class="animate-spin" />

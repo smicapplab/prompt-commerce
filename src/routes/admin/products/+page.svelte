@@ -8,8 +8,6 @@
 		Eye,
 		EyeOff,
 		Trash2,
-		X,
-		RefreshCw,
 		Search,
 		Box,
 		Shirt,
@@ -25,10 +23,6 @@
 	import Select from "$lib/components/ui/Select.svelte";
 	import Badge from "$lib/components/ui/Badge.svelte";
 	import SyncBanner from "$lib/components/SyncBanner.svelte";
-	import {
-		fetchSyncStatus,
-		syncToGateway as doSync,
-	} from "$lib/syncGateway.js";
 	import type { Product, Category } from "$lib/types/catalog.js";
 	import type { SyncBannerInstance } from "$lib/types/components.js";
 
@@ -300,7 +294,7 @@
 				<h3 class="text-lg font-bold text-gray-900">
 					No products found
 				</h3>
-				<p class="text-sm text-gray-500 mt-2 max-w-[400px] mx-auto">
+				<p class="text-sm text-gray-500 mt-2 max-w-100 mx-auto">
 					{#if searchQuery || activeFilter !== "all"}
 						No products match your current search or filters.
 						<Button

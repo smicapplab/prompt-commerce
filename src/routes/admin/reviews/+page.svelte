@@ -12,13 +12,11 @@
     Trash2, 
     Search, 
     Package, 
-    User, 
     MessageSquare,
     Calendar,
     ChevronLeft,
     ChevronRight,
     RefreshCw,
-    X
   } from '@lucide/svelte';
 
   let reviews = $state<Review[]>([]);

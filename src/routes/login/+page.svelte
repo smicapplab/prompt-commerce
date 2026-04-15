@@ -261,7 +261,7 @@
             </Input>
 
             <!-- Password strength hint -->
-            <div class="px-1 min-h-[20px]">
+            <div class="px-1 min-h-5">
               {#if newPassword.length > 0 && newPassword.length < 8}
                 <p class="text-xs font-semibold text-amber-600 flex items-center gap-1.5">
                   <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>

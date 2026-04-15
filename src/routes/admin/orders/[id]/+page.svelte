@@ -13,7 +13,6 @@
     ChevronLeft, 
     RefreshCw, 
     Package, 
-    User, 
     CreditCard, 
     Truck, 
     MapPin, 
@@ -25,17 +24,12 @@
     Download,
     Paperclip,
     ArrowRight,
-    CheckCircle2,
+    CircleCheck,
     Clock,
     X,
     Printer,
     Link as LinkIcon,
     Store,
-    Banknote,
-    Handshake,
-    Globe,
-    FlaskConical,
-    Check
   } from "@lucide/svelte";
 
   let { data } = $props();
@@ -568,7 +562,7 @@
   });
 
   const currentStepIndex = $derived(
-    STATUS_STEPS.findIndex((s) => s.id === order?.status),
+    STATUS_STEPS.findIndex((s: any) => s.id === order?.status),
   );
   const nextStep = $derived.by(() => {
     if (!order) return null;
@@ -650,7 +644,7 @@
           disabled={updating}
           variant="primary"
           size="lg"
-          class="min-w-[180px]"
+          class="min-w-45"
         >
           {#if updating}
             <RefreshCw size={18} class="animate-spin mr-2" />
@@ -809,7 +803,7 @@
                       : 'bg-white border-gray-100 text-gray-300'}"
                   >
                     {#if i < currentStepIndex}
-                      <CheckCircle2 size={18} />
+                      <CircleCheck size={18} />
                     {:else if i === currentStepIndex}
                       <Clock size={18} class="animate-pulse" />
                     {:else}
@@ -851,7 +845,7 @@
                   <tr class="group hover:bg-gray-50/50 transition-colors">
                     <td class="px-6 py-4">
                       <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 flex-shrink-0 overflow-hidden shadow-sm">
+                        <div class="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 shrink-0 overflow-hidden shadow-sm">
                           {#if item.product_images?.[0]}
                             <img src={item.product_images[0]} alt={item.title} class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                           {:else}
@@ -935,7 +929,7 @@
               </div>
             {:else if order.notes}
               <div class="flex gap-3">
-                <FileText size={18} class="text-gray-300 flex-shrink-0 mt-0.5" />
+                <FileText size={18} class="text-gray-300 shrink-0 mt-0.5" />
                 <p class="text-sm text-gray-700 font-medium leading-relaxed italic">
                   "{order.notes}"
                 </p>
@@ -966,7 +960,7 @@
             </label>
           </div>
           <div class="p-6">
-            <div class="space-y-8 relative before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-px before:bg-gray-100">
+            <div class="space-y-8 relative before:absolute before:left-3.75 before:top-2 before:bottom-2 before:w-px before:bg-gray-100">
               {#if loadingNotes && orderNotes.length === 0}
                 <div class="flex items-center gap-4 py-2">
                   <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center animate-spin">
@@ -982,7 +976,7 @@
               {:else}
                 {#each orderNotes as note}
                   <div class="relative flex gap-6 group {note.deleted_at ? 'opacity-40 grayscale' : ''}">
-                    <div class="flex-shrink-0 w-8 h-8 rounded-full border-2 border-white bg-indigo-600 text-white flex items-center justify-center font-black text-[10px] shadow-sm z-10">
+                    <div class="shrink-0 w-8 h-8 rounded-full border-2 border-white bg-indigo-600 text-white flex items-center justify-center font-black text-[10px] shadow-sm z-10">
                       {note.created_by[0].toUpperCase()}
                     </div>
                     <div class="flex-1 min-w-0">
@@ -1054,7 +1048,7 @@
                   class="relative group p-4 border border-gray-100 rounded-2xl hover:border-indigo-200 hover:bg-indigo-50/40 transition-all shadow-sm flex flex-col {file.deleted_at ? 'opacity-40' : ''}"
                 >
                   <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 group-hover:bg-white transition-colors">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 group-hover:bg-white transition-colors">
                       {#if file.mime_type.startsWith("image/")}
                         <ImageIcon size={20} />
                       {:else}
@@ -1092,7 +1086,7 @@
                 </div>
               {/each}
 
-              <label class="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50/20 cursor-pointer transition-all group min-h-[120px]">
+              <label class="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:border-indigo-300 hover:bg-indigo-50/20 cursor-pointer transition-all group min-h-30">
                 {#if uploadingFile}
                   <RefreshCw size={24} class="text-indigo-600 animate-spin" />
                   <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Uploading…</span>
@@ -1244,7 +1238,7 @@
                 <!-- Tracking -->
                 {#if (order as any).tracking_number}
                   <div class="p-4 bg-sky-50/50 rounded-2xl border border-sky-100 flex gap-3">
-                    <Truck size={20} class="text-sky-600 flex-shrink-0" />
+                    <Truck size={20} class="text-sky-600 shrink-0" />
                     <div>
                       <p class="text-[10px] font-black text-sky-400 uppercase tracking-widest leading-none mb-1.5 focus:outline-none">Live Tracking Info</p>
                       <p class="text-sm font-black text-sky-900 leading-none">
@@ -1392,7 +1386,7 @@
                    <MapPin size={28} class="group-hover:text-indigo-600 transition-colors" />
                 </div>
                 <h3 class="text-sm font-black text-gray-900 uppercase tracking-tight mb-2">No GPS Pin Added</h3>
-                <p class="text-xs font-medium text-gray-400 mb-6 max-w-[200px]">Coordinates help delivery riders find the customer faster.</p>
+                <p class="text-xs font-medium text-gray-400 mb-6 max-w-50">Coordinates help delivery riders find the customer faster.</p>
                 <Button onclick={startEditLocation} variant="primary" size="sm" class="px-8 border-none bg-indigo-600 font-black">
                   Set Coords
                 </Button>

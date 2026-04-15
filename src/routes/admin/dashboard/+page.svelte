@@ -336,7 +336,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <!-- Revenue this month -->
       <Card
-        class="bg-gradient-to-br from-indigo-600 to-violet-600 border-none p-5 text-white shadow-lg shadow-indigo-100"
+        class="bg-linear-to-br from-indigo-600 to-violet-600 border-none p-5 text-white shadow-lg shadow-indigo-100"
       >
         <div class="flex items-center justify-between mb-3">
           <p class="text-xs font-bold text-indigo-100 uppercase tracking-wider">

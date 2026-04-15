@@ -403,7 +403,7 @@
       >
         <div class="flex items-center gap-3 min-w-0 text-left">
           <div
-            class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white shrink-0"
+            class="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white shrink-0"
           >
             {userName.charAt(0).toUpperCase()}
           </div>

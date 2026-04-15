@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { Plus, Edit2, Trash2, AlertCircle, Layers } from "@lucide/svelte";
+	import { Plus, Pencil, Trash2, CircleAlert, Layers } from "@lucide/svelte";
 	import VariantRowForm from "./VariantRowForm.svelte";
 	import Button from "$lib/components/ui/Button.svelte";
 
@@ -140,7 +140,7 @@
 		<div
 			class="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center text-red-600 text-sm"
 		>
-			<AlertCircle size={18} class="mr-2" />
+			<CircleAlert size={18} class="mr-2" />
 			{error}
 		</div>
 	{:else}
@@ -244,7 +244,7 @@
 											class="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
 											onclick={() => (editingId = v.id)}
 										>
-											<Edit2 size={14} />
+											<Pencil size={14} />
 										</Button>
 										<Button
 											variant="ghost"

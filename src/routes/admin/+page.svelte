@@ -8,7 +8,6 @@
     ArrowRight, 
     ChevronRight, 
     ShieldAlert, 
-    RefreshCw,
     Building2,
     LayoutDashboard
   } from "@lucide/svelte";

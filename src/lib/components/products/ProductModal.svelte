@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { 
-		X, Save, Trash2, Image as ImageIcon, 
+		X, Save, Image as ImageIcon, 
 		Package, Settings2, Layers, Check, AlertCircle 
 	} from '@lucide/svelte';
 	import ProductTypeSelector from './ProductTypeSelector.svelte';
@@ -9,7 +9,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import type { Category } from '$lib/types/catalog.js';
 
 	import type { ProductModalProps } from '$lib/types/components.js';
 
@@ -391,7 +390,7 @@
 					variant="primary"
 					onclick={save} 
 					disabled={saving}
-					class="px-8 min-w-[140px]"
+					class="px-8 min-w-35"
 				>
 					{#if saving}
 						<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>

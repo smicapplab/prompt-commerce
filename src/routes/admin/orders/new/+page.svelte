@@ -17,9 +17,7 @@
     Search, 
     Package, 
     User, 
-    MessageSquare,
     ShoppingCart,
-    CirclePlus,
     RefreshCw,
     X,
     Info,
@@ -204,7 +202,7 @@
           </Badge>
         </div>
 
-        <div class="min-h-[200px]">
+        <div class="min-h-50">
           {#if items.length === 0}
             <div class="py-24 text-center">
               <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
@@ -273,7 +271,7 @@
 
     <!-- Right Column: Catalog Browser (4 cols) -->
     <div class="lg:col-span-4 flex flex-col gap-6">
-      <Card class="flex flex-col h-[700px] p-0 overflow-hidden sticky top-6">
+      <Card class="flex flex-col h-175 p-0 overflow-hidden sticky top-6">
         <div class="px-6 py-6 border-b border-gray-100 bg-white">
           <div class="flex items-center gap-3 mb-6">
             <div class="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400">
@@ -336,7 +334,7 @@
                   {/if}
                 </div>
                 
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                   {#if outOfStock}
                     <X size={16} class="text-gray-300" />
                   {:else}

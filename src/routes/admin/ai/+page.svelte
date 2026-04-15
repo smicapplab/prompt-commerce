@@ -320,7 +320,7 @@
   >
     <div class="flex items-center gap-3">
       <div
-        class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center"
+        class="w-8 h-8 rounded-lg bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center"
       >
         <Bot class="w-4 h-4 text-white" />
       </div>
@@ -394,7 +394,7 @@
         class="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-10 p-6"
       >
         <div
-          class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center mb-4"
+          class="w-16 h-16 rounded-2xl bg-linear-to-br from-violet-100 to-purple-100 flex items-center justify-center mb-4"
         >
           <Bot class="w-8 h-8 text-violet-500" />
         </div>
@@ -420,7 +420,7 @@
         class="flex flex-col items-center justify-center min-h-full py-12 px-6"
       >
         <div
-          class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-5 shadow-lg shadow-violet-200"
+          class="w-16 h-16 rounded-2xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-5 shadow-lg shadow-violet-200"
         >
           <Bot class="w-8 h-8 text-white" />
         </div>
@@ -483,7 +483,7 @@
           {:else}
             <div class="flex gap-3">
               <div
-                class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 mt-0.5"
+                class="w-7 h-7 rounded-full bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 mt-0.5"
               >
                 <Bot class="w-3.5 h-3.5 text-white" />
               </div>
@@ -500,7 +500,7 @@
         {#if sending}
           <div class="flex gap-3">
             <div
-              class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0"
+              class="w-7 h-7 rounded-full bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0"
             >
               <Bot class="w-3.5 h-3.5 text-white" />
             </div>

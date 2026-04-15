@@ -22,7 +22,7 @@
 
 <div class="flex flex-wrap gap-3">
 	{#if type === "wearable"}
-		<div class="flex-1 min-w-[120px]">
+		<div class="flex-1 min-w-30">
 			<Input
 				{id}
 				placeholder="Color (e.g. Red)"
@@ -30,7 +30,7 @@
 				oninput={handleInput("color")}
 			/>
 		</div>
-		<div class="flex-1 min-w-[100px]">
+		<div class="flex-1 min-w-25">
 			<Input
 				placeholder="Size (e.g. XL)"
 				value={formatValue(attributes.size)}
@@ -38,7 +38,7 @@
 			/>
 		</div>
 	{:else if type === "food"}
-		<div class="flex-1 min-w-[120px]">
+		<div class="flex-1 min-w-30">
 			<Input
 				{id}
 				placeholder="Size/Weight (e.g. 500g)"
@@ -46,7 +46,7 @@
 				oninput={handleInput("size")}
 			/>
 		</div>
-		<div class="flex-1 min-w-[100px]">
+		<div class="flex-1 min-w-25">
 			<Input
 				placeholder="Flavor (optional)"
 				value={formatValue(attributes.flavor)}
@@ -54,7 +54,7 @@
 			/>
 		</div>
 	{:else if type === "device"}
-		<div class="flex-1 min-w-[120px]">
+		<div class="flex-1 min-w-30">
 			<Input
 				{id}
 				placeholder="Storage (e.g. 256GB)"
@@ -62,7 +62,7 @@
 				oninput={handleInput("storage")}
 			/>
 		</div>
-		<div class="flex-1 min-w-[100px]">
+		<div class="flex-1 min-w-25">
 			<Input
 				placeholder="Color"
 				value={formatValue(attributes.color)}
@@ -70,7 +70,7 @@
 			/>
 		</div>
 	{:else if type === "travel"}
-		<div class="flex-1 min-w-[150px]">
+		<div class="flex-1 min-w-37.5">
 			<Input
 				{id}
 				placeholder="Class/Tier (e.g. Economy)"
@@ -79,7 +79,7 @@
 			/>
 		</div>
 	{:else}
-		<div class="flex-1 min-w-[200px]">
+		<div class="flex-1 min-w-50">
 			<Input
 				{id}
 				placeholder="Custom attributes (JSON or comma list)..."

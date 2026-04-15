@@ -12,6 +12,8 @@
   import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight, Package, User, CreditCard, Truck } from "@lucide/svelte";
 
   import { STATUS_OPTIONS, STATUS_COLORS } from "$lib/constants/orders.js";
+  import { formatCurrency, formatDate } from "$lib/utils/format.js";
+  import TableSkeleton from "$lib/components/ui/TableSkeleton.svelte";
 
   let orders = $state<Order[]>([]);
   let totalCount = $state(0);
@@ -53,25 +55,6 @@
     await load();
   }
   const totalPages = $derived(Math.ceil(totalCount / limit));
-
-  function formatDate(d: string | null) {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-PH", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  function formatCurrency(n: number | null) {
-    if (n == null) return "—";
-    return new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP",
-    }).format(n);
-  }
 
   onMount(() => {
     // UX-R2-7: Validate status from URL
@@ -168,11 +151,8 @@
         <tbody class="divide-y divide-gray-100">
           {#if loading}
             <tr>
-              <td colspan="8" class="px-6 py-24 text-center">
-                <div class="flex flex-col items-center gap-3">
-                  <RefreshCw size={24} class="text-indigo-600 animate-spin" />
-                  <p class="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Loading orders...</p>
-                </div>
+              <td colspan="8">
+                <TableSkeleton columns={8} rows={10} />
               </td>
             </tr>
           {:else if orders.length === 0}
@@ -216,7 +196,7 @@
                     {order.buyer_ref ?? "Guest Buyer"}
                   </div>
                   {#if order.notes}
-                    <div class="text-[10px] text-gray-400 font-medium mt-0.5 max-w-[180px] truncate italic">
+                    <div class="text-[10px] text-gray-400 font-medium mt-0.5 max-w-45 truncate italic">
                       "{order.notes}"
                     </div>
                   {/if}

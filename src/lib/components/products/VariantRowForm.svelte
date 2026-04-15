@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { untrack } from "svelte";
 	import AttributeFields from "./AttributeFields.svelte";
-	import { Save, X, Trash2, Check, AlertCircle } from "@lucide/svelte";
+	import { Save, X, Check, AlertCircle } from "@lucide/svelte";
 	import Button from "$lib/components/ui/Button.svelte";
 	import Input from "$lib/components/ui/Input.svelte";
 
-	import type { ProductVariant } from "$lib/types/catalog.js";
 	import type { VariantRowFormProps } from "$lib/types/components.js";
 
 	let {
@@ -128,7 +127,7 @@
 				>
 				<Button
 					variant="secondary"
-					class="h-[42px] w-full {active
+					class="h-10.5 w-full {active
 						? 'bg-green-50 text-green-700 border-green-100'
 						: 'bg-white text-slate-400 border-slate-200'}"
 					onclick={() => (active = !active)}
@@ -165,7 +164,7 @@
 			</Button>
 			<Button
 				variant="primary"
-				class="px-6 h-10 min-w-[140px]"
+				class="px-6 h-10 min-w-35"
 				onclick={save}
 				disabled={loading}
 			>

@@ -127,7 +127,7 @@
     </div>
 
     <!-- Tab Content -->
-    <div class="min-h-[500px]">
+    <div class="min-h-125">
       {#if activeTab === "store"}
         <StoreSettings {serverSettings} />
       {:else if activeTab === "ai"}

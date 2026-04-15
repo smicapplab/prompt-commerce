@@ -201,7 +201,7 @@
 <!-- Toast -->
 {#if toast}
   <div
-    class="fixed top-6 right-6 z-[110] px-6 py-4 rounded-2xl text-sm font-black shadow-2xl animate-in slide-in-from-right-10
+    class="fixed top-6 right-6 z-110 px-6 py-4 rounded-2xl text-sm font-black shadow-2xl animate-in slide-in-from-right-10
     {toastType === 'success'
       ? 'bg-emerald-600 text-white'
       : 'bg-red-600 text-white'}"
@@ -398,7 +398,7 @@
 
 <!-- Unified Modal -->
 {#if showModal}
-  <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div class="fixed inset-0 z-100 flex items-center justify-center p-4">
     <div
       class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
       onclick={() => (showModal = false)}
