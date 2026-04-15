@@ -294,6 +294,7 @@
 									{productTitle}
 									{productSku}
 									{productType}
+									{productPrice}
 									prefillPrice={lastVariant?.price}
 									prefillStock={lastVariant?.stock}
 									onSave={handleSave}
@@ -313,6 +314,7 @@
 										{productTitle}
 										{productSku}
 										{productType}
+										{productPrice}
 										variant={v}
 										onSave={handleSave}
 										onCancel={() => (editingId = null)}
