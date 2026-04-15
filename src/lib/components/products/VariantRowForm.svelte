@@ -11,6 +11,7 @@
 		store,
 		productId,
 		productTitle,
+		productSku,
 		productType,
 		variant,
 		prefillPrice,
@@ -44,11 +45,11 @@
 	// Auto-SKU logic
 	$effect(() => {
 		if (!variant && Object.values(attributes).some((v) => !!v)) {
-			const titlePart = productTitle.replace(/[^a-zA-Z0-9]/g, "");
+			const basePart = (productSku || productTitle).replace(/[^a-zA-Z0-9]/g, "");
 			const attrParts = Object.values(attributes)
 				.filter(Boolean)
 				.map((v) => String(v).replace(/[^a-zA-Z0-9]/g, ""));
-			sku = [titlePart, ...attrParts].join("-").toUpperCase();
+			sku = [basePart, ...attrParts].join("-").toUpperCase();
 		}
 	});
 

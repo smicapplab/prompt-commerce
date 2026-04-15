@@ -343,13 +343,13 @@
 					</div>
 				{:else if activeTab === 'variants'}
 					{#if productId}
-						<VariantsTable 
-							{store} 
-							{productId} 
-							productTitle={formData.title} 
-							productType={formData.product_type} 
-						/>
-					{:else}
+						<VariantsTable
+							{store}
+							{productId}
+							productTitle={formData.title}
+							productSku={formData.sku}
+							productType={formData.product_type}
+						/>					{:else}
 						<div class="py-20 flex flex-col items-center justify-center text-slate-400 text-center">
 							<Layers size={48} strokeWidth={1} class="mb-4 opacity-30" />
 							<p class="max-w-xs text-sm">

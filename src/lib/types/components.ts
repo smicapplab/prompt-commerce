@@ -13,6 +13,7 @@ export interface VariantsTableProps {
     store: string;
     productId: number;
     productTitle: string;
+    productSku?: string;
     productType: string;
 }
 
@@ -20,6 +21,7 @@ export interface VariantRowFormProps {
     store: string;
     productId: number;
     productTitle: string;
+    productSku?: string;
     productType: string;
     variant?: ProductVariant | null;
     prefillPrice?: number;

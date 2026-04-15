@@ -7,7 +7,7 @@
 	import type { ProductVariant } from "$lib/types/catalog.js";
 	import type { VariantsTableProps } from "$lib/types/components.js";
 
-	let { store, productId, productTitle, productType }: VariantsTableProps =
+	let { store, productId, productTitle, productSku, productType }: VariantsTableProps =
 		$props();
 
 	let variants = $state<ProductVariant[]>([]);
@@ -176,6 +176,7 @@
 									{store}
 									{productId}
 									{productTitle}
+									{productSku}
 									{productType}
 									prefillPrice={lastVariant?.price}
 									prefillStock={lastVariant?.stock}
@@ -194,6 +195,7 @@
 										{store}
 										{productId}
 										{productTitle}
+										{productSku}
 										{productType}
 										variant={v}
 										onSave={handleSave}
