@@ -47,39 +47,43 @@
     );
   }
 
-  $effect(() => {
-    loadStores();
-  });
-</script>
+  import { ChevronDown } from "@lucide/svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import type { StoreItem as Store } from "$lib/types/stores.js";
 
-{#if stores.length > 0}
+  let stores = $state<Store[]>([]);
+  ...
+  {#if stores.length > 0}
   <div class="relative">
-    <button
+    <Button
+      variant="outline"
+      size="sm"
       onclick={() => (open = !open)}
       class="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
     >
       <span class="font-medium">{selected?.name ?? "Select store"}</span>
       <ChevronDown class="w-3.5 h-3.5 text-gray-400" />
-    </button>
+    </Button>
 
     {#if open}
       <div
-        class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 min-w-48 py-1"
+        class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 min-w-48 py-1 overflow-hidden"
       >
         {#each stores as s}
-          <button
+          <Button
+            variant="ghost"
             onclick={() => select(s)}
-            class="flex items-center justify-between w-full px-4 py-2 text-sm hover:bg-gray-50
+            class="flex items-center justify-between w-full px-4 py-2 text-sm hover:bg-gray-50 rounded-none border-none
               {s.slug === selectedSlug
-              ? 'text-blue-700 font-medium'
+              ? 'text-indigo-700 font-bold bg-indigo-50/50'
               : 'text-gray-700'}"
           >
             <span>{s.name}</span>
-            {#if !s.active}<span class="text-xs text-gray-400">inactive</span
+            {#if !s.active}<span class="text-xs text-gray-400 font-medium italic">inactive</span
               >{/if}
-          </button>
+          </Button>
         {/each}
       </div>
     {/if}
   </div>
-{/if}
+  {/if}

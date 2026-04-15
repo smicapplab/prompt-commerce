@@ -6,6 +6,9 @@
 	import ProductTypeSelector from './ProductTypeSelector.svelte';
 	import MetadataForm from './MetadataForm.svelte';
 	import VariantsTable from './VariantsTable.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import type { Category } from '$lib/types/catalog.js';
 
 	import type { ProductModalProps } from '$lib/types/components.js';
@@ -147,7 +150,7 @@
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-	<div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
+	<div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
 		<!-- Header -->
 		<div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
 			<div>
@@ -158,9 +161,9 @@
 					{productId ? `Product ID: ${productId}` : 'Fill in the details to create a new entry'}
 				</p>
 			</div>
-			<button onclick={onClose} class="p-2 hover:bg-slate-200 rounded-full transition-colors">
+			<Button variant="ghost" size="icon" onclick={onClose} class="rounded-full">
 				<X size={20} />
-			</button>
+			</Button>
 		</div>
 
 		<!-- Tabs -->
@@ -172,8 +175,8 @@
 			] as tab}
 				{#if !tab.hide}
 					<button
-						class="py-4 border-b-2 font-medium text-sm flex items-center transition-all
-							{activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}"
+						class="py-4 border-b-2 font-bold text-sm flex items-center transition-all
+							{activeTab === tab.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}"
 						onclick={() => activeTab = tab.id as any}
 					>
 						<tab.icon size={16} class="mr-2" />
@@ -187,90 +190,83 @@
 		<div class="flex-1 overflow-y-auto p-6 space-y-8">
 			{#if loading}
 				<div class="py-20 flex flex-col items-center justify-center text-slate-400">
-					<div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+					<div class="w-10 h-10 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
 					<p class="font-medium">Loading details...</p>
 				</div>
 			{:else}
 				{#if activeTab === 'basic'}
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-						<div class="space-y-4">
-							<div class="space-y-1.5">
-								<label class="text-xs font-bold uppercase tracking-wider text-slate-400" for="title">Product Title</label>
-								<input
-									id="title"
-									type="text"
-									class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-									placeholder="e.g. Premium Cotton T-Shirt"
-									bind:value={formData.title}
-								/>
-							</div>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+						<div class="space-y-6">
+							<Input
+								id="title"
+								label="Product Title"
+								placeholder="e.g. Premium Cotton T-Shirt"
+								bind:value={formData.title}
+							/>
 
 							<div class="space-y-1.5">
-								<label class="text-xs font-bold uppercase tracking-wider text-slate-400" for="description">Description</label>
+								<label class="text-[13px] font-bold text-gray-700 tracking-tight" for="description">Description</label>
 								<textarea
 									id="description"
 									rows="4"
-									class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+									class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none text-sm"
 									placeholder="Tell buyers more about this product..."
 									bind:value={formData.description}
 								></textarea>
 							</div>
 
 							<div class="grid grid-cols-2 gap-4">
-								<div class="space-y-1.5">
-									<label class="text-xs font-bold uppercase tracking-wider text-slate-400" for="category">Category</label>
-									<select
-										id="category"
-										class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"
-										bind:value={formData.category_id}
-									>
-										<option value="">No Category</option>
-										{#each categories as cat}
-											<option value={cat.id}>{cat.name}</option>
-										{/each}
-									</select>
-								</div>
-								<div class="space-y-1.5">
-									<label class="text-xs font-bold uppercase tracking-wider text-slate-400" for="sku">Base SKU</label>
-									<input
-										id="sku"
-										type="text"
-										class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none font-mono text-sm"
-										placeholder="TSHIRT-001"
-										bind:value={formData.sku}
-									/>
-								</div>
+								<Select
+									id="category"
+									label="Category"
+									bind:value={formData.category_id}
+									options={[
+										{ value: '', label: 'No Category' },
+										...categories.map(cat => ({ value: cat.id, label: cat.name }))
+									]}
+								/>
+								<Input
+									id="sku"
+									label="Base SKU"
+									class="font-mono"
+									placeholder="TSHIRT-001"
+									bind:value={formData.sku}
+								/>
 							</div>
 						</div>
 
-						<div class="space-y-4">
-							<div class="space-y-1.5">
-								<span class="text-xs font-bold uppercase tracking-wider text-slate-400">Media</span>
-								<div class="grid grid-cols-3 gap-2">
+						<div class="space-y-6">
+							<div class="space-y-2">
+								<span class="text-[13px] font-bold text-gray-700 tracking-tight">Media</span>
+								<div class="grid grid-cols-3 gap-3">
 									{#each formData.images_urls as url, i}
-										<div class="relative group aspect-square rounded-lg overflow-hidden border border-slate-100 shadow-sm">
+										<div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-100 shadow-sm">
 											<img src={url} alt="Product" class="w-full h-full object-cover" />
-											<button 
+											<Button 
+												variant="danger"
+												size="icon"
 												onclick={() => removeImage(i, false)}
-												class="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+												class="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
 											>
 												<X size={12} />
-											</button>
+											</Button>
 										</div>
 									{/each}
 									{#each imagePreviewUrls as url, i}
-										<div class="relative group aspect-square rounded-lg overflow-hidden border border-blue-100 ring-2 ring-blue-500 ring-offset-2">
+										<div class="relative group aspect-square rounded-xl overflow-hidden border-2 border-indigo-500">
 											<img src={url} alt="New Product" class="w-full h-full object-cover" />
-											<button 
+											<Button 
+												variant="danger"
+												size="icon"
 												onclick={() => removeImage(i, true)}
-												class="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full"
+												class="absolute top-1 right-1 h-6 w-6"
 											>
 												<X size={12} />
-											</button>
+											</Button>
 										</div>
 									{/each}
-									<label class="aspect-square flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 cursor-pointer transition-all">
-										<ImageIcon size={24} class="text-slate-400 mb-1" />
+									<label class="aspect-square flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-indigo-300 cursor-pointer transition-all group">
+										<ImageIcon size={24} class="text-slate-400 mb-1 group-hover:text-indigo-500 transition-colors" />
 										<span class="text-[10px] font-bold text-slate-500 uppercase">Upload</span>
 										<input type="file" multiple accept="image/*" class="hidden" onchange={handleImageSelect} />
 									</label>
@@ -279,30 +275,24 @@
 
 							{#if formData.product_type === 'generic'}
 								<div class="grid grid-cols-2 gap-4">
-									<div class="space-y-1.5">
-										<label class="text-xs font-bold uppercase tracking-wider text-slate-400" for="price">Price (₱)</label>
-										<input
-											id="price"
-											type="number"
-											step="0.01"
-											class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"
-											bind:value={formData.price}
-										/>
-									</div>
-									<div class="space-y-1.5">
-										<label class="text-xs font-bold uppercase tracking-wider text-slate-400" for="stock">Stock</label>
-										<input
-											id="stock"
-											type="number"
-											class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"
-											bind:value={formData.stock_quantity}
-										/>
-									</div>
+									<Input
+										id="price"
+										type="number"
+										label="Price (₱)"
+										step="0.01"
+										bind:value={formData.price}
+									/>
+									<Input
+										id="stock"
+										type="number"
+										label="Stock"
+										bind:value={formData.stock_quantity}
+									/>
 								</div>
 							{:else}
-								<div class="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start">
-									<AlertCircle size={18} class="text-blue-600 mr-3 mt-0.5 shrink-0" />
-									<p class="text-xs text-blue-700 leading-relaxed font-medium">
+								<div class="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-start">
+									<AlertCircle size={18} class="text-indigo-600 mr-3 mt-0.5 shrink-0" />
+									<p class="text-xs text-indigo-700 leading-relaxed font-medium">
 										This is a <span class="uppercase font-bold">{formData.product_type}</span> product. 
 										Price and stock are managed per variation in the <span class="font-bold underline">Variants</span> tab.
 									</p>
@@ -310,15 +300,15 @@
 							{/if}
 
 							<div class="pt-4 flex items-center justify-between">
-								<div class="flex items-center space-x-2">
+								<div class="flex items-center space-x-3">
 									<button 
 										onclick={() => formData.active = !formData.active}
 										aria-label={formData.active ? 'Deactivate product' : 'Activate product'}
-										class="w-12 h-6 rounded-full p-1 transition-colors {formData.active ? 'bg-green-500' : 'bg-slate-300'}"
+										class="w-12 h-6 rounded-full p-1 transition-colors {formData.active ? 'bg-indigo-600' : 'bg-slate-300'}"
 									>
 										<div class="bg-white w-4 h-4 rounded-full transition-transform {formData.active ? 'translate-x-6' : 'translate-x-0'} shadow-sm"></div>
 									</button>
-									<span class="text-sm font-semibold {formData.active ? 'text-green-600' : 'text-slate-500'}">
+									<span class="text-sm font-bold {formData.active ? 'text-indigo-600' : 'text-slate-500'}">
 										{formData.active ? 'Available for purchase' : 'Draft / Hidden'}
 									</span>
 								</div>
@@ -366,12 +356,13 @@
 							<p class="max-w-xs text-sm">
 								Save your product first to start adding variations like color, size, or material tiers.
 							</p>
-							<button 
+							<Button 
+								variant="primary"
 								onclick={save}
-								class="mt-6 px-6 py-2 bg-slate-900 text-white rounded-xl font-bold shadow-lg"
+								class="mt-6 px-8"
 							>
 								Save & Continue
-							</button>
+							</Button>
 						</div>
 					{/if}
 				{/if}
@@ -389,23 +380,25 @@
 				<div></div>
 			{/if}
 			<div class="flex items-center space-x-3">
-				<button 
+				<Button 
+					variant="secondary"
 					onclick={onClose} 
-					class="px-6 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-xl transition-all font-semibold"
+					class="px-6"
 				>
 					Cancel
-				</button>
-				<button 
+				</Button>
+				<Button 
+					variant="primary"
 					onclick={save} 
 					disabled={saving}
-					class="px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center min-w-[120px] justify-center"
+					class="px-8 min-w-[140px]"
 				>
 					{#if saving}
 						<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
 					{/if}
 					<Save size={18} class={saving ? 'hidden' : 'mr-2'} />
 					{isEditing ? 'Update' : 'Create Product'}
-				</button>
+				</Button>
 			</div>
 		</div>
 	</div>

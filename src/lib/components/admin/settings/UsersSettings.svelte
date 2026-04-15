@@ -410,14 +410,16 @@
               <FingerprintPattern size={12} />
             {/snippet}
             {#snippet right()}
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onclick={() => (showNewUserPass = !showNewUserPass)}
-                class="text-gray-300 hover:text-gray-600 p-2"
+                class="text-gray-300 hover:text-gray-600 h-10 w-10"
               >
                 {#if showNewUserPass}<EyeOff size={16} />{:else}<Eye
                     size={16}
                   />{/if}
-              </button>
+              </Button>
             {/snippet}
           </Input>
         </div>
@@ -518,14 +520,16 @@
           placeholder="Enter new password..."
         >
           {#snippet right()}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onclick={() => (showEditUserPass = !showEditUserPass)}
-              class="text-gray-300 hover:text-gray-600 p-2"
+              class="text-gray-300 hover:text-gray-600 h-10 w-10"
             >
               {#if showEditUserPass}<EyeOff size={16} />{:else}<Eye
                   size={16}
                 />{/if}
-            </button>
+            </Button>
           {/snippet}
         </Input>
 

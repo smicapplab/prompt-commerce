@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Box, Shirt, Utensils, Smartphone, Plane } from '@lucide/svelte';
-
 	import type { ProductTypeSelectorProps } from '$lib/types/components.js';
+	import Button from '$lib/components/ui/Button.svelte';
 
 	let { value, onSelect }: ProductTypeSelectorProps = $props();
 
@@ -15,18 +15,17 @@
 </script>
 
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-	{#each types as type}
-		<button
-			type="button"
-			class="flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all text-center
-				{value === type.id 
-					? 'border-blue-500 bg-blue-50 text-blue-700' 
-					: 'border-slate-100 bg-white hover:border-slate-200 text-slate-500 hover:text-slate-700'}"
-			onclick={() => onSelect(type.id)}
+	{#each types as t}
+		<Button
+			variant={value === t.id ? 'primary' : 'outline'}
+			onclick={() => onSelect(t.id)}
+			class="flex flex-col items-center justify-center p-4 h-auto text-center space-y-2 {value === t.id ? 'border-indigo-600 bg-indigo-50/50 text-indigo-700' : ''}"
 		>
-			<type.icon size={32} strokeWidth={1.5} class="mb-2" />
-			<span class="font-semibold text-sm">{type.label}</span>
-			<span class="text-[10px] opacity-70 mt-1">{type.description}</span>
-		</button>
+			<t.icon size={32} strokeWidth={1.5} class="mb-1" />
+			<div>
+				<p class="font-bold text-sm leading-tight">{t.label}</p>
+				<p class="text-[10px] opacity-70 mt-1 leading-tight">{t.description}</p>
+			</div>
+		</Button>
 	{/each}
 </div>

@@ -156,13 +156,14 @@
               {/if}
             {/snippet}
             {#snippet right()}
-              <button 
-                type="button"
+              <Button 
+                variant="ghost"
+                size="icon"
                 onclick={() => showPlaces = !showPlaces}
-                class="text-gray-400 hover:text-gray-600 transition-colors p-2"
+                class="text-gray-400 hover:text-gray-600 h-10 w-10"
               >
                 {#if showPlaces}<EyeOff size={16} />{:else}<Eye size={16} />{/if}
-              </button>
+              </Button>
             {/snippet}
           </Input>
 
@@ -182,13 +183,14 @@
               {/if}
             {/snippet}
             {#snippet right()}
-              <button 
-                type="button"
+              <Button 
+                variant="ghost"
+                size="icon"
                 onclick={() => showMaps = !showMaps}
-                class="text-gray-400 hover:text-gray-600 transition-colors p-2"
+                class="text-gray-400 hover:text-gray-600 h-10 w-10"
               >
                 {#if showMaps}<EyeOff size={16} />{:else}<Eye size={16} />{/if}
-              </button>
+              </Button>
             {/snippet}
           </Input>
         </div>

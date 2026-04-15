@@ -1,17 +1,17 @@
 <script lang="ts">
-	import type { ButtonProps } from '$lib/types/ui.js';
+  import type { ButtonProps } from "$lib/types/ui.js";
 
-	let {
-		type = 'button',
-		variant = 'primary',
-		size = 'md',
-		class: className = '',
-		href = undefined,
-		disabled = false,
-		onclick = undefined,
-		children,
-		...rest
-	}: ButtonProps = $props();
+  let {
+    type = "button",
+    variant = "primary",
+    size = "md",
+    class: className = "",
+    href = undefined,
+    disabled = false,
+    onclick = undefined,
+    children,
+    ...rest
+  }: ButtonProps = $props();
 
   const baseClasses =
     "inline-flex items-center justify-center gap-2 font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none";
@@ -21,6 +21,8 @@
       "bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1",
     secondary:
       "bg-white text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50",
+    tertiary:
+      "bg-orange-600 text-white shadow-sm border border-gray-200 hover:bg-orange-500",
     danger: "bg-red-600 text-white shadow-sm hover:bg-red-500",
     outline: "text-gray-700 border border-gray-200 hover:bg-gray-50",
     ghost: "text-gray-600 hover:bg-gray-100 hover:text-gray-900",

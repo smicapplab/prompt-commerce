@@ -322,12 +322,14 @@
             class="font-mono text-xs"
           >
             {#snippet right()}
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onclick={() => (showClaudeKey = !showClaudeKey)}
-                class="text-gray-300 hover:text-gray-500 p-2"
+                class="text-gray-300 hover:text-gray-500 h-8 w-8"
               >
                 {#if showClaudeKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-              </button>
+              </Button>
             {/snippet}
           </Input>
         </Card>
@@ -352,12 +354,14 @@
             class="font-mono text-xs"
           >
             {#snippet right()}
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onclick={() => (showGeminiKey = !showGeminiKey)}
-                class="text-gray-300 hover:text-gray-500 p-2"
+                class="text-gray-300 hover:text-gray-500 h-8 w-8"
               >
                 {#if showGeminiKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-              </button>
+              </Button>
             {/snippet}
           </Input>
         </Card>
@@ -382,12 +386,14 @@
             class="font-mono text-xs"
           >
             {#snippet right()}
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onclick={() => (showOpenaiKey = !showOpenaiKey)}
-                class="text-gray-300 hover:text-gray-500 p-2"
+                class="text-gray-300 hover:text-gray-500 h-8 w-8"
               >
                 {#if showOpenaiKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-              </button>
+              </Button>
             {/snippet}
           </Input>
         </Card>
@@ -412,12 +418,14 @@
             class="font-mono text-xs"
           >
             {#snippet right()}
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onclick={() => (showSerperKey = !showSerperKey)}
-                class="text-gray-300 hover:text-gray-500 p-2"
+                class="text-gray-300 hover:text-gray-500 h-8 w-8"
               >
                 {#if showSerperKey}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
-              </button>
+              </Button>
             {/snippet}
           </Input>
           <p class="text-[10px] text-gray-400">Used for real-time web search capabilities in chat.</p>
@@ -462,16 +470,18 @@
               value={tempMcpKey}
               class="bg-indigo-900 border-indigo-700 text-indigo-100 font-mono"
             />
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onclick={() => {
                 navigator.clipboard.writeText(tempMcpKey);
                 alerted = "Copied!";
                 setTimeout(() => (alerted = ""), 2000);
               }}
-              class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-indigo-400 hover:text-white"
+              class="absolute right-1 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-white h-10 w-10"
             >
               <Check size={20} class={alerted ? "text-green-400" : ""} />
-            </button>
+            </Button>
           </div>
           <div class="flex items-center justify-between text-[11px] font-bold">
             <span class="text-indigo-400 uppercase tracking-widest">Expires: {new Date(tempMcpExpiry).toLocaleTimeString()}</span>

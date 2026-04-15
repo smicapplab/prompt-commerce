@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { fade, fly, scale } from "svelte/transition";
   import Button from "$lib/components/ui/Button.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
 
   // ── Step 1: sign-in ─────────────────────────────────────────────────────────
   let username = $state("");
@@ -130,58 +131,46 @@
       {#if step === "login"}
         <div in:fade={{ duration: 400 }}>
           <form onsubmit={handleLogin} class="space-y-6">
-            <div class="space-y-1.5">
-              <label
-                for="login-username"
-                class="block text-[13px] font-bold text-indigo-900/40 uppercase tracking-wider ml-1"
-              >
-                Username
-              </label>
-              <div class="relative group">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-500 transition-colors">
-                  <User class="w-4 h-4" />
-                </div>
-                <input
-                  id="login-username"
-                  bind:value={username}
-                  type="text"
-                  placeholder="admin"
-                  required
-                  class="w-full bg-white/50 border border-indigo-100 rounded-2xl pl-11 pr-4 py-3.5 text-[15px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-indigo-200"
-                />
-              </div>
-            </div>
+            <Input
+              id="login-username"
+              label="Username"
+              bind:value={username}
+              type="text"
+              placeholder="admin"
+              required
+              class="rounded-2xl"
+            >
+              {#snippet left()}
+                <User class="w-4 h-4" />
+              {/snippet}
+            </Input>
 
-            <div class="space-y-1.5">
-              <label
-                for="login-password"
-                class="block text-[13px] font-bold text-indigo-900/40 uppercase tracking-wider ml-1"
-              >
-                Password
-              </label>
-              <div class="relative group">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-500 transition-colors">
-                  <Lock class="w-4 h-4" />
-                </div>
-                <input
-                  id="login-password"
-                  bind:value={password}
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  required
-                  class="w-full bg-white/50 border border-indigo-100 rounded-2xl pl-11 pr-12 py-3.5 text-[15px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-indigo-200"
-                />
+            <Input
+              id="login-password"
+              label="Password"
+              bind:value={password}
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              required
+              class="rounded-2xl"
+            >
+              {#snippet left()}
+                <Lock class="w-4 h-4" />
+              {/snippet}
+              {#snippet right()}
                 <button
                   type="button"
                   onclick={() => (showPassword = !showPassword)}
-                  class="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-300 hover:text-indigo-500 transition-colors"
+                  class="text-indigo-300 hover:text-indigo-500 transition-colors"
                 >
-                  {#if showPassword}<EyeOff class="w-5 h-5" />{:else}<Eye
-                      class="w-5 h-5"
-                    />{/if}
+                  {#if showPassword}
+                    <EyeOff class="w-5 h-5" />
+                  {:else}
+                    <Eye class="w-5 h-5" />
+                  {/if}
                 </button>
-              </div>
-            </div>
+              {/snippet}
+            </Input>
 
             <Button
               type="submit"
@@ -216,68 +205,60 @@
           </div>
 
           <form onsubmit={handleSetPassword} class="space-y-6">
-            <div class="space-y-1.5">
-              <label
-                for="new-password"
-                class="block text-[13px] font-bold text-indigo-900/40 uppercase tracking-wider ml-1"
-              >
-                New password
-              </label>
-              <div class="relative group">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-500 transition-colors">
-                  <Lock class="w-4 h-4" />
-                </div>
-                <input
-                  id="new-password"
-                  bind:value={newPassword}
-                  type={showNew ? "text" : "password"}
-                  placeholder="Min. 8 characters"
-                  required
-                  minlength="8"
-                  class="w-full bg-white/50 border border-indigo-100 rounded-2xl pl-11 pr-12 py-3.5 text-[15px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-indigo-200"
-                />
+            <Input
+              id="new-password"
+              label="New password"
+              bind:value={newPassword}
+              type={showNew ? "text" : "password"}
+              placeholder="Min. 8 characters"
+              required
+              minlength="8"
+              class="rounded-2xl font-mono"
+            >
+              {#snippet left()}
+                <Lock class="w-4 h-4" />
+              {/snippet}
+              {#snippet right()}
                 <button
                   type="button"
                   onclick={() => (showNew = !showNew)}
-                  class="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-300 hover:text-indigo-500 transition-colors"
+                  class="text-indigo-300 hover:text-indigo-500 transition-colors"
                 >
-                  {#if showNew}<EyeOff class="w-5 h-5" />{:else}<Eye
-                      class="w-5 h-5"
-                    />{/if}
+                  {#if showNew}
+                    <EyeOff class="w-5 h-5" />
+                  {:else}
+                    <Eye class="w-5 h-5" />
+                  {/if}
                 </button>
-              </div>
-            </div>
+              {/snippet}
+            </Input>
 
-            <div class="space-y-1.5">
-              <label
-                for="confirm-password"
-                class="block text-[13px] font-bold text-indigo-900/40 uppercase tracking-wider ml-1"
-              >
-                Confirm password
-              </label>
-              <div class="relative group">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-500 transition-colors">
-                  <Lock class="w-4 h-4" />
-                </div>
-                <input
-                  id="confirm-password"
-                  bind:value={confirmPass}
-                  type={showConfirm ? "text" : "password"}
-                  placeholder="••••••••"
-                  required
-                  class="w-full bg-white/50 border border-indigo-100 rounded-2xl pl-11 pr-12 py-3.5 text-[15px] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-indigo-200"
-                />
+            <Input
+              id="confirm-password"
+              label="Confirm password"
+              bind:value={confirmPass}
+              type={showConfirm ? "text" : "password"}
+              placeholder="••••••••"
+              required
+              class="rounded-2xl font-mono"
+            >
+              {#snippet left()}
+                <Lock class="w-4 h-4" />
+              {/snippet}
+              {#snippet right()}
                 <button
                   type="button"
                   onclick={() => (showConfirm = !showConfirm)}
-                  class="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-300 hover:text-indigo-500 transition-colors"
+                  class="text-indigo-300 hover:text-indigo-500 transition-colors"
                 >
-                  {#if showConfirm}<EyeOff class="w-5 h-5" />{:else}<Eye
-                      class="w-5 h-5"
-                    />{/if}
+                  {#if showConfirm}
+                    <EyeOff class="w-5 h-5" />
+                  {:else}
+                    <Eye class="w-5 h-5" />
+                  {/if}
                 </button>
-              </div>
-            </div>
+              {/snippet}
+            </Input>
 
             <!-- Password strength hint -->
             <div class="px-1 min-h-[20px]">

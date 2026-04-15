@@ -22,6 +22,8 @@ export interface VariantRowFormProps {
     productTitle: string;
     productType: string;
     variant?: ProductVariant | null;
+    prefillPrice?: number;
+    prefillStock?: number;
     onSave: (v: ProductVariant) => void;
     onCancel: () => void;
 }

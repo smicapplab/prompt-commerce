@@ -255,13 +255,14 @@
                 </a>
               {/snippet}
               {#snippet right()}
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onclick={() => (showTelegramKey = !showTelegramKey)}
-                  class="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  class="text-gray-400 hover:text-gray-600 h-10 w-10"
                 >
                   {#if showTelegramKey}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
-                </button>
+                </Button>
               {/snippet}
             </Input>
           </div>
@@ -327,8 +328,9 @@
                     >
                       {defaultTelegramWebhookUrl}
                     </code>
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onclick={async () => {
                         await navigator.clipboard.writeText(
                           defaultTelegramWebhookUrl,
@@ -339,30 +341,25 @@
                           2000,
                         );
                       }}
-                      class="shrink-0 rounded-lg bg-white border border-gray-200 px-3 py-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors shadow-sm flex items-center justify-center gap-1 min-w-[60px]"
+                      class="shrink-0 min-w-[60px] h-9 text-[11px]"
                     >
                       {#if telegramWebhookUrlCopied}
                         <Check size={12} /> Done
                       {:else}
                         Copy
                       {/if}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               {/if}
 
               <div class="space-y-1.5">
-                <label
-                  for="t-webhook-custom"
-                  class="text-[11px] font-bold text-gray-500 uppercase tracking-tight"
-                  >Custom URL Override</label
-                >
-                <input
+                <Input
                   id="t-webhook-custom"
-                  type="text"
+                  label="Custom URL Override"
                   bind:value={telegramCustomUrl}
                   placeholder="https://..."
-                  class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-mono focus:border-blue-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
+                  class="font-mono text-[11px]"
                 />
               </div>
             </div>

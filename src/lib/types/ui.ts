@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 
 export interface ButtonProps {
     type?: "button" | "submit" | "reset";
-    variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
+    variant?: "primary" | "secondary" | "tertiary" | "danger" | "ghost" | "outline";
     size?: "sm" | "md" | "lg" | "icon";
     class?: string;
     href?: string;
