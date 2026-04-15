@@ -26,6 +26,7 @@
 		price: '' as string | number,
 		stock_quantity: '' as string | number,
 		active: true,
+		track_inventory: true,
 		tags: '',
 		product_type: 'generic' as const,
 		metadata: {} as Record<string, unknown>,
@@ -61,6 +62,7 @@
 					price: product.price || '',
 					stock_quantity: product.stock_quantity || '',
 					active: !!product.active,
+					track_inventory: product.track_inventory !== undefined ? !!product.track_inventory : true,
 					tags: (product.tags || []).join(', '),
 					product_type: product.product_type || 'generic',
 					metadata: product.metadata || {},
@@ -91,6 +93,7 @@
 		data.append('price', String(formData.price || 0));
 		data.append('stock_quantity', String(formData.stock_quantity || 0));
 		data.append('active', formData.active ? '1' : '0');
+		data.append('track_inventory', formData.track_inventory ? '1' : '0');
 		data.append('tags', formData.tags);
 		data.append('product_type', formData.product_type);
 		data.append('metadata', JSON.stringify(formData.metadata));
@@ -298,18 +301,38 @@
 								</div>
 							{/if}
 
-							<div class="pt-4 flex items-center justify-between">
-								<div class="flex items-center space-x-3">
-									<button 
-										onclick={() => formData.active = !formData.active}
-										aria-label={formData.active ? 'Deactivate product' : 'Activate product'}
-										class="w-12 h-6 rounded-full p-1 transition-colors {formData.active ? 'bg-indigo-600' : 'bg-slate-300'}"
-									>
-										<div class="bg-white w-4 h-4 rounded-full transition-transform {formData.active ? 'translate-x-6' : 'translate-x-0'} shadow-sm"></div>
-									</button>
-									<span class="text-sm font-bold {formData.active ? 'text-indigo-600' : 'text-slate-500'}">
-										{formData.active ? 'Available for purchase' : 'Draft / Hidden'}
-									</span>
+							<div class="pt-4 space-y-4">
+								<div class="flex items-center justify-between">
+									<div class="flex items-center space-x-3">
+										<button 
+											onclick={() => formData.active = !formData.active}
+											aria-label={formData.active ? 'Deactivate product' : 'Activate product'}
+											class="w-12 h-6 rounded-full p-1 transition-colors {formData.active ? 'bg-indigo-600' : 'bg-slate-300'}"
+										>
+											<div class="bg-white w-4 h-4 rounded-full transition-transform {formData.active ? 'translate-x-6' : 'translate-x-0'} shadow-sm"></div>
+										</button>
+										<span class="text-sm font-bold {formData.active ? 'text-indigo-600' : 'text-slate-500'}">
+											{formData.active ? 'Available for purchase' : 'Draft / Hidden'}
+										</span>
+									</div>
+								</div>
+
+								<div class="flex items-center justify-between border-t border-slate-50 pt-4">
+									<div class="flex items-center space-x-3">
+										<button 
+											onclick={() => formData.track_inventory = !formData.track_inventory}
+											aria-label={formData.track_inventory ? 'Disable inventory tracking' : 'Enable inventory tracking'}
+											class="w-12 h-6 rounded-full p-1 transition-colors {formData.track_inventory ? 'bg-indigo-600' : 'bg-slate-300'}"
+										>
+											<div class="bg-white w-4 h-4 rounded-full transition-transform {formData.track_inventory ? 'translate-x-6' : 'translate-x-0'} shadow-sm"></div>
+										</button>
+										<div class="flex flex-col">
+											<span class="text-sm font-bold {formData.track_inventory ? 'text-indigo-600' : 'text-slate-500'}">
+												{formData.track_inventory ? 'Tracking Inventory' : 'No Tracking'}
+											</span>
+											<p class="text-[10px] text-slate-400">If disabled, stock levels are ignored</p>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
