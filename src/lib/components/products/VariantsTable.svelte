@@ -7,7 +7,7 @@
 	import type { ProductVariant } from "$lib/types/catalog.js";
 	import type { VariantsTableProps } from "$lib/types/components.js";
 
-	let { store, productId, productTitle, productSku, productType }: VariantsTableProps =
+	let { store, productId, productTitle, productSku, productType, productPrice }: VariantsTableProps =
 		$props();
 
 	let variants = $state<ProductVariant[]>([]);
@@ -15,6 +15,11 @@
 	let error = $state("");
 	let showAdd = $state(false);
 	let editingId = $state<number | null>(null);
+
+	// Bulk Add State
+	let bulkInput = $state("");
+	let bulkLoading = $state(false);
+	let bulkError = $state("");
 
 	onMount(fetchVariants);
 
@@ -36,6 +41,73 @@
 			error = "Failed to load variants";
 		} finally {
 			loading = false;
+		}
+	}
+
+	function parseBulkInput(input: string) {
+		if (!input || !input.trim()) return null;
+		
+		const parts = input.split(":");
+		if (parts.length < 2) return null;
+		
+		const key = parts[0].trim();
+		const values = parts[1].split(",")
+			.map(v => v.trim())
+			.filter(v => v);
+		
+		if (!key || values.length === 0) return null;
+		
+		return { key, values };
+	}
+
+	async function generateBulkVariants() {
+		const parsed = parseBulkInput(bulkInput);
+		if (!parsed) {
+			bulkError = "Invalid format. Use 'Size: S, M, L' or 'Color: Red, Blue'";
+			return;
+		}
+
+		bulkLoading = true;
+		bulkError = "";
+		const token = localStorage.getItem("pc_token");
+
+		try {
+			for (const value of parsed.values) {
+				const attributes = { [parsed.key]: value };
+				
+				// Generate a simple SKU
+				const basePart = (productSku || productTitle).replace(/[^a-zA-Z0-9]/g, "");
+				const attrPart = value.replace(/[^a-zA-Z0-9]/g, "");
+				const sku = `${basePart}-${attrPart}`.toUpperCase();
+
+				const res = await fetch(`/api/variants?store=${store}`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${token}`,
+					},
+					body: JSON.stringify({
+						product_id: productId,
+						sku,
+						price: productPrice,
+						stock: 0,
+						active: true,
+						attributes,
+					}),
+				});
+
+				if (!res.ok) {
+					const d = await res.json();
+					console.error(`Failed to create variant ${value}:`, d.error);
+				}
+			}
+			
+			bulkInput = "";
+			await fetchVariants();
+		} catch (e: any) {
+			bulkError = "Failed to generate some variants.";
+		} finally {
+			bulkLoading = false;
 		}
 	}
 
@@ -115,16 +187,60 @@
 				Product Variations
 			</h3>
 		</div>
-		<Button
-			variant="tertiary"
-			size="sm"
-			onclick={() => (showAdd = true)}
-			disabled={showAdd}
-			class="px-3 py-1.5 h-auto text-xs"
-		>
-			<Plus size={14} class="mr-1.5" />
-			Add Variation
-		</Button>
+		<div class="flex items-center gap-2">
+			<Button
+				variant="tertiary"
+				size="sm"
+				onclick={() => (showAdd = true)}
+				disabled={showAdd}
+				class="px-3 py-1.5 h-auto text-xs"
+			>
+				<Plus size={14} class="mr-1.5" />
+				Add Variation
+			</Button>
+		</div>
+	</div>
+
+	<!-- Bulk Add Wizard -->
+	<div class="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-3">
+		<div class="flex items-center justify-between">
+			<h4 class="text-[11px] font-black uppercase tracking-widest text-indigo-600 flex items-center">
+				<Plus size={12} class="mr-1.5" />
+				Bulk Variation Wizard
+			</h4>
+			<p class="text-[10px] text-indigo-400 font-medium italic">Format: "Size: S, M, L" or "Color: Red, Blue"</p>
+		</div>
+		<div class="flex gap-2">
+			<div class="flex-1 relative">
+				<input
+					type="text"
+					placeholder="Enter attributes (e.g. Size: S, M, L, XL)"
+					bind:value={bulkInput}
+					class="w-full px-4 py-2 bg-white border border-indigo-100 rounded-xl text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300"
+					disabled={bulkLoading}
+				/>
+				{#if bulkLoading}
+					<div class="absolute right-3 top-1/2 -translate-y-1/2">
+						<div class="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+					</div>
+				{/if}
+			</div>
+			<Button
+				variant="primary"
+				size="sm"
+				onclick={generateBulkVariants}
+				disabled={bulkLoading || !bulkInput.trim()}
+				class="px-6 rounded-xl shadow-lg shadow-indigo-200/50"
+			>
+				Generate
+			</Button>
+		</div>
+		{#if bulkError}
+			<p class="text-[10px] text-red-500 font-bold flex items-center px-1">
+				<CircleAlert size={12} class="mr-1" />
+				{bulkError}
+			</p>
+		{/if}
 	</div>
 
 	{#if loading && variants.length === 0}

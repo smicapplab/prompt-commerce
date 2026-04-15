@@ -372,6 +372,7 @@
 							productTitle={formData.title}
 							productSku={formData.sku}
 							productType={formData.product_type}
+							productPrice={Number(formData.price) || 0}
 						/>					{:else}
 						<div class="py-20 flex flex-col items-center justify-center text-slate-400 text-center">
 							<Layers size={48} strokeWidth={1} class="mb-4 opacity-30" />
