@@ -24,6 +24,8 @@ export interface Variant {
   price: number;
   stock: number;
   attributes: Record<string, any>;
+  images: string[];
+  is_always_available: boolean;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -84,6 +86,8 @@ export interface VariantRow {
   price: number;
   stock: number;
   attributes: string;
+  images: string | null;
+  is_always_available: number;
   active: number;
   created_at: string;
   updated_at: string;

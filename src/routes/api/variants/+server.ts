@@ -18,7 +18,9 @@ export const GET: RequestHandler = async (event: RequestEvent) => {
 	const variants = dbRows.map(v => ({
 		...v,
 		attributes: v.attributes ? JSON.parse(v.attributes) : {},
-		active: !!v.active
+		images: v.images ? JSON.parse(v.images) : [],
+		active: !!v.active,
+		is_always_available: !!v.is_always_available
 	}));
 
 	return json({ variants });
@@ -82,6 +84,7 @@ export const POST: RequestHandler = async (event: RequestEvent) => {
 		...newVariant,
 		attributes: newVariant.attributes ? JSON.parse(newVariant.attributes) : {},
 		images: newVariant.images ? JSON.parse(newVariant.images) : [],
-		active: !!newVariant.active
+		active: !!newVariant.active,
+		is_always_available: !!newVariant.is_always_available
 	}, { status: 201 });
 };

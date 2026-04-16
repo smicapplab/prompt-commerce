@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { 
 		X, Save, Image as ImageIcon, 
-		Package, Settings2, Layers, Check, AlertCircle 
+		Package, Settings2, Layers, Check, AlertCircle, Tag 
 	} from '@lucide/svelte';
 	import ProductTypeSelector from './ProductTypeSelector.svelte';
 	import MetadataForm from './MetadataForm.svelte';
@@ -234,6 +234,23 @@
 									placeholder="TSHIRT-001"
 									bind:value={formData.sku}
 								/>
+							</div>
+
+							<div class="space-y-1.5">
+								<div class="flex items-center justify-between">
+									<label class="text-[13px] font-bold text-gray-700 tracking-tight" for="tags">Tags</label>
+									<span class="text-[10px] text-slate-400 font-medium">SEPARATE WITH COMMAS</span>
+								</div>
+								<div class="relative">
+									<Tag size={16} class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+									<Input
+										id="tags"
+										placeholder="e.g. limited, summer, organic"
+										class="pl-10"
+										bind:value={formData.tags}
+									/>
+								</div>
+								<p class="text-[10px] text-slate-400 italic">Helps AI and bot search find this product more easily.</p>
 							</div>
 						</div>
 

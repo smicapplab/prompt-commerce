@@ -87,7 +87,9 @@ function parseVariant(row: VariantRow): Variant {
   return {
     ...row,
     active: Boolean(row.active),
+    is_always_available: Boolean(row.is_always_available),
     attributes: row.attributes ? JSON.parse(row.attributes) : {},
+    images: row.images ? JSON.parse(row.images) : [],
   };
 }
 

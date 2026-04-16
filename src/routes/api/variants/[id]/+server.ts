@@ -70,7 +70,8 @@ export const PATCH: RequestHandler = async (event: RequestEvent) => {
 		...updated,
 		attributes: updated.attributes ? JSON.parse(updated.attributes) : {},
 		images: updated.images ? JSON.parse(updated.images) : [],
-		active: !!updated.active
+		active: !!updated.active,
+		is_always_available: !!updated.is_always_available
 	});
 };
 
