@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { Plus, Pencil, Trash2, CircleAlert, Layers } from "@lucide/svelte";
+	import { Plus, Pencil, Trash2, CircleAlert, Layers, Zap, X } from "@lucide/svelte";
 	import VariantRowForm from "./VariantRowForm.svelte";
 	import Button from "$lib/components/ui/Button.svelte";
+	import Input from "$lib/components/ui/Input.svelte";
 
 	import type { ProductVariant } from "$lib/types/catalog.js";
 	import type { VariantsTableProps } from "$lib/types/components.js";
@@ -15,6 +16,11 @@
 	let error = $state("");
 	let showAdd = $state(false);
 	let editingId = $state<number | null>(null);
+
+	// Bulk Generate State
+	let showBulk = $state(false);
+	let bulkInput = $state(""); // e.g., "Size: S, M, L, XL"
+	let bulkLoading = $state(false);
 
 
 	onMount(fetchVariants);
@@ -37,6 +43,52 @@
 			error = "Failed to load variants";
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function generateBulk() {
+		const [attrKey, attrValuesRaw] = bulkInput.split(":").map((s) => s.trim());
+		if (!attrKey || !attrValuesRaw) return;
+
+		const values = attrValuesRaw
+			.split(",")
+			.map((v) => v.trim())
+			.filter(Boolean);
+		bulkLoading = true;
+
+		try {
+			const token = localStorage.getItem("pc_token");
+			for (const val of values) {
+				const attrs = { [attrKey]: val };
+				// Auto-generate SKU
+				const basePart = (productSku || productTitle).replace(
+					/[^a-zA-Z0-9]/g,
+					"",
+				);
+				const valPart = val.replace(/[^a-zA-Z0-9]/g, "");
+				const generatedSku = `${basePart}-${valPart}`.toUpperCase();
+
+				const data = new FormData();
+				data.append("product_id", String(productId));
+				data.append("sku", generatedSku);
+				data.append("price", String(productPrice));
+				data.append("stock", "0");
+				data.append("active", "1");
+				data.append("attributes", JSON.stringify(attrs));
+
+				await fetch(`/api/variants?store=${store}`, {
+					method: "POST",
+					headers: { Authorization: `Bearer ${token}` },
+					body: data,
+				});
+			}
+			await fetchVariants(); // Refresh list
+			showBulk = false;
+			bulkInput = "";
+		} catch (e) {
+			error = "Bulk generation partially failed";
+		} finally {
+			bulkLoading = false;
 		}
 	}
 
@@ -121,6 +173,15 @@
 			<Button
 				variant="tertiary"
 				size="sm"
+				onclick={() => (showBulk = !showBulk)}
+				class="px-3 py-1.5 h-auto text-xs"
+			>
+				<Zap size={14} class="mr-1.5" />
+				Bulk Generate
+			</Button>
+			<Button
+				variant="tertiary"
+				size="sm"
 				onclick={() => (showAdd = true)}
 				disabled={showAdd}
 				class="px-3 py-1.5 h-auto text-xs"
@@ -130,6 +191,43 @@
 			</Button>
 		</div>
 	</div>
+
+	{#if showBulk}
+		<div
+			class="p-4 bg-indigo-50 border border-indigo-100 rounded-xl space-y-3"
+		>
+			<div class="flex items-center justify-between">
+				<h4 class="text-xs font-bold text-indigo-900 uppercase">
+					Bulk Variation Wizard
+				</h4>
+				<button
+					onclick={() => (showBulk = false)}
+					class="text-indigo-400 hover:text-indigo-600"
+				>
+					<X size={14} />
+				</button>
+			</div>
+			<p class="text-[10px] text-indigo-600">
+				Type attribute and values separated by commas. Example: <b>
+					Size: S, M, L, XL
+				</b>
+			</p>
+			<div class="flex gap-2">
+				<Input
+					bind:value={bulkInput}
+					placeholder="Attribute: Value1, Value2..."
+					class="flex-1"
+				/>
+				<Button
+					size="sm"
+					onclick={generateBulk}
+					disabled={bulkLoading || !bulkInput.includes(":")}
+				>
+					{bulkLoading ? "Generating..." : "Generate"}
+				</Button>
+			</div>
+		</div>
+	{/if}
 
 
 	{#if loading && variants.length === 0}
