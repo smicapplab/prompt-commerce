@@ -205,6 +205,62 @@ At ₱1,000 average order × 40,000 orders = ₱40M GMV:
 
 ---
 
+## Development Environment
+
+A separate dev/staging environment mirrors production for safe testing without risking live data.
+
+### What Dev Needs
+
+| Service | Dev requirement |
+|---------|----------------|
+| Gateway (NestJS) | Always-on preferred (webhook testing with ngrok or dev domain) |
+| Seller Admin | Can be local-only or dev VPS |
+| PostgreSQL | Separate DB from prod — never share |
+| Telegram/WhatsApp bot | Separate bot token for dev (free to create) |
+
+### Local Development (Free)
+
+Run everything on your own machine — no cloud cost. Use `dev.sh` to start both services.
+
+| Item | Cost |
+|------|------|
+| Local compute | $0 |
+| Docker (local Postgres) | $0 |
+| ngrok (webhook tunneling) | $0–$10/mo |
+
+**Limitation:** Webhooks only work while your machine is on. Fine for active development, not for shared staging or QA.
+
+### Cloud Dev/Staging Server
+
+| Option | Spec | Monthly | Notes |
+|--------|------|---------|-------|
+| **Hetzner CX11** | 1 vCPU, 2GB RAM | **~$4** | Enough for dev load |
+| Hetzner CX22 | 2 vCPU, 4GB RAM | ~$6 | More comfortable |
+| Render free tier | 512MB | $0 | Spins down after 15min — ok for dev |
+| Railway dev | Usage-based | ~$5 | Simple, auto-sleep when idle |
+
+**Recommendation: Hetzner CX11 (~$4/mo)** for a persistent staging environment.
+
+### Dev Database
+
+| Option | Monthly | Notes |
+|--------|---------|-------|
+| **Self-hosted on dev VPS** | **$0** | Same box as dev gateway |
+| Neon free tier | $0 | 1GB, auto-suspends when idle — fine for dev |
+| Supabase free | $0 | Pauses after 1 week — acceptable for dev (manually resume) |
+
+**Recommendation: Neon free tier** — zero cost, auto-suspend saves resources, separate from prod.
+
+### Dev Environment Subtotal
+
+| Scenario | Monthly |
+|----------|---------|
+| Local-only dev | **$0** |
+| Hetzner CX11 + Neon free | **~$4** |
+| Hetzner CX11 + self-hosted PG | **~$4** |
+
+---
+
 ## Scaling Considerations
 
 | Monthly Orders | Recommended Spec | Est. Infra Cost |
