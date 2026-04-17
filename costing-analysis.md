@@ -274,11 +274,27 @@ AI costs scale with usage regardless of infrastructure tier.
 
 ---
 
+## Total Cost Including Dev Environment
+
+| Environment | Monthly |
+|-------------|---------|
+| Production (Hetzner CX32 + domain) | $16 |
+| Dev/Staging (Hetzner CX11 + Neon free) | $4 |
+| AI chat (20% adoption) | $108 |
+| WhatsApp utility notifications (optional) | $0–300 |
+| **Total** | **$128–428/mo** |
+
+Dev adds only ~$4/mo for a fully persistent staging environment.
+
+---
+
 ## Recommendations
 
-1. **Start on Hetzner CX32 (~$15/mo)** — enough headroom for 40k orders, upgrade path is clear.
-2. **Self-host PostgreSQL** on the same box until you need managed backups or a separate DB server.
-3. **Use Telegram as primary channel** — identical capability to WhatsApp, zero messaging cost.
-4. **Add WhatsApp** for reach — free for your use case (customer-initiated).
-5. **Monitor AI adoption rate** — it's the most variable cost driver at scale.
-6. **Upgrade to Supabase Pro or Neon** when you want managed backups without maintaining pgBackup yourself.
+1. **Production: Hetzner CX32 (~$15/mo)** — enough headroom for 40k orders, clear upgrade path.
+2. **Dev/Staging: Hetzner CX11 (~$4/mo) + Neon free** — persistent, isolated, near-zero cost.
+3. **Self-host PostgreSQL on prod** until managed backups become a priority.
+4. **Separate bot tokens for dev and prod** — free to create, prevents dev messages hitting live users.
+5. **Use Telegram as primary channel** — identical capability to WhatsApp, zero messaging cost.
+6. **Add WhatsApp** for reach — free for your use case (customer-initiated).
+7. **Monitor AI adoption rate** — most variable cost driver at scale.
+8. **Upgrade prod DB to Supabase Pro or Neon** when you want managed backups without manual pgBackup setup.
